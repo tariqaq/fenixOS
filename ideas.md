@@ -6,7 +6,7 @@ The user's vision for fenixOS, written down on 2026-10-29 and kept current as de
 
 - The FenixDeck PoC (PC hardware monitor on the board) proved the board, the link and the toolchain. Its code is legacy and experimental: local copy `C:\Users\trqboi\Documents\fenixdeck-legacy`, GitHub `tariqaq/fenixdeck`. What it taught is in `docs/POC-WRITEUP.md`.
 - fenixOS is the "proper" build: a clean, modular system with an OS on the board and a companion app on the PC.
-- The board flash was wiped clean on 2026-10-29 (both earlier images are backed up in `firmware/`).
+- The board flash was wiped clean on 2026-10-29 (both earlier images are backed up in `firmware/`, local only).
 
 ## 2. What this repo holds
 
@@ -120,7 +120,7 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
 - **C4. "Shut down" can't cut power.** The board has no power switch, and USB keeps it powered. Shut down = backlight off + deep sleep, woken by a touch (touch IRQ on GPIO36 can wake from deep sleep) or by the RST button. Reboot = software restart.
 - **C5. No vsync.** The LCD's TE pin is not wired, so tearing can only be minimized: partial redraws by DMA and capped fps. A full-screen push takes ~22 ms (about 45 fps max). Full-screen effects such as cross-fades redraw the whole screen, so they run slower than small animations.
 - **C6. Apple's fonts and SF Symbols can't be used.** Apple's license limits SF fonts to Apple platforms. It does not allow embedding them in a non-Apple app or firmware, nor even mock-ups of software for non-Apple systems. Use **Inter** (Google Fonts, OFL, designed in a similar spirit to SF Pro) or a similar open font. Icons need an open set too (for example Lucide, Phosphor, Material Symbols Rounded).
-- **C7. Private repo vs. central registry.** This repo is private, so the PC app cannot read the registry from it without a GitHub token. Options: a token in the PC app, a separate public registry repo, or making this repo public.
+- **C7. Private repo vs. central registry** (resolved: the repo is now public). This repo was private, so the PC app cannot read the registry from it without a GitHub token. Options: a token in the PC app, a separate public registry repo, or making this repo public.
 - **C8. Flash budget.** 4 MB total. The current plan has room for the firmware plus about 1.9 MB of app storage (LittleFS). Firmware updates through the PC app (by serial bootloader) need no OTA partitions. On-board OTA slots would take ~1.5 MB more.
 - **C9. RAM budget.** ~260 KB of heap before our own buffers, no PSRAM. The UI library choice (LVGL 9 vs a custom renderer), render buffers, an app runtime and later Wi-Fi (~45 KB+) all share it.
 - **C10. Installing apps from GitHub runs code on the PC.** Each app's PC half needs a runtime (WASM plugin, separate process, or script) and a trust model: pinned versions, checksums, and only the user's own repos.
@@ -142,12 +142,26 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
 - **Testing:** golden vectors for the protocol, a host build of the board UI to iterate without flashing, and screenshot checks.
 - **Repo layout:** `firmware/` today holds flash backups and would clash with a firmware source folder.
 
-## 11. Open questions
+## 11. Decided so far
+
+Details and the options offered: `docs/decisions.md`.
+
+- Board: **C++17 on ESP-IDF 5.5.5**, UI with **LVGL 9 + LovyanGFX**.
+- Board half of host apps: **declarative packages** (layout + assets + bindings); logic in the PC half (answers C3).
+- Orientation: **switchable in Settings**, all 4 rotations; every layout adapts.
+- Versions: stay on IDF 5.5.5, LovyanGFX 1.2.35, CH340 driver 3.3.2011.11.
+- Navigation: iOS-style **top nav bar** (`< Home`, centred title).
+- Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, Wi-Fi NTP later; no manual set. `--:--` until the first sync after power-up.
+- Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE/LZ); ~10 fps in normal use.
+- Shut down (C4): **deep sleep, tap to wake** (touch IRQ GPIO36) or RST.
+- PC app: **Rust + Tauri 2 + Svelte 5**.
+- PC half of host apps (C10): **sidecar process** per app, started only while switched on, local pipe + typed API; trust via registry, pinned versions, checksums.
+- Registry (C7): **this repo is public**; the PC app reads the registry with no auth. Vendor files, flash images and the packing slip were scrubbed from history first.
+- Firmware updates (C8): **the PC app flashes the board over serial** (`espflash`), firmware bundled with each PC app release. No OTA slots.
+
+## 12. Open questions
 
 Asked round by round with the picker; each answer goes to `docs/decisions.md` and back into this file.
 
-- Board: UI library, language, app runtime (C3), orientation, navigation.
-- Time source (C1), streaming method (C2), shutdown behaviour (C4).
-- PC: UI stack, app plugin runtime (C10), registry access (C7), firmware update path (C8).
 - Design: font, icon set, motion style, PC window style.
 - Repo layout, version scheme, autostart, extra Settings items.

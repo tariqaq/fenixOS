@@ -191,19 +191,21 @@ Windows 11 Pro, Intel Core i7-13620H (16 threads), Intel UHD + NVIDIA GeForce RT
 
 ### Package contents (`docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/`)
 
-| Folder | Content | In git |
-|---|---|---|
-| `1-Demo/Demo_Arduino/` | Arduino sketches: 3_x basics (LED, TFT, JPG/PNG, LVGL, key, interrupt, DHT11, PWM, timer, ADC), 4_x Wi-Fi, 5_x BLE, 6_x SD, 7_x touch (incl. a LovyanGFX touch demo), 8_x buzzer | sketches yes; `libraries/` and large demos no |
-| `1-Demo/Demo_LVGL(idf-4.3)/` | LVGL demo for ESP-IDF 4.3 (the stock firmware) | no (482 MB) |
-| `2-Specification/` | Board spec PDF | yes |
-| `3-Structure_Diagram/` | Dimensions | yes |
-| `4-Driver_IC_Data_Sheet/` | ESP32-WROOM-32, 25Q32, FM8002A amp, JC2432A028N panel (ILI9341V), DHT11 | yes |
-| `5-Schematic/` | Two schematic sheets (JPG), WROOM pin definition. File names are swapped relative to content: `...-MCU.jpg` is power/USB/peripherals, `...-LCM.jpg` is ESP32/touch/LCM/audio | yes |
-| `6-User_Manual/` | "Getting started 2.8 Inch" PDF | yes |
-| `7-Character&Picture_Molding_Tool/` | Third-party Windows tools | no |
-| `8-Burn operation/` | Prebuilt `LVGL-DEMO2.8R.bin` and flashing steps; Espressif flash tool 3.9.3 | instructions yes, tool no |
+The whole package is **local only** (not in git since 2026-10-29, when the fenixOS repo went public: the vendor files carry no redistribution licence). Re-download it from the vendor site above.
 
-The vendor `libraries/` folder (not in git, 346 MB) has copies of TFT_eSPI, LovyanGFX, lvgl, TJpg_Decoder, ESPAsyncWebServer, ESP8266Audio and more.
+| Folder | Content |
+|---|---|
+| `1-Demo/Demo_Arduino/` | Arduino sketches: 3_x basics (LED, TFT, JPG/PNG, LVGL, key, interrupt, DHT11, PWM, timer, ADC), 4_x Wi-Fi, 5_x BLE, 6_x SD, 7_x touch (incl. a LovyanGFX touch demo), 8_x buzzer |
+| `1-Demo/Demo_LVGL(idf-4.3)/` | LVGL demo for ESP-IDF 4.3 (the stock firmware), 482 MB |
+| `2-Specification/` | Board spec PDF |
+| `3-Structure_Diagram/` | Dimensions |
+| `4-Driver_IC_Data_Sheet/` | ESP32-WROOM-32, 25Q32, FM8002A amp, JC2432A028N panel (ILI9341V), DHT11 |
+| `5-Schematic/` | Two schematic sheets (JPG), WROOM pin definition. File names are swapped relative to content: `...-MCU.jpg` is power/USB/peripherals, `...-LCM.jpg` is ESP32/touch/LCM/audio |
+| `6-User_Manual/` | "Getting started 2.8 Inch" PDF |
+| `7-Character&Picture_Molding_Tool/` | Third-party Windows tools |
+| `8-Burn operation/` | Prebuilt `LVGL-DEMO2.8R.bin` and flashing steps; Espressif flash tool 3.9.3 |
+
+The vendor `libraries/` folder (346 MB) has copies of TFT_eSPI, LovyanGFX, lvgl, TJpg_Decoder, ESPAsyncWebServer, ESP8266Audio and more.
 
 ### Vendor config errors
 
@@ -214,13 +216,13 @@ The vendor `libraries/` folder (not in git, 346 MB) has copies of TFT_eSPI, Lovy
 
 ### CH340 driver
 
-The board enumerates with an error until the CH340 driver is installed. Use WCH's official `CH341SER.EXE` (`https://www.wch-ic.com/downloads/CH341SER_EXE.html`); the vendor copy is in `docs/vendor/CH340/`. Install needs admin. Then the board appears as `USB-SERIAL CH340 (COMx)`.
+The board enumerates with an error until the CH340 driver is installed. Use WCH's official `CH341SER.EXE` (`https://www.wch-ic.com/downloads/CH341SER_EXE.html`); the vendor copy is in `docs/vendor/CH340/` (local only). Install needs admin. Then the board appears as `USB-SERIAL CH340 (COMx)`.
 
 ### Stock firmware
 
 | Item | Value |
 |---|---|
-| Backup | `firmware/stock/stock_flash_4MB.bin`, full 4 MB dump from offset 0 |
+| Backup | `firmware/stock/stock_flash_4MB.bin`, full 4 MB dump from offset 0 (local only, not in git) |
 | SHA-256 | `db0256aad5a235cc19584cb6050421da27d08730e27da49347e0c52bdef75c22` (verified on the board with `esptool verify-flash`) |
 | App | `lvgl-demo` v1, built `Nov 1 2025 11:46:16`, ESP-IDF v4.3 (the vendor LVGL demo) |
 | Partitions | nvs 0x9000 24K, phy_init 0xF000 4K, factory app 0x10000 **1024K** |
@@ -910,7 +912,7 @@ These are recommendations from what the PoC showed, not decisions.
 | `docs/POC-WRITEUP.md` (this file) | **Ready** | Self-contained; the main hand-over doc |
 | `pics/ANALYSIS.md` | **Ready** | Hardware analysis, per-image notes, corrections. Take with all images in `pics/` |
 | `docs/board-info.md` | **Ready** | esptool read-out, stock backup + restore, hardware findings. Mentions FenixDeck paths (`board/`, `fenix shot`) |
-| `docs/vendor/README.md` | **Ready** | What the vendor package holds and where; take with the tracked files under `docs/vendor/` |
+| `docs/vendor/README.md` | **Ready** | What the vendor package holds and where (the package itself is local only) |
 | `docs/protocol.md` | **Ready if the protocol is reused** | Complete spec; references the FenixDeck crate paths |
 | `docs/metrics-validation.md` | Optional | Only relevant if the PC monitor carries over |
 | `docs/toolchain.md` | Reference only | Versions and gotchas of this toolchain; expected to change (summarised in sections 6 and 12) |
@@ -922,12 +924,14 @@ These are recommendations from what the PoC showed, not decisions.
 
 | Path | Notes |
 |---|---|
-| `pics/*.jpg` (17 files, 36 MB) | Board photos, manual, box label, two store listings. Analysed in `pics/ANALYSIS.md` |
+| `pics/*.jpg` (17 files; 16 in git, the packing slip is local only) | Board photos, manual, box label, two store listings. Analysed in `pics/ANALYSIS.md` |
 | `docs/screens/v01-live-overview.png`, `v01-live-cpu.png` | Exact LCD read-back of the PoC UI |
-| `docs/vendor/.../5-Schematic/*.jpg` | MCU and LCM schematics, WROOM pin definition |
-| `docs/vendor/.../3-Structure_Diagram/Dimensions.png` | Board dimensions (for cases/mounts) |
+| `docs/vendor/.../5-Schematic/*.jpg` (local only) | MCU and LCM schematics, WROOM pin definition |
+| `docs/vendor/.../3-Structure_Diagram/Dimensions.png` (local only) | Board dimensions (for cases/mounts) |
 
-### Vendor files and firmware
+### Vendor files and firmware (all local only, not in git)
+
+Since 2026-10-29 the fenixOS repo is public, and these third-party files carry no redistribution licence, so they stay on the local disk (`.gitignore`).
 
 | Path | Notes |
 |---|---|
@@ -935,8 +939,8 @@ These are recommendations from what the PoC showed, not decisions.
 | `docs/vendor/.../2-Specification/`, `6-User_Manual/` | Board spec and getting-started manual |
 | `docs/vendor/CH340/` | CH340 driver installer |
 | `firmware/stock/stock_flash_4MB.bin` (4 MB) | Factory backup; keep it to restore the board |
-| `firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin` (4 MB) | FenixDeck v0.1.0 as running on the board, read back 2026-10-29 (restore steps in `docs/board-info.md`) |
-| `docs/vendor/archives/*.rar` (local only, not in git) | Full vendor package; re-download if needed |
+| `firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin` (4 MB) | FenixDeck v0.1.0 as it ran on the board, read back 2026-10-29 (restore steps in `docs/board-info.md`) |
+| `docs/vendor/archives/*.rar` | Full vendor package; re-download if needed |
 
 ### Code worth carrying over (any toolchain)
 

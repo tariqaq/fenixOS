@@ -26,13 +26,13 @@ Direct-download page pattern: `https://pan.jczn1688.com/directlink/1/<server pat
 
 ## Not in git
 
-These paths are in `.gitignore`: too large for GitHub, or third-party binaries. They stay on the local disk. To restore them, re-download the rar and extract it with `7z x`.
+**Everything in this folder except this README is local only** (`.gitignore`). The fenixOS repo is public since 2026-10-29, and the vendor files carry no redistribution licence. They were also removed from git history. To restore them on another machine, re-download the rar files from the site above and extract with `7z x` into this folder.
 
 - `archives/` (241 MB rar)
-- `1-Demo/Demo_Arduino/libraries/` (346 MB): vendor copies of TFT_eSPI, LovyanGFX, lvgl, TJpg_Decoder, ESPAsyncWebServer, ESP8266Audio, etc.
-- `1-Demo/Demo_LVGL(idf-4.3)/` (482 MB)
-- Large demos: `4_8`, `4_9`, `4_10`, `4_11`, `9_1`
-- `7-Character&Picture_Molding_Tool/`, `8-Burn operation/flash_download_tool_3.9.3/`
+- `CH340/` (driver installer)
+- `ESP32-2432S028R/` (951 MB extracted), including:
+  - `1-Demo/Demo_Arduino/libraries/` (346 MB): vendor copies of TFT_eSPI, LovyanGFX, lvgl, TJpg_Decoder, ESPAsyncWebServer, ESP8266Audio, etc.
+  - `1-Demo/Demo_LVGL(idf-4.3)/` (482 MB)
 
 ## Key facts from the vendor config
 

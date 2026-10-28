@@ -4,6 +4,8 @@ Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, be
 
 **Current state (2026-10-29): flash fully erased** (`esptool erase-flash`). A full 4 MB read-back was all `0xFF` (0 non-blank bytes). The board has no firmware now: the ROM bootloader runs and finds no valid image. Both earlier images are backed up and can be restored (below).
 
+**Backups are local only** (`firmware/` is in `.gitignore`): the repo is public, and both images contain vendor code (the stock LVGL demo; the FenixDeck dump still holds 172 blocks of it). Keep `firmware/` safe outside git (for example, a private cloud folder). The SHA-256 values below identify the files.
+
 ## Connection
 
 | Item | Value |

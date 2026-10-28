@@ -1,17 +1,10 @@
-# Vendor files kept on local disk only (see docs/vendor/README.md "Not in git")
+# Local-only files: kept on disk, never in git (the repo is public).
+# Third-party vendor package, driver and firmware images have no redistribution licence.
+# See docs/vendor/README.md "Not in git" and docs/board-info.md "Backups".
 docs/vendor/archives/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_Arduino/libraries/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_LVGL(idf-4.3)/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_Arduino/4_8_WIFI Web Servers LED/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_Arduino/4_9_WIFI Web Servers Relay/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_Arduino/4_10_WIFI Web Servers DHT11/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_Arduino/4_11_SmallDesktopDisplay/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/1-Demo/Demo_Arduino/9_1_Playmp3-SD-dac/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/7-Character&Picture_Molding_Tool/
-docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/8-Burn operation/flash_download_tool_3.9.3/
+docs/vendor/CH340/
+docs/vendor/ESP32-2432S028R/
+firmware/
 
-# Arduino language-server logs left in the vendor demos
-inols*.log
-
-# Throwaway flash dumps (keep backups worth tracking under firmware/<name>/)
-firmware/dumps/
+# Personal info (order number, forwarder account): the packing-slip photo
+pics/20261028_185710.jpg

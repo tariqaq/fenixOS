@@ -61,7 +61,7 @@ On V1.4, R15/R16/R17/R19/R20 sit in a row between the module and P3, and their v
 ## Per image
 
 ### Photos (2026-10-28)
-- `20261028_185710.jpg`: Pinduoduo packing slip. Order `[order number removed]`, paid 2026-10-23 15:33. 2 items `L0496-1` and `L0496`, total 58. Sent to a forwarder warehouse in Shatian, Dongguan.
+- `20261028_185710.jpg` (**local only**, not in git: personal order data): Pinduoduo packing slip. Paid 2026-10-23, 2 items `L0496-1` and `L0496`, total 58, sent via a forwarder warehouse in Dongguan.
 - `20261028_185833.jpg`: manual.
   - Use 5V/1A and install the CH340 driver.
   - Use a USB-A to USB-C cable, not C-to-C (the USB-C port likely has no CC resistors).
@@ -97,6 +97,6 @@ On V1.4, R15/R16/R17/R19/R20 sit in a row between the module and P3, and their v
   - This matches the case in your photos. Check the box for the stylus and the JST cable.
 
 ## First flash (done 2026-10-28)
-- The CH340 driver (`docs/vendor/CH340/CH341SER.EXE`) is installed; the board shows up as `COM9`.
-- The stock firmware (vendor LVGL demo) was backed up before flashing: `firmware/stock/`, restore steps in `docs/board-info.md`.
-- The board now runs the FenixDeck firmware (`board/`).
+- The CH340 driver (`docs/vendor/CH340/CH341SER.EXE`, local only) is installed; the board shows up as `COM9`.
+- The stock firmware (vendor LVGL demo) was backed up before flashing: `firmware/stock/` (local only), restore steps in `docs/board-info.md`.
+- The board then ran the FenixDeck firmware. Since 2026-10-29 the flash is erased, ready for fenixOS.
