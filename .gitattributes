@@ -1,0 +1,12 @@
+# Keep LF everywhere (global core.autocrlf=true would write CRLF; hallmark scripts need LF)
+* text=auto eol=lf
+*.bin binary
+*.jpg binary
+*.png binary
+*.pdf binary
+*.rar binary
+*.EXE binary
+*.SYS binary
+*.DLL binary
+*.VXD binary
+*.zip binary

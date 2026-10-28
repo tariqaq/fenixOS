@@ -24,6 +24,21 @@ Read-only on the board (no flashing). Results are in the docs named below.
 - [x] Live protocol + touch check (5 taps, page cycling, 0 errors). `docs/board-info.md`
 - [x] Docs updated; commit + push
 
+## Phase 2: fenixOS v0.1 discovery and design (2026-10-29)
+
+Goal: capture the user's ideas, settle every open choice (asked with the picker, pros/cons + recommendation), make wireframe/mock-up slides, then write a detailed plan. No firmware or app code in this phase.
+
+- [x] Write this phase into `tasks.md`
+- [x] Wipe the board's whole flash (`esptool erase-flash`); read-back all 0xFF (460800 read failed once, 230400 worked). `docs/board-info.md`, `docs/tooling.md`
+- [x] Install hallmark 2.0.0 at project level (`.claude/skills/hallmark`), `puppeteer-core` global, edit-time hook in `.claude/settings.json`; LF fix + `.gitattributes`. `docs/tooling.md`
+- [x] Write `ideas.md`: vision, constraints C1–C10 (time, streaming, app runtime, shutdown, vsync, fonts, private registry, flash, RAM, PC plugin trust), suggested gaps
+- [~] Commit + push
+- [ ] Ask decision questions round by round (picker); record each answer in `ideas.md` + `docs/decisions.md`
+- [ ] Research where needed (web), cross-check sources, document findings
+- [ ] Wireframes / mock-up slides (board screens + PC app screens, per phase), published for review
+- [ ] Iterate with user
+- [ ] Detailed, scoped build plan (`docs/PLAN.md` for fenixOS; the FenixDeck plan moves to `docs/legacy/`)
+
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").

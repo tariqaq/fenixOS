@@ -1,6 +1,8 @@
 # Board info (read from hardware)
 
-Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board has since been flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Both the stock image and the FenixDeck image can be restored (below). Chip info was re-read on 2026-10-29 and matched.
+Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
+
+**Current state (2026-10-29): flash fully erased** (`esptool erase-flash`). A full 4 MB read-back was all `0xFF` (0 non-blank bytes). The board has no firmware now: the ROM bootloader runs and finds no valid image. Both earlier images are backed up and can be restored (below).
 
 ## Connection
 
@@ -48,7 +50,7 @@ Do not run this unless you intend to restore. It overwrites the whole flash.
 python -m esptool --port COM9 -b 460800 write-flash 0 firmware/stock/stock_flash_4MB.bin
 ```
 
-## FenixDeck firmware (on the board now)
+## FenixDeck firmware (on the board until the 2026-10-29 wipe)
 
 Backup: `firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin` (full 4 MB dump, offset 0x0, read 2026-10-29).
 
