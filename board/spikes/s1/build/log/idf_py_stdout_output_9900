@@ -1,0 +1,64 @@
+Command: ninja flash
+[1/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\trqboi\Documents\fenixOS\board\spikes\s1\build\esp-idf\esptool_py && C:\Espressif\tools\python\v5.5.5\venv\Scripts\python.exe C:/Espressif/v5.5.5/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app C:/Users/trqboi/Documents/fenixOS/board/spikes/s1/build/partition_table/partition-table.bin C:/Users/trqboi/Documents/fenixOS/board/spikes/s1/build/fenix_spike_s1.bin"
+fenix_spike_s1.bin binary size 0x874e0 bytes. Smallest app partition is 0x100000 bytes. 0x78b20 bytes (47%) free.
+[2/5] Performing build step for 'bootloader'
+[1/1] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\trqboi\Documents\fenixOS\board\spikes\s1\build\bootloader\esp-idf\esptool_py && C:\Espressif\tools\python\v5.5.5\venv\Scripts\python.exe C:/Espressif/v5.5.5/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x1000 C:/Users/trqboi/Documents/fenixOS/board/spikes/s1/build/bootloader/bootloader.bin"
+Bootloader binary size 0x4700 bytes. 0x2900 bytes (37%) free.
+[3/5] No install step for 'bootloader'
+[4/5] Completed 'bootloader'
+[4/5] C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Espressif\v5.5.5\esp-idf\components\esptool_py && C:\Espressif\tools\cmake\3.30.2\bin\cmake.exe -D IDF_PATH=C:/Espressif/v5.5.5/esp-idf -D SERIAL_TOOL=C:/Espressif/tools/python/v5.5.5/venv/Scripts/python.exe;;C:/Espressif/v5.5.5/esp-idf/components/esptool_py/esptool/esptool.py;--chip;esp32 -D SERIAL_TOOL_ARGS=--before=default_reset;--after=hard_reset;write_flash;@flash_args -D WORKING_DIRECTORY=C:/Users/trqboi/Documents/fenixOS/board/spikes/s1/build -P C:/Espressif/v5.5.5/esp-idf/components/esptool_py/run_serial_tool.cmake"
+esptool.py --chip esp32 -p COM9 -b 460800 --before=default_reset --after=hard_reset write_flash --flash_mode dio --flash_freq 40m --flash_size 4MB 0x1000 bootloader/bootloader.bin 0x10000 fenix_spike_s1.bin 0x8000 partition_table/partition-table.bin
+esptool.py v4.12.0
+Serial port COM9
+Connecting....
+Chip is ESP32-D0WD-V3 (revision v3.1)
+Features: WiFi, BT, Dual Core, 240MHz, VRef calibration in efuse, Coding Scheme None
+Crystal is 40MHz
+MAC: b4:a6:4a:a0:be:54
+Uploading stub...
+Running stub...
+Stub running...
+Changing baud rate to 460800
+Changed.
+Configuring flash size...
+Flash will be erased from 0x00001000 to 0x00005fff...
+Flash will be erased from 0x00010000 to 0x00097fff...
+Flash will be erased from 0x00008000 to 0x00008fff...
+SHA digest in image updated
+Compressed 18176 bytes to 12286...
+Writing at 0x00001000... (100 %)
+Wrote 18176 bytes (12286 compressed) at 0x00001000 in 0.4 seconds (effective 342.2 kbit/s)...
+Hash of data verified.
+Compressed 554208 bytes to 364208...
+Writing at 0x00010000... (4 %)
+Writing at 0x0001acb2... (8 %)
+Writing at 0x00024022... (13 %)
+Writing at 0x000298bf... (17 %)
+Writing at 0x0002f4f5... (21 %)
+Writing at 0x00034833... (26 %)
+Writing at 0x0003a33b... (30 %)
+Writing at 0x0003fbf2... (34 %)
+Writing at 0x00045105... (39 %)
+Writing at 0x0004a285... (43 %)
+Writing at 0x00050613... (47 %)
+Writing at 0x00055388... (52 %)
+Writing at 0x0005a50d... (56 %)
+Writing at 0x0005f746... (60 %)
+Writing at 0x00064932... (65 %)
+Writing at 0x00069dc5... (69 %)
+Writing at 0x0006fdc4... (73 %)
+Writing at 0x00076145... (78 %)
+Writing at 0x0007bab9... (82 %)
+Writing at 0x0008161e... (86 %)
+Writing at 0x00087035... (91 %)
+Writing at 0x0008f724... (95 %)
+Writing at 0x00095c57... (100 %)
+Wrote 554208 bytes (364208 compressed) at 0x00010000 in 8.5 seconds (effective 521.8 kbit/s)...
+Hash of data verified.
+Compressed 3072 bytes to 103...
+Writing at 0x00008000... (100 %)
+Wrote 3072 bytes (103 compressed) at 0x00008000 in 0.0 seconds (effective 863.7 kbit/s)...
+Hash of data verified.
+
+Leaving...
+Hard resetting via RTS pin...

@@ -115,3 +115,28 @@ v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood ou
 - **`link` is a POSIX function name** in ESP-IDF's newlib, so the firmware namespace is `pclink`.
 - **Unplug/replug recovery (2026-10-28, measured):** `tools/replug_watch.ps1` logs when COM9 appears or disappears (50 ms polling), and `fenix demo --wait` logs session events with timestamps. Across 3 physical replugs by the user, port reappearance → reconnected took **1311 / 1347 / 1336 ms**, including board boot (`boot reason 1, up 0 s`), handshake and the 1 s rescan. Unplug was detected within 30 ms of the port disappearing (`read: Access is denied (os error 5)`). The target was < 3 s.
 - **Software unplug simulation is not possible on this PC right now:** `pnputil /disable-device` fails ("pending system reboot") and `/remove-device` defers until reboot. A physical replug brings the device back.
+
+## fenixOS spikes (P1, 2026-10-29)
+
+Spike projects live in `board/spikes/` (`sdkconfig.spike` turns the UART0 console on; results print at 115200, read with `python tools/serial_read.py 30 --reset`).
+
+### S1: LVGL 9.5 + LovyanGFX rendering
+
+Scene: full-screen panel with 6 rounded tiles + labels, LVGL partial mode, two DMA draw buffers, `LV_COLOR_FORMAT_RGB565_SWAPPED` pushed raw by `pushImageDMA`, refresh period 16 ms (62 fps cap).
+
+| Setup | Fade (layer opacity) | Scrim fade (black rect over content) | Slide (whole panel) | Small 40×40 move | Full redraw |
+|---|---|---|---|---|---|
+| Flash DIO 40 MHz, LCD 55 MHz, 24 lines | 19 fps | 20 fps | 38 fps | 62 fps | 49 ms |
+| + LVGL FreeRTOS, 2 SW draw units | 10 fps | 10 fps | 23 fps | 60 fps | 103 ms |
+| Flash **QIO 80 MHz**, LCD 55 MHz, 24 lines | 28 fps | 31 fps | 50 fps | 62 fps | 33 ms |
+| Flash QIO 80 MHz, **LCD 80 MHz, 32 lines** | **36 fps** | **42 fps** | **59 fps** | **62 fps** | **19 ms** |
+
+Findings:
+- **Rendering, not SPI, was the limit**, and most of it was code and font reads from flash: switching flash from DIO 40 MHz to **QIO 80 MHz** gave +50 %. The chip runs QIO fine (`flash io: qio`).
+- **LCD SPI at 80 MHz works**: a colour-bar write at 80 MHz read back over MISO (20 MHz) with **0 wrong pixels**, and `display_selftest()` stays in `fenix_hal` for later checks. HSPI pins 14/13/12/15 are the IOMUX pins, so 80 MHz needs no GPIO matrix.
+- **LVGL's FreeRTOS OS layer with 2 draw units halves the frame rate** here (task hand-off cost outweighs the second core for these small areas). Not used; LVGL runs in one UI task.
+- `CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM` overflows IRAM by ~30 KB. Not used.
+- Draw buffers: **2 × 320 × 32 lines = 40 KB** (16→24→40 lines gave 25→28→31 fps on the fade; 32 is the balance). Heap after LVGL init and buffers: ~243 KB free of ~297 KB.
+- Portrait (rotation 0) and landscape (1) perform the same.
+- Motion rule that follows: transitions use **slides and scrims** (≥ 40 fps) rather than layer opacity on big areas (~36 fps).
+- Touch mapping per rotation needs a person at the board; it is checked in the morning review (LovyanGFX rotates touch with the panel).
