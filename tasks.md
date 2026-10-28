@@ -24,6 +24,10 @@ Read-only on the board (no flashing). Results are in the docs named below.
 - [x] Live protocol + touch check (5 taps, page cycling, 0 errors). `docs/board-info.md`
 - [x] Docs updated; commit + push
 
+## Decisions
+
+- 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
+
 ## Open (needs user input or flashing)
 
 - [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)

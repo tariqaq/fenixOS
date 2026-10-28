@@ -86,6 +86,8 @@ On the ESP32, peripheral drivers (SPI, UART, LEDC, NVS, Wi-Fi) are compiled into
 
 v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood out in its notes; it has Wi-Fi supplicant security ports). ESP-IDF v5.5 is supported until January 2028. Moving to v6.x needs a check that LovyanGFX works on it (still unconfirmed; see `docs/POC-WRITEUP.md` §7.5). The 2011 CH340 driver has worked here without errors at 460800 baud.
 
+**Decision (user, 2026-10-29): stay on the current versions** (IDF v5.5.5, LovyanGFX 1.2.35, CH340 driver 3.3.2011.11).
+
 ## Design-relevant findings (2026-10-28)
 
 - **No TE pin wired** on the LCD connector, so there is no hardware vsync. Use sprites + dirty-rect DMA pushes (see `docs/PLAN.md` §2).
