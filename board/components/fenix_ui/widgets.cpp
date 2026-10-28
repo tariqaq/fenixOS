@@ -9,7 +9,9 @@ lv_color_t col(uint32_t hex) { return lv_color_hex(hex); }
 lv_obj_t* box(lv_obj_t* parent) {
   lv_obj_t* o = lv_obj_create(parent);
   lv_obj_remove_style_all(o);
+  // Not clickable: presses fall through to the nearest clickable parent (rows, tiles, cards).
   lv_obj_remove_flag(o, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_set_size(o, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
   return o;
 }
@@ -75,7 +77,12 @@ lv_obj_t* navbar(lv_obj_t* scr, const char* back, const char* title) {
     lv_obj_set_ext_click_area(b, 6);
     lv_obj_set_style_opa(b, LV_OPA_50, LV_STATE_PRESSED);
     text(b, FX_ICON_CARET_LEFT, &fx_icon_bold_14, FX_COLOR_ACCENT);
-    text(b, back, &fx_font_body, FX_COLOR_ACCENT);
+    // Narrow screens: drop the back label when it would run into the centred title.
+    lv_point_t tw, bw;
+    lv_text_get_size(&tw, title, &fx_font_title, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    lv_text_get_size(&bw, back, &fx_font_body, 0, 0, LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+    int title_w = tw.x, back_w = 8 + 4 + 14 + 2 + bw.x;
+    if (back_w + 8 <= (width() - title_w) / 2) text(b, back, &fx_font_body, FX_COLOR_ACCENT);
     lv_obj_add_event_cb(b, back_cb, LV_EVENT_CLICKED, nullptr);
   }
   return bar;
@@ -89,7 +96,9 @@ lv_obj_t* content(lv_obj_t* scr, int gap) {
   lv_obj_set_style_pad_top(c, 8, 0);
   lv_obj_set_style_pad_hor(c, m, 0);
   lv_obj_set_style_pad_bottom(c, m, 0);
+  // Scrolling starts on the pressed object or its parents, and only clickable objects take presses.
   lv_obj_add_flag(c, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_add_flag(c, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_set_scroll_dir(c, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(c, LV_SCROLLBAR_MODE_OFF);
   return c;

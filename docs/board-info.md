@@ -157,3 +157,15 @@ Findings:
 | 2000000 | 899 | 135 | 9.8 KiB/s |
 
 **Decision: 921600 baud** for the fenixOS link (raw line rate ~90 KiB/s, double the PoC). 1.5 Mbaud gives no gain and drops blocks; 2 Mbaud fails. (The PoC's 921600 failure was an `esptool` bulk flash read, a different path.) With the console off, the app must route UART0 to GPIO1/3 itself (`uart_set_pin`); without it nothing is received.
+
+## fenixOS board core (P4, 2026-10-29)
+
+- **Image:** 796 KB app (`fenixos.bin`, 62% of the 2 MB factory slot free). Free heap with Home shown: ~140 KB (`HELLO_ACK` 143,668 B; the gate is ≥ 60 KB).
+- **Link task:** UART0 at 921600 with a 4 KB RX and a 16 KB TX buffer. The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
+- **Stream:** each flushed area is cut into bands of ≤ 3 KB raw and sent RLE16 (raw when RLE is not smaller). A static Home screen streams at ~3–4 KB/s.
+- **Reset reason:** a reset through the EN pin (the PC's RTS line, esptool, `serial_read.py --reset`) reports `ESP_RST_POWERON`, the same as a cold power-on, and the RTC clock restarts. So the "time valid" flag is cleared at boot on POWERON (`hal::time_boot_check`); it survives `esp_restart` and deep sleep. (Corrected: the first version also required reset reason ≠ POWERON when reading the flag, so the time never became valid after a PC-triggered reset.)
+- **LVGL input gotchas:**
+  - Only clickable objects take presses, and a drag scrolls the pressed object or its scrollable parents. Plain layout boxes are non-clickable (so taps reach the row, tile or card), and scroll containers are made clickable on purpose. Before this, taps on icons inside rows were lost and swipes did not scroll.
+  - A flex column centres items inside its track, which is only as wide as the widest item. `track_cross_place` must be CENTER too, or centred layouts (Dock home) sit to the left.
+  - Instant screen swaps go through `lv_screen_load_anim(..., 0, 0, true)`, never `lv_screen_load` plus a manual delete: that can delete the old screen twice while a slide is still running.
+- **First `fenix hello` after one flash** failed 4 times with "no HELLO_ACK", then always worked (a raw Python HELLO got answers at the same time). Not reproduced in ~20 later flashes. Watch for it.

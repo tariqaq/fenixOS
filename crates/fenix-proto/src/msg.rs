@@ -14,6 +14,7 @@ pub mod ty {
     pub const TIME_SET: u8 = 0x10;
     pub const REBOOT: u8 = 0x11;
     pub const BOARD_STATE: u8 = 0x12;
+    pub const TOUCH: u8 = 0x13;
     pub const APP_LIST_REQ: u8 = 0x20;
     pub const APP_LIST: u8 = 0x21;
     pub const APP_INSTALL_BEGIN: u8 = 0x22;
@@ -150,6 +151,12 @@ pub enum Msg {
     Stats(Stats),
     TimeSet(u32),
     Reboot,
+    /// Remote touch from the PC (mirror clicks, tests), in current screen coordinates.
+    Touch {
+        x: u16,
+        y: u16,
+        down: bool,
+    },
     BoardState {
         screen: u8,
         dimmed: bool,
@@ -313,6 +320,7 @@ impl Msg {
             Stats(_) => ty::STATS,
             TimeSet(_) => ty::TIME_SET,
             Reboot => ty::REBOOT,
+            Touch { .. } => ty::TOUCH,
             BoardState { .. } => ty::BOARD_STATE,
             AppListReq => ty::APP_LIST_REQ,
             AppList(_) => ty::APP_LIST,
@@ -381,6 +389,9 @@ impl Msg {
                 w.u32(*t);
             }
             Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync => {}
+            Touch { x, y, down } => {
+                w.u16(*x).u16(*y).u8(*down as u8);
+            }
             BoardState {
                 screen,
                 dimmed,
@@ -515,6 +526,11 @@ impl Msg {
             }),
             ty::TIME_SET => Msg::TimeSet(r.u32()?),
             ty::REBOOT => Msg::Reboot,
+            ty::TOUCH => Msg::Touch {
+                x: r.u16()?,
+                y: r.u16()?,
+                down: r.u8()? != 0,
+            },
             ty::BOARD_STATE => Msg::BoardState {
                 screen: r.u8()?,
                 dimmed: r.u8()? != 0,

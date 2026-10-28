@@ -28,5 +28,7 @@ The global git setting `core.autocrlf=true` made the installer write CRLF files.
 
 ## Gotchas found during the build (2026-10-29)
 
-- **Claude Code's Bash tool collapses `\` to `\` inside heredocs.** Files with escaped backslashes (C/Python strings like `"\x"`, regex `\(`) must be written with the Write/Edit tools, not `cat <<EOF`.
+- **Claude Code's Bash tool collapses a doubled backslash to a single one inside heredocs.** Files with escaped backslashes (C/Python strings like `"\x"`, regex `\(`) must be written with the Write/Edit tools, not `cat <<EOF`.
 - **Spike build folders must stay ignored** (`/board/spikes/*/build/` etc. in `.gitignore`). One spike build tree was committed by mistake in `657b98c`-era history and removed in the next commit; it stays in history (force-push is not used).
+- **Python on this PC writes cp1252 by default** (2026-10-29). `open(p).read()` / `open(p, 'w')` without `encoding="utf-8"` mangles or fails on `→ ‖ ≥` and can leave a file truncated when the write raises. Always pass `encoding="utf-8"` (or `pathlib.Path.read_text(encoding=...)`).
+- **Do not keep `.py` files named like stdlib modules in the scratchpad** (an `inspect.py` there broke `import PIL` for scripts run from that folder).

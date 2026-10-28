@@ -181,6 +181,14 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 rotation: 0,
             },
         ),
+        (
+            "touch",
+            Msg::Touch {
+                x: 160,
+                y: 120,
+                down: true,
+            },
+        ),
     ]
 }
 

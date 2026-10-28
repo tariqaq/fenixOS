@@ -62,6 +62,7 @@ payload = type:u8 ‖ seq:u8 ‖ body
 | 0x10 | TIME_SET | P→B | epoch_s:u32 (UTC). The board shows MYT (UTC+8) |
 | 0x11 | REBOOT | P→B | (empty). The board answers nothing and restarts within 100 ms |
 | 0x12 | BOARD_STATE | B→P | screen:u8 (0 boot, 1 home, 2 settings, 3 session, 4 stream, 5 app) ‖ dimmed:u8 ‖ rotation:u8 ‖ app_id:str (empty unless screen 5) |
+| 0x13 | TOUCH | P→B | x:u16 ‖ y:u16 (current screen coordinates) ‖ down:u8. Remote touch from the PC mirror and from tests (`fenix tap`, `fenix swipe`). The board treats it like the panel: a press lasts until `down = 0` or the link drops. Optional, so added in v0.1 without a proto bump |
 
 ### Apps (0x2_)
 
@@ -90,7 +91,7 @@ payload = type:u8 ‖ seq:u8 ‖ body
 
 | Type | Name | Dir | Body |
 |---|---|---|---|
-| 0x40 | STREAM_START | P→B | fps:u8 (target, 1–30) |
+| 0x40 | STREAM_START | P→B | fps:u8 (target, 1–30). The board may stop on its own (the user taps "Stop streaming"): it then stops sending rects and sends a LOG line |
 | 0x41 | STREAM_STOP | P→B | (empty) |
 | 0x42 | STREAM_RECT | B→P | rect_id:u16 ‖ x:u16 ‖ y:u16 ‖ w:u16 ‖ h:u16 ‖ codec:u8 ‖ total:u32 ‖ offset:u32 ‖ data:bytes. One encoded rectangle may span several frames; the PC applies it when `offset + len(data) == total` |
 | 0x43 | STREAM_SYNC | P→B | (empty). The board redraws the whole screen, so the next rects cover everything |

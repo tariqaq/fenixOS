@@ -49,6 +49,21 @@ fn main() {
         }
         "time" => one_shot(opts, Msg::TimeSet(now_s())),
         "reboot" => one_shot(opts, Msg::Reboot),
+        "swipe" => {
+            let v: Vec<u16> = args[1..].iter().filter_map(|a| a.parse().ok()).collect();
+            if v.len() == 4 {
+                swipe(opts, (v[0], v[1]), (v[2], v[3]))
+            } else {
+                usage()
+            }
+        }
+        "tap" => match (
+            args.get(1).and_then(|v| v.parse().ok()),
+            args.get(2).and_then(|v| v.parse().ok()),
+        ) {
+            (Some(x), Some(y)) => tap(opts, x, y),
+            _ => usage(),
+        },
         "shot" => shot(
             opts,
             args.get(1).map(String::as_str).unwrap_or("shot.png"),
@@ -70,7 +85,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|shot <png> [s]|list|install <fxp> <id> <ver>|remove <id>|soak <min> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|list|install <fxp> <id> <ver>|remove <id>|soak <min> [--port COMx]");
     2
 }
 
@@ -160,6 +175,54 @@ fn one_shot(opts: LinkOptions, m: Msg) -> i32 {
     }
     link.send(m);
     std::thread::sleep(Duration::from_millis(300));
+    0
+}
+
+/// Press and release at (x, y) through the TOUCH message.
+fn tap(opts: LinkOptions, x: u16, y: u16) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        eprintln!("no board");
+        return 1;
+    }
+    link.send(Msg::Touch { x, y, down: true });
+    std::thread::sleep(Duration::from_millis(120));
+    link.send(Msg::Touch { x, y, down: false });
+    std::thread::sleep(Duration::from_millis(300));
+    0
+}
+
+/// Press at `a`, drag to `b` over ~250 ms, release.
+fn swipe(opts: LinkOptions, a: (u16, u16), b: (u16, u16)) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        eprintln!("no board");
+        return 1;
+    }
+    const STEPS: i32 = 12;
+    for i in 0..=STEPS {
+        let x = a.0 as i32 + (b.0 as i32 - a.0 as i32) * i / STEPS;
+        let y = a.1 as i32 + (b.1 as i32 - a.1 as i32) * i / STEPS;
+        link.send(Msg::Touch {
+            x: x as u16,
+            y: y as u16,
+            down: true,
+        });
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    link.send(Msg::Touch {
+        x: b.0,
+        y: b.1,
+        down: false,
+    });
+    let end = Instant::now() + Duration::from_millis(400);
+    while Instant::now() < end {
+        if let Some(e) = link.recv_event(Duration::from_millis(50)) {
+            if matches!(e, Event::Msg(Msg::Log { .. })) {
+                print_event(&e);
+            }
+        }
+    }
     0
 }
 

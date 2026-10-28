@@ -101,7 +101,7 @@ static bool s_swallow;
 
 static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
   int16_t x, y;
-  bool down = hal::touch_read(&x, &y);
+  bool down = hal::touch_read(&x, &y) || sys::remote_touch(&x, &y);
   if (down && s_dimmed) {
     s_dimmed = false;
     s_swallow = true;

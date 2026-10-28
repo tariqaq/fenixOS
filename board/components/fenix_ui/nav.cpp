@@ -12,13 +12,10 @@ static void show(Builder b, lv_screen_load_anim_t anim) {
   sheet_close();
   lv_obj_t* scr = screen_new();
   b(scr);
-  if (anim == LV_SCREEN_LOAD_ANIM_NONE) {
-    lv_obj_t* old = lv_screen_active();
-    lv_screen_load(scr);
-    if (old && old != scr) lv_obj_delete(old);
-  } else {
-    lv_screen_load_anim(scr, anim, FX_MOTION_BASE_MS, 0, true);
-  }
+  // Always through lv_screen_load_anim with auto-delete: it also finishes a slide still
+  // running, so the old screen is never deleted twice or left half moved.
+  uint32_t ms = anim == LV_SCREEN_LOAD_ANIM_NONE ? 0 : FX_MOTION_BASE_MS;
+  lv_screen_load_anim(scr, anim, ms, 0, true);
 }
 
 void nav_root(Builder b, bool animate) {

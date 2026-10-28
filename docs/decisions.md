@@ -97,3 +97,15 @@ Consequences:
 | OOTB 3D direction | Storyboard review / Claude's call | **Claude's call**, within the design language; no review needed. A storyboard may still be drawn as Claude's own reference |
 | Targets | Hard, tight targets / realistic | **PC: realistic targets, no hyper-optimising. Board: squeeze for efficiency** |
 | Unattended run (user asleep, `/goal` for all phases) | — | One UAC prompt at the start gives an elevated helper used for any later elevation. Keep the board's COM port enumerated (flashing and resets are fine; never anything that needs a physical replug). Kill and relaunch the PC app to see changes. Window resizing and UI interaction allowed. Web search allowed. Any further choice: pick the recommended option and log it here with the alternatives |
+
+## 2026-10-29: during the build (choices made on the user's behalf, per the unattended-run rules)
+
+| Topic | Options | Picked |
+|---|---|---|
+| Screenshots of board screens while nobody is at the board | SDL2 simulator first / the real board over the link | **Real board over the link** (`fenix tap` / `fenix swipe` drive it, `fenix shot` saves the stream as PNG; `tools/capture_screens.sh`). Exact pixels, no stub HAL. The PC simulator the user asked for in round 7 is **still planned**, not dropped (tracked in `tasks.md`) |
+| Driving the board from the PC | No remote input / a TOUCH message | **TOUCH (0x13, P→B)**, optional, no proto bump. Also gives the PC app's board mirror click-to-tap later |
+| Board "Stop streaming" button (StreamOn artboard) | Ask the PC to stop / stop locally | **Stop locally** and send a LOG line; the PC sees the stream go quiet. No new message in proto 1 |
+| Stream screen when the PC is connected but not streaming (no artboard) | Reuse StreamOff / new state | **New state** in the StreamOff layout: "Not streaming", "Open the board page in fenixOS on your PC to see this screen there." |
+| Rotation setting UI (artboard shows a Rotation row with a chevron) | Cycle on tap / sub-page | **Sub-page** with the 4 orientations and a check mark |
+| Navbar on narrow (portrait) screens when back label and title collide | Truncate / drop the back label | **Drop the back label**, keep the chevron (iOS does the same) |
+| Settings › Storage and Host PC pages (no artboards) | — | Grouped info rows in the About style |

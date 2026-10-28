@@ -121,8 +121,9 @@ void home_screen(lv_obj_t* scr) {
   bool centred = port || dock;
   lv_obj_set_style_pad_all(scr, m, 0);
   if (!centred) lv_obj_set_style_pad_right(scr, 0, 0);  // tiles run off the right edge
-  lv_obj_set_flex_align(scr, LV_FLEX_ALIGN_START, centred ? LV_FLEX_ALIGN_CENTER : LV_FLEX_ALIGN_START,
-                        LV_FLEX_ALIGN_START);
+  // Track place too: a column's track is only as wide as its widest item.
+  lv_flex_align_t cross = centred ? LV_FLEX_ALIGN_CENTER : LV_FLEX_ALIGN_START;
+  lv_obj_set_flex_align(scr, LV_FLEX_ALIGN_START, cross, cross);
 
   s_clock = clock_row(scr, port ? &fx_font_clock_56 : &fx_font_clock_64, port ? 56 : 64, port ? 40 : (dock ? 18 : 6));
   s_date = text(scr, "", &fx_font_label_medium, FX_COLOR_LABEL_2);
@@ -156,6 +157,7 @@ void home_screen(lv_obj_t* scr) {
     lv_obj_t* r = rowbox(scr, 8);
     lv_obj_set_width(r, LV_PCT(100));
     lv_obj_add_flag(r, LV_OBJ_FLAG_SCROLLABLE);
+    lv_obj_add_flag(r, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_set_scroll_dir(r, LV_DIR_HOR);
     lv_obj_set_scrollbar_mode(r, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_pad_right(r, FX_MARGIN_LANDSCAPE, 0);

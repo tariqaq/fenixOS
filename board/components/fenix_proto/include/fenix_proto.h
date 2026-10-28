@@ -17,7 +17,7 @@ constexpr size_t ID_LEN = 64;  // app ids and versions are cut to 63 bytes + NUL
 
 namespace ty {
 constexpr uint8_t HELLO = 0x01, HELLO_ACK = 0x02, PING = 0x03, PONG = 0x04, LOG = 0x05, ERROR = 0x06, STATS = 0x07;
-constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12;
+constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12, TOUCH = 0x13;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
 constexpr uint8_t HOST_STATE = 0x2A;

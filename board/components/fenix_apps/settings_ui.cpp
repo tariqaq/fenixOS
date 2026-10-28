@@ -97,7 +97,7 @@ static void display_screen(lv_obj_t* scr) {
   text(r, FX_ICON_MOON, &fx_icon_fill_12, FX_COLOR_LABEL_2);
   s = slider(r, 0, 100, st.dim_level);
   lv_obj_t* pct = text(r, "", &fx_font_label, FX_COLOR_LABEL_2);
-  lv_obj_set_width(pct, 28);
+  lv_obj_set_width(pct, 34);
   lv_obj_set_style_text_align(pct, LV_TEXT_ALIGN_RIGHT, 0);
   lv_label_set_text_fmt(pct, "%d%%", st.dim_level);
   lv_obj_add_event_cb(s, dim_cb, LV_EVENT_VALUE_CHANGED, pct);

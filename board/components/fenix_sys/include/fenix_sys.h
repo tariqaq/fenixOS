@@ -69,6 +69,8 @@ bool link_poll(LinkEvent* e);  // UI task: next pending event
 void link_log(uint8_t level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 // Send one frame (type + body). Blocks while the TX buffer is full. Thread-safe.
 void link_send(uint8_t type, const uint8_t* body, size_t n);
+// Remote touch from the PC (TOUCH message). True while the PC holds a press.
+bool remote_touch(int16_t* x, int16_t* y);
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
 

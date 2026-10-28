@@ -47,6 +47,15 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       w.u32(v);
       break;
     }
+    case ty::TOUCH: {
+      uint16_t x = r.u16(), y = r.u16();
+      uint8_t d = r.u8();
+      if (!r.done()) return false;
+      w.u16(x);
+      w.u16(y);
+      w.u8(d);
+      break;
+    }
     case ty::LOG:
     case ty::ERROR: {
       uint8_t c = r.u8();

@@ -114,6 +114,16 @@ static void post(LinkEv t, int32_t v = 0, const char* text = nullptr) {
 
 bool link_poll(LinkEvent* e) { return s_events && xQueueReceive(s_events, e, 0) == pdTRUE; }
 bool link_connected() { return s_connected; }
+
+static volatile uint32_t s_remote;  // x:12 | y:12 | down:1, one word so reads are atomic
+
+bool remote_touch(int16_t* x, int16_t* y) {
+  uint32_t v = s_remote;
+  if (!(v & 1)) return false;
+  *x = (v >> 13) & 0xFFF;
+  *y = (v >> 1) & 0xFFF;
+  return true;
+}
 uint32_t link_rx_frames() { return s_dec.frames; }
 uint32_t link_rx_errors() { return s_dec.errors; }
 
@@ -198,6 +208,13 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
     case fnx::ty::REBOOT:
       uart_wait_tx_done(UART, pdMS_TO_TICKS(100));
       esp_restart();
+    case fnx::ty::TOUCH: {
+      uint16_t x = r.u16(), y = r.u16();
+      uint8_t down = r.u8();
+      if (!r.done()) return send_error(fnx::err::BAD_BODY, "touch");
+      s_remote = ((uint32_t)(x & 0xFFF) << 13) | ((uint32_t)(y & 0xFFF) << 1) | (down ? 1 : 0);
+      return;
+    }
     case fnx::ty::APP_LIST_REQ:
       // App store arrives in P6: no apps yet.
       send_with(fnx::ty::APP_LIST, [](fnx::Writer& w) { w.u8(0); });
@@ -234,6 +251,7 @@ static void link_task(void*) {
     int64_t now = esp_timer_get_time();
     if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) {
       s_connected = false;
+      s_remote = 0;
       post(LinkEv::DISCONNECTED);
     }
     if (now >= next_stats) {
