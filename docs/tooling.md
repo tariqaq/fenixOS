@@ -25,3 +25,8 @@ The global git setting `core.autocrlf=true` made the installer write CRLF files.
 
 - `esptool` 5.6.0 (system Python 3.14), board on `COM9`.
 - **460800 baud failed once on a full 4 MB read** (`Corrupt data, expected 0x1000 bytes but received 0xe49 bytes`, 2026-10-29, right after `erase-flash`). A retry at 230400 worked (190 s). Earlier reads at 460800 worked, and 921600 failed on 2026-10-28. For long reads, retry at 230400 if 460800 fails.
+
+## Gotchas found during the build (2026-10-29)
+
+- **Claude Code's Bash tool collapses `\` to `\` inside heredocs.** Files with escaped backslashes (C/Python strings like `"\x"`, regex `\(`) must be written with the Write/Edit tools, not `cat <<EOF`.
+- **Spike build folders must stay ignored** (`/board/spikes/*/build/` etc. in `.gitignore`). One spike build tree was committed by mistake in `657b98c`-era history and removed in the next commit; it stays in history (force-push is not used).
