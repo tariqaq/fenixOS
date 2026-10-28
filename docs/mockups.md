@@ -41,4 +41,4 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 
 ## Still to draw (design round 2)
 
-Board Settings › Home screen page, PC tray menu, permissions sheet, log view, PC "Show welcome again" row. The first-run 3D scene is built directly in P9 (no storyboard). See `docs/PLAN.md` P2.
+Board Settings › Home screen page, PC tray menu, permissions sheet, log view, PC "Show welcome again" row. Optional: a first-run (OOTB) keyframe storyboard, as Claude's own reference for P9 (no review needed). See `docs/PLAN.md` P2.

@@ -352,7 +352,7 @@ Add these artboards to the canvas in the same style, then have the user review t
 - PC: log view (proposal: "Logs" row on the Board page opening a sheet with filter, copy and "Open log folder").
 - PC: "Show welcome again" row in Settings.
 
-The OOTB 3D scene is Claude's creative call (user, 2026-10-29), built straight in P9 without a storyboard review.
+The OOTB 3D scene is Claude's creative call (user, 2026-10-29). A keyframe storyboard may be drawn on the canvas as Claude's own reference; it needs no review.
 
 Accept: the user approves (during an unattended run: recommended choices, logged in `docs/decisions.md`); `docs/mockups.md` updated.
 

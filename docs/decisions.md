@@ -94,6 +94,6 @@ Consequences:
 |---|---|---|
 | Licence | **MIT (Rec.)** / Apache-2.0 / none | **MIT** |
 | "Show welcome again" in PC Settings | Yes / no | **Yes** |
-| OOTB 3D direction | Storyboard review / Claude's call | **Claude's call**, within the design language; no separate review needed |
+| OOTB 3D direction | Storyboard review / Claude's call | **Claude's call**, within the design language; no review needed. A storyboard may still be drawn as Claude's own reference |
 | Targets | Hard, tight targets / realistic | **PC: realistic targets, no hyper-optimising. Board: squeeze for efficiency** |
 | Unattended run (user asleep, `/goal` for all phases) | — | One UAC prompt at the start gives an elevated helper used for any later elevation. Keep the board's COM port enumerated (flashing and resets are fine; never anything that needs a physical replug). Kill and relaunch the PC app to see changes. Window resizing and UI interaction allowed. Web search allowed. Any further choice: pick the recommended option and log it here with the alternatives |
