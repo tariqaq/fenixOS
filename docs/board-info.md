@@ -74,6 +74,18 @@ Restore it (overwrites the whole flash):
 python -m esptool --port COM9 -b 460800 write-flash 0 firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin
 ```
 
+### Version status (checked 2026-10-29)
+
+On the ESP32, peripheral drivers (SPI, UART, LEDC, NVS, Wi-Fi) are compiled into the app and the 2nd-stage bootloader. There is no separate driver to update: updating means rebuilding with a newer ESP-IDF and reflashing. The 1st-stage ROM bootloader is in mask ROM and cannot be changed.
+
+| Part | On the board / PC | Latest | Source |
+|---|---|---|---|
+| ESP-IDF (app + 2nd-stage bootloader; both carry `v5.5.5`) | v5.5.5 (2026-07-17) | v5.5.6 on the 5.5 line (2026-10-16); v6.0.3 (2026-09-02); **v6.1** stable (2026-08-27) | GitHub releases API (`espressif/esp-idf`) |
+| LovyanGFX | 1.2.35 (FenixDeck submodule, per `docs/toolchain.md`; the version string is not in the binary) | 1.2.35 (2026-10-25) | GitHub releases API (`lovyan03/LovyanGFX`) |
+| CH340 Windows driver (PC side) | 3.3.2011.11 (2011, installed `ch341ser.inf`); the vendor copy in `docs/vendor/CH340/` is older still, 3.1.2009.06 | 3.9.2024.9 per the Microsoft Update Catalog and oemdrivers.com; WCH's own page renders by JS and was not read | web search |
+
+v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood out in its notes; it has Wi-Fi supplicant security ports). ESP-IDF v5.5 is supported until January 2028. Moving to v6.x needs a check that LovyanGFX works on it (still unconfirmed; see `docs/POC-WRITEUP.md` §7.5). The 2011 CH340 driver has worked here without errors at 460800 baud.
+
 ## Design-relevant findings (2026-10-28)
 
 - **No TE pin wired** on the LCD connector, so there is no hardware vsync. Use sprites + dirty-rect DMA pushes (see `docs/PLAN.md` §2).
