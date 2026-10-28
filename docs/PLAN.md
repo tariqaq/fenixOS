@@ -239,7 +239,7 @@ docs/, pics/
 
 ### 3.9 First-run experience (OOTB)
 
-Shown on the first launch, and again from Settings if wanted later. Creative direction (user: free hand, must fit the design language):
+Shown on the first launch, and again from PC Settings › Show welcome again. Creative direction (user: free hand, must fit the design language):
 
 - **Look:**
   - Black stage with soft studio light.
@@ -261,11 +261,10 @@ Shown on the first launch, and again from Settings if wanted later. Creative dir
      - fenixOS shows "Install fenixOS on this board? This erases what is on it."
      - On confirm, it flashes while the model's screen shows the progress line.
   4. Done: the board boots fenixOS, time syncs, and the dashboard opens (empty state).
-- **Storyboard:** keyframes are drawn and reviewed first (P2).
 
 ## 4. Budgets and targets
 
-All numbers are targets to measure, not facts. Each result goes into `docs/board-info.md` or `docs/toolchain.md`.
+All numbers are targets to measure, not facts. Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
 
 ### 4.1 Board RAM (~260 KB heap at start, no PSRAM)
 
@@ -318,7 +317,7 @@ Each phase ends with:
 
 ### P0. Repo foundation
 
-1. Ask the user for the licence (open question 1). Add `LICENSE` and a new `README.md` (what fenixOS is, status, layout, build).
+1. Add `LICENSE` (MIT) and a new `README.md` (what fenixOS is, status, layout, build).
 2. Create the layout from §2 with stub build files and `VERSION` = `0.1.0`. Anchor `/firmware/` in `.gitignore`.
 3. Pin exact versions (latest stable, checked on the web, recorded in `docs/toolchain.md`): LVGL 9.x, `joltwallet/littlefs`, Tauri 2.x and its plugins, Svelte 5.x, Vite, Three.js, `espflash`, `serialport`.
    - Keep IDF v5.5.5 and LovyanGFX 1.2.35 (decided).
@@ -351,9 +350,11 @@ Add these artboards to the canvas in the same style, then have the user review t
 - PC: tray menu.
 - PC: permissions sheet in Add app.
 - PC: log view (proposal: "Logs" row on the Board page opening a sheet with filter, copy and "Open log folder").
-- PC: OOTB storyboard (6–8 keyframes for the flow in §3.9).
+- PC: "Show welcome again" row in Settings.
 
-Accept: the user approves; `docs/mockups.md` updated.
+The OOTB 3D scene is Claude's creative call (user, 2026-10-29), built straight in P9 without a storyboard review.
+
+Accept: the user approves (during an unattended run: recommended choices, logged in `docs/decisions.md`); `docs/mockups.md` updated.
 
 ### P3. Link protocol
 
@@ -423,7 +424,7 @@ Accept: the full loop with the sample app from a local registry works. A mismatc
 
 1. Build the 3D board model and scene (Three.js, procedural, real dimensions), lighting and materials in the design language.
 2. Build the flow from §3.9, including the 3 s wait for an already-plugged board, the plug-in loop, the probe and first install, and reduced motion.
-3. Add the "Show welcome again" entry in Settings, if the user wants it (P2 review).
+3. Add the "Show welcome again" entry in PC Settings.
 
 Accept: a smooth run on this laptop at the S8 numbers. A blank board (like today's) goes from plug-in to the fenixOS dashboard with no manual step except the install confirm.
 
@@ -457,7 +458,6 @@ Accept: a clean install from the GitHub release on this PC goes through OOTB on 
 | SmartScreen warns on the unsigned installer | Accepted for v0.1 (no Authenticode certificate); noted in the README |
 | Sidecars are full-trust native code (C10) | Registry allowlist (own repos only), pinned versions, sha256; permissions shown before install |
 
-## 8. Open questions (not blocking; asked at the phase named)
+## 8. Open questions
 
-1. **P0:** licence for the public repo. Recommended: MIT (matches Phosphor; Inter is OFL and ships with its licence).
-2. **P2:** keep a "Show welcome again" entry in PC Settings?
+None. Licence: MIT. "Show welcome again": yes (both 2026-10-29). Later choices during an unattended run take the recommended option and are logged in `docs/decisions.md`.

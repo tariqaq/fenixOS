@@ -51,16 +51,18 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
 
 Each phase: acceptance check, docs, stale sweep, commit + pull --rebase + push.
 
-- [ ] P0 Repo foundation: licence (ask user), README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
+Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC prompt at the start for an elevated helper; keep COM9 enumerated (no physical replug needed); kill + relaunch the PC app to see changes; pick recommended options and log them.
+
+- [ ] P0 Repo foundation: MIT licence, README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
 - [ ] P1 Spikes on the board: S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
-- [ ] P2 Design round 2 (with P1): Settings › Home screen, tray menu, permissions sheet, log view, OOTB storyboard; user review
+- [ ] P2 Design round 2 (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (no storyboard)
 - [ ] P3 Link protocol: `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
 - [ ] P4 Board core: fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
 - [ ] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
 - [ ] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
 - [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
-- [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install
+- [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"
 - [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
 
 ## Decisions
