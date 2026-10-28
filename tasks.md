@@ -32,7 +32,7 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
 - [x] Wipe the board's whole flash (`esptool erase-flash`); read-back all 0xFF (460800 read failed once, 230400 worked). `docs/board-info.md`, `docs/tooling.md`
 - [x] Install hallmark 2.0.0 at project level (`.claude/skills/hallmark`), `puppeteer-core` global, edit-time hook in `.claude/settings.json`; LF fix + `.gitattributes`. `docs/tooling.md`
 - [x] Write `ideas.md`: vision, constraints C1–C10 (time, streaming, app runtime, shutdown, vsync, fonts, private registry, flash, RAM, PC plugin trust), suggested gaps
-- [~] Commit + push
+- [x] Commit + push
 - [ ] Ask decision questions round by round (picker); record each answer in `ideas.md` + `docs/decisions.md`
 - [ ] Research where needed (web), cross-check sources, document findings
 - [ ] Wireframes / mock-up slides (board screens + PC app screens, per phase), published for review
