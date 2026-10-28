@@ -1,6 +1,6 @@
 # Board info (read from hardware)
 
-Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board has since been flashed with the FenixDeck firmware (`board/`); the stock image can be restored (below).
+Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board has since been flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Both the stock image and the FenixDeck image can be restored (below). Chip info was re-read on 2026-10-29 and matched.
 
 ## Connection
 
@@ -48,6 +48,32 @@ Do not run this unless you intend to restore. It overwrites the whole flash.
 python -m esptool --port COM9 -b 460800 write-flash 0 firmware/stock/stock_flash_4MB.bin
 ```
 
+## FenixDeck firmware (on the board now)
+
+Backup: `firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin` (full 4 MB dump, offset 0x0, read 2026-10-29).
+
+- SHA-256: `3434e84f6cd7ffec7306868f682d95a63194859a7192e4a79da02effd9b33945`
+- Checked against the board with `esptool verify-flash`: digest matched.
+- App: project `fenixdeck_board`, version `74a62bb-dirty` (git describe of the FenixDeck repo), built `Oct 28 2026 23:33:04` with ESP-IDF v5.5.5. Protocol `HELLO_ACK` reports fw 0.1.0, proto 1.
+- App image: 337,008 B (329 KiB), 6 segments, checksum and SHA-256 valid (`esptool image-info`).
+
+| Partition | Type | Offset | Size |
+|---|---|---|---|
+| nvs | data/nvs | 0x9000 | 24K |
+| phy_init | data/phy | 0xF000 | 4K |
+| factory | app | 0x10000 | 2048K |
+| storage | data/littlefs | 0x210000 | 1984K |
+
+- **Leftover stock bytes:** after the app image, 172 of the 174 4 KB blocks up to the old stock app end (~0xFBE00) are identical to the stock image. `idf.py flash` erases only the sectors it writes. This is harmless (the bootloader reads only the image length), but a raw dump is not "app + 0xFF". Run `esptool erase-flash` first when a clean image matters.
+- **NVS** holds the `fenix` namespace but no `tcal` key: touch was never calibrated on this board, so the default raw range (x 300–3900, y 200–3900) is what runs.
+- **Live check (2026-10-29),** using a throwaway protocol script (not in the repo): `HELLO_ACK` proto 1, fw 0.1.0, 240×320, MAC matches, free heap 163,908 B (min 156,496 B). Then 5 stylus taps in landscape (x 68–162, y 171–190), each giving down/up/tap events, with pages cycling 0→1→2→3→4→0. Render 26–29 ms per page change, 0 rx errors over 93 frames. Uptime grew across two port opens (39 s, then 60 s). Corner coverage of the default range was **not** tested.
+
+Restore it (overwrites the whole flash):
+
+```
+python -m esptool --port COM9 -b 460800 write-flash 0 firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin
+```
+
 ## Design-relevant findings (2026-10-28)
 
 - **No TE pin wired** on the LCD connector, so there is no hardware vsync. Use sprites + dirty-rect DMA pushes (see `docs/PLAN.md` §2).
@@ -62,7 +88,7 @@ python -m esptool --port COM9 -b 460800 write-flash 0 firmware/stock/stock_flash
 
 ## Findings while building v0.1 (2026-10-28)
 
-- **Port open does not reset the board.** Verified: `open_port` (DTR/RTS released) gives no boot log or reset (`esp_reset_reason` = 1, power-on, with uptime growing across sessions).
+- **Port open does not reset the board.** Verified: `open_port` (DTR/RTS released) gives no boot log or reset (`esp_reset_reason` = 1, power-on, with uptime growing across sessions). Note (2026-10-29): an EN-pin reset also reports reason 1 on the ESP32. After an `esptool` hard reset (RTS pulls EN), the board logged `boot reason 1, up 39 s`. So the proof is the uptime that keeps growing, not the reason code.
 - **LCD read-back works** (MISO on IO12 is wired). `fenix shot` / `rawshot` capture exact screenshots, and `docs/screens/` holds the README ones.
 - **Colours are correct** with `invert=false`, `rgb_order=false` on the ILI9341: no inversion fix needed.
 - **Touch works** with the default raw range (taps, page cycling and events verified with the stylus). Hold the screen at boot to calibrate.

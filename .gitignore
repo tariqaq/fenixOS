@@ -13,5 +13,5 @@ docs/vendor/ESP32-2432S028R/2.8inch_ESP32-2432S028R/8-Burn operation/flash_downl
 # Arduino language-server logs left in the vendor demos
 inols*.log
 
-# Flash dumps read during checks (large; only the stock backup is tracked)
+# Throwaway flash dumps (keep backups worth tracking under firmware/<name>/)
 firmware/dumps/

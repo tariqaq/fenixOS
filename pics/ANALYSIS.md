@@ -45,7 +45,18 @@ Free GPIO for projects: **IO22, IO27, IO35 (input only)**. Do not use IO21 on P3
 
 ## Schematic caveat
 
-The vendor schematic is `V0.1` (2022), drawn for the original micro-USB-only board. Your board is `V1.4`, with USB-C added and CN1 changed to GND/IO22/IO27/3.3V. The core pin map matches the V1.4 silkscreen and the demos. Treat the schematic as close but not exact.
+The vendor schematic is `V0.1` (2022), drawn for the original micro-USB-only board. Your board is `V1.4`, with USB-C added and CN1 changed to GND/IO22/IO27/3.3V. The core pin map matches the V1.4 silkscreen and the demos. Treat the schematic as close but not exact. (The two sheet file names are swapped relative to their content; see `docs/vendor/README.md`.)
+
+### Resistor markings on the V1.4 PCB (2026-10-29, zoomed `20261028_190554.jpg`)
+
+| Ref | Marking | Value on V1.4 | Schematic V0.1 | Note |
+|---|---|---|---|---|
+| R18 (by LED1, next to CN1) | `103` | 10 kΩ | 10 kΩ pull-up, 3.3V to IO27 (CN1 data) | **Matches.** The DHT11 data pull-up is on the board |
+| R19, R15 (by P3) | `501` | 500 Ω | 1 MΩ each: LDR divider on IO34 | **Differs** |
+| R16, R17 (by P3) | `101` | 100 Ω | 1 kΩ: RGB LED | **Differs** |
+| R20 (by P3) | `201` | 200 Ω | 1 kΩ: RGB LED | **Differs** |
+
+On V1.4, R15/R16/R17/R19/R20 sit in a row between the module and P3, and their values do not match V0.1. The photo alone cannot show what they connect to, so the V1.4 RGB LED current and the IO34 light-sensor circuit are **unverified**. Measure them, or test the LDR on IO34 in firmware, before relying on them.
 
 ## Per image
 

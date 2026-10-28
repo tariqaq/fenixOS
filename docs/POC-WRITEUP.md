@@ -118,7 +118,7 @@ A full frame is 240 × 320 × 2 = 153,600 B, which takes about 22 ms at 55 MHz (
 | Controller | **XPT2046** (U3, TSSOP-16 next to BOOT) |
 | Bus | **Its own SPI bus**, SPI3 / VSPI: CLK **25**, MOSI **32**, MISO **39**, CS **33**, IRQ **36** |
 | Clock | 2.5 MHz |
-| Default raw range | x 300–3900, y 200–3900 (works without calibration, verified with the stylus) |
+| Default raw range | x 300–3900, y 200–3900 (works without calibration, verified with the stylus; NVS on the board has no stored calibration, checked 2026-10-29). The vendor LovyanGFX demo's 0–239 / 0–319 is wrong (pixel sizes used as raw values) |
 
 Because touch is on a separate bus, TFT_eSPI's built-in touch (`TOUCH_CS`) does not work on this board. LovyanGFX `Touch_XPT2046` on `SPI3_HOST`, or the `XPT2046_Touchscreen` library on a second SPIClass, does.
 
@@ -198,7 +198,7 @@ Windows 11 Pro, Intel Core i7-13620H (16 threads), Intel UHD + NVIDIA GeForce RT
 | `2-Specification/` | Board spec PDF | yes |
 | `3-Structure_Diagram/` | Dimensions | yes |
 | `4-Driver_IC_Data_Sheet/` | ESP32-WROOM-32, 25Q32, FM8002A amp, JC2432A028N panel (ILI9341V), DHT11 | yes |
-| `5-Schematic/` | MCU and LCM schematics (JPG), WROOM pin definition | yes |
+| `5-Schematic/` | Two schematic sheets (JPG), WROOM pin definition. File names are swapped relative to content: `...-MCU.jpg` is power/USB/peripherals, `...-LCM.jpg` is ESP32/touch/LCM/audio | yes |
 | `6-User_Manual/` | "Getting started 2.8 Inch" PDF | yes |
 | `7-Character&Picture_Molding_Tool/` | Third-party Windows tools | no |
 | `8-Burn operation/` | Prebuilt `LVGL-DEMO2.8R.bin` and flashing steps; Espressif flash tool 3.9.3 | instructions yes, tool no |
@@ -209,7 +209,8 @@ The vendor `libraries/` folder (not in git, 346 MB) has copies of TFT_eSPI, Lovy
 
 - The vendor TFT_eSPI `User_Setup.h` sets `TFT_RST 12`. **Wrong**: IO12 is LCD MISO and reset is tied to EN. Use `TFT_MISO 12`, `TFT_RST -1`.
 - The vendor TFT_eSPI setup uses `ILI9341_2_DRIVER`, 55 MHz, backlight 21 active HIGH, touch CS 33. Its built-in touch cannot work (separate bus).
-- The vendor LovyanGFX demo has the pins right.
+- The vendor LovyanGFX demo has the pins right, but its touch range (`x_min/x_max` 0–239, `y_min/y_max` 0–319) is wrong: those are raw 12-bit XPT2046 values, and the demo never calibrates. Use x 300–3900, y 200–3900. Its touch `bus_shared = true` is not needed (separate bus).
+- The V1.4 PCB resistors R15/R19 (`501`), R16/R17 (`101`) and R20 (`201`) do not match the V0.1 schematic values (1 MΩ LDR divider, 1 kΩ LED). The RGB LED and light-sensor circuits on V1.4 are unverified. R18 (10 kΩ, CN1/IO27 pull-up) matches. Details in `pics/ANALYSIS.md`.
 
 ### CH340 driver
 
@@ -723,7 +724,7 @@ All measured on the hardware on 2026-10-28.
 
 | What | Value |
 |---|---|
-| Firmware size | 334 KB (of a 2 MB app partition; stock app partition was 1 MB) |
+| Firmware size | 334 KB (of a 2 MB app partition; stock app partition was 1 MB). The image on the board, read back 2026-10-29 (build `74a62bb-dirty`), is 337,008 B (329 KiB) |
 | Free heap | ~159 KB (min ~152 KB), with 2 × 40 KB sprite buffers, UART buffers, 2 image slots, Wi-Fi/BT off |
 | UI task stack | ~2.6 KB used of 8 KB |
 | Render time | 14–28 ms per frame with all widgets dirty; CPU page ~27 ms, Overview ~15–25 ms |
@@ -934,9 +935,12 @@ These are recommendations from what the PoC showed, not decisions.
 | `docs/vendor/.../2-Specification/`, `6-User_Manual/` | Board spec and getting-started manual |
 | `docs/vendor/CH340/` | CH340 driver installer |
 | `firmware/stock/stock_flash_4MB.bin` (4 MB) | Factory backup; keep it to restore the board |
+| `firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin` (4 MB) | FenixDeck v0.1.0 as running on the board, read back 2026-10-29 (restore steps in `docs/board-info.md`) |
 | `docs/vendor/archives/*.rar` (local only, not in git) | Full vendor package; re-download if needed |
 
 ### Code worth carrying over (any toolchain)
+
+These paths are in the FenixDeck repo. **They were not copied into fenixOS** (the repo holds docs, pics, vendor files and flash backups only). Section 6 has the full `sdkconfig.defaults` and `partitions.csv`, and the vendor LovyanGFX demo has the LCD config (touch range fixed as noted in section 3).
 
 | Path | Why |
 |---|---|

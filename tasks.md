@@ -9,16 +9,23 @@ Legend: `[x]` done, `[~]` in progress, `[!]` blocked, `[ ]` to do.
 - [x] Read `AGENTS.md`, all docs, all `pics/`, vendor schematics, dimensions, vendor LovyanGFX demo
 - [x] Add `.gitignore` for the local-only vendor files listed in `docs/vendor/README.md`
 - [x] Add this `tasks.md`
-- [ ] `git init` on `main`, first commit
-- [ ] Create private GitHub repo `fenixOS`, push, confirm local = `origin/main`
+- [x] `git init` on `main`, first commit
+- [x] Create private GitHub repo `fenixOS`, push, confirm local = `origin/main` (https://github.com/tariqaq/fenixOS)
 
 ## Phase 1: verify new findings (2026-10-29)
 
-Findings from the read-through, to check (read-only on the board: no flashing without user go-ahead) and then document.
+Read-only on the board (no flashing). Results are in the docs named below.
 
-- [ ] Schematic file names: `ESP32-2432S028-MCU.jpg` holds the power/USB/ADC/LED/SD/flash sheet; `ESP32-2432S028-LCM.jpg` holds the ESP32/touch/LCM/audio sheet
-- [ ] Vendor LovyanGFX demo touch config: `x_min/x_max` 0–239, `y_min/y_max` 0–319, `bus_shared = true` vs PoC raw range 300–3900 / 200–3900 on a separate bus
-- [ ] CN1: IO27 pull-up R18 10 kΩ (schematic V0.1); check against V1.4 PCB photos
-- [ ] Board on COM9: read chip info with esptool (read-only) and confirm it matches `docs/board-info.md`
-- [ ] Identify the firmware now on the board; back up its flash
-- [ ] Update docs with the results (rule 5), commit, push
+- [x] Schematic file names swapped vs content: confirmed by viewing both sheets. `docs/vendor/README.md`, `POC-WRITEUP.md` §3
+- [x] Vendor LovyanGFX demo touch range 0–239/0–319 is wrong: raw XPT2046 values are 12-bit, the demo never calibrates, and the board runs 300–3900/200–3900 with no `tcal` in NVS. `bus_shared = true` is not needed. `docs/vendor/README.md`, `POC-WRITEUP.md` §2/§3
+- [x] CN1: R18 marked `103` (10 kΩ) by CN1, matching the schematic pull-up on IO27. New: R15/R19 `501`, R16/R17 `101`, R20 `201` differ from V0.1. `pics/ANALYSIS.md`
+- [x] esptool chip re-read on COM9: matches `docs/board-info.md`
+- [x] Current firmware identified (`fenixdeck_board` `74a62bb-dirty`, IDF 5.5.5, 337,008 B image) and backed up + verified: `firmware/fenixdeck/`. `docs/board-info.md`
+- [x] Live protocol + touch check (5 taps, page cycling, 0 errors). `docs/board-info.md`
+- [x] Docs updated; commit + push
+
+## Open (needs user input or flashing)
+
+- [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)
+- [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; test in firmware or measure
+- [ ] Next: user decides the fenixOS direction and code layout
