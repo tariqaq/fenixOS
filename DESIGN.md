@@ -4,7 +4,7 @@ Locked design system for everything in fenixOS: the board firmware UI, the PC ap
 
 Direction: **Apple dark**, after Apple's Human Interface Guidelines (dark mode, grouped lists, large titles, Shortcuts-style tiles), built only from openly licensed parts. Apple's SF fonts and SF Symbols are not licensed for non-Apple software (`ideas.md` C6), so they are never used.
 
-Status: v0.1 draft, 2026-10-29. It will change through the mock-up review (`docs/mockups.md`).
+Status: v0.1, approved with the mock-ups on 2026-10-29 (`docs/mockups.md`). Machine-readable copy: `design/tokens.json` (generated outputs: `board/components/fenix_ui/include/fenix_tokens.h`, `app/src/lib/tokens.css`).
 
 ## Colour tokens
 

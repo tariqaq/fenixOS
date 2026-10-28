@@ -47,7 +47,7 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
 - [x] Detailed, scoped build plan: `docs/PLAN.md`. FenixDeck docs moved to `docs/legacy/` (PLAN, protocol, metrics-validation, screens). Version pinning is web-checked in P0, not now
 - [x] Standing by for the go-ahead to start P0
 
-## fenixOS v0.1 build (plan: `docs/PLAN.md`; not started)
+## fenixOS v0.1 build (plan: `docs/PLAN.md`; started 2026-10-29 06:15 MYT, unattended `/goal` run)
 
 Each phase: acceptance check, docs, stale sweep, commit + pull --rebase + push.
 
@@ -55,7 +55,7 @@ Progress rule: update this file after every step (done / in progress / blocked +
 
 Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC prompt at the start for an elevated helper; keep COM9 enumerated (no physical replug needed); kill + relaunch the PC app to see changes; pick recommended options and log them.
 
-- [ ] P0 Repo foundation: MIT licence, README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
+- [~] P0 Repo foundation (elevated helper running: scratchpad `elev/helper.ps1`, drop `*.ps1` in `elev/queue`, output in `elev/out`): MIT licence, README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
 - [ ] P1 Spikes on the board: S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
 - [ ] P2 Design round 2 (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (optional storyboard for own reference, no review)
 - [ ] P3 Link protocol: `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli

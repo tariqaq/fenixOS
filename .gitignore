@@ -4,7 +4,21 @@
 docs/vendor/archives/
 docs/vendor/CH340/
 docs/vendor/ESP32-2432S028R/
-firmware/
+/firmware/
 
 # Personal info (order number, forwarder account): the packing-slip photo
 pics/20261028_185710.jpg
+
+# Build output
+/target/
+/board/build/
+/board/sdkconfig
+/board/sdkconfig.old
+/board/managed_components/
+/board/sim/build/
+node_modules/
+/app/dist/
+/app/src-tauri/target/
+/app/src-tauri/gen/
+/app/src-tauri/resources/firmware/
+*.log
