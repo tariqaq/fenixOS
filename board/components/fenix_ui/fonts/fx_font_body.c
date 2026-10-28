@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 15 px
  * Bpp: 4
- * Opts: --font C:\Users\trqboi\Documents\fenixOS\design\fonts\inter\Inter-Regular.ttf -r 0x20-0x7E,0xB0,0xB7,0xD7,0x2013,0x2014,0x2019,0x2022,0x2026,0x2039,0x203A --size 15 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_font_body -o C:\Users\trqboi\Documents\fenixOS\board\components\fenix_ui\fonts\fx_font_body.c
+ * Opts: --font design/fonts/inter/Inter-Regular.ttf -r 0x20-0x7E,0xB0,0xB7,0xD7,0x2013,0x2014,0x2019,0x2022,0x2026,0x2039,0x203A --size 15 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_font_body -o board/components/fenix_ui/fonts/fx_font_body.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

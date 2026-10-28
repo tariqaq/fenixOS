@@ -33,42 +33,154 @@ fn samples() -> Vec<(&'static str, Msg)> {
         ),
         ("ping", Msg::Ping(0x0102_0300)),
         ("pong", Msg::Pong(0)),
-        ("log", Msg::Log { level: 3, text: "boot ok".into() }),
-        ("error", Msg::Error { code: err::PROTO_MISMATCH, text: "proto 2".into() }),
-        ("stats", Msg::Stats(Stats { free_heap: 70_000, min_heap: 60_000, fps_x10: 620, rx_frames: 1000, rx_errors: 1, stream_dropped: 5 })),
+        (
+            "log",
+            Msg::Log {
+                level: 3,
+                text: "boot ok".into(),
+            },
+        ),
+        (
+            "error",
+            Msg::Error {
+                code: err::PROTO_MISMATCH,
+                text: "proto 2".into(),
+            },
+        ),
+        (
+            "stats",
+            Msg::Stats(Stats {
+                free_heap: 70_000,
+                min_heap: 60_000,
+                fps_x10: 620,
+                rx_frames: 1000,
+                rx_errors: 1,
+                stream_dropped: 5,
+            }),
+        ),
         ("time_set", Msg::TimeSet(1_793_200_000)),
         ("reboot", Msg::Reboot),
-        ("board_state", Msg::BoardState { screen: screen::APP, dimmed: false, rotation: 1, app_id: "io.github.tariqaq.sample".into() }),
+        (
+            "board_state",
+            Msg::BoardState {
+                screen: screen::APP,
+                dimmed: false,
+                rotation: 1,
+                app_id: "io.github.tariqaq.sample".into(),
+            },
+        ),
         ("app_list_req", Msg::AppListReq),
         (
             "app_list",
             Msg::AppList(vec![
-                AppEntry { id: "io.github.tariqaq.sample".into(), version: "0.1.0".into(), sha256: sha(1) },
-                AppEntry { id: "a.b".into(), version: "1.2.3".into(), sha256: sha(9) },
+                AppEntry {
+                    id: "io.github.tariqaq.sample".into(),
+                    version: "0.1.0".into(),
+                    sha256: sha(1),
+                },
+                AppEntry {
+                    id: "a.b".into(),
+                    version: "1.2.3".into(),
+                    sha256: sha(9),
+                },
             ]),
         ),
         ("app_list_empty", Msg::AppList(vec![])),
-        ("app_install_begin", Msg::AppInstallBegin { id: "a.b".into(), version: "1.0.0".into(), size: 102_400, sha256: sha(3) }),
-        ("app_chunk", Msg::AppChunk { offset: 2048, data: vec![0x00, 0x01, 0xFF, 0x00, 0x7E] }),
+        (
+            "app_install_begin",
+            Msg::AppInstallBegin {
+                id: "a.b".into(),
+                version: "1.0.0".into(),
+                size: 102_400,
+                sha256: sha(3),
+            },
+        ),
+        (
+            "app_chunk",
+            Msg::AppChunk {
+                offset: 2048,
+                data: vec![0x00, 0x01, 0xFF, 0x00, 0x7E],
+            },
+        ),
         ("app_ack", Msg::AppAck { next_offset: 3072 }),
         ("app_install_end", Msg::AppInstallEnd),
-        ("app_result", Msg::AppResult { op: app::OP_INSTALL, code: app::BAD_HASH, id: "a.b".into(), text: "sha256 mismatch".into() }),
+        (
+            "app_result",
+            Msg::AppResult {
+                op: app::OP_INSTALL,
+                code: app::BAD_HASH,
+                id: "a.b".into(),
+                text: "sha256 mismatch".into(),
+            },
+        ),
         ("app_remove", Msg::AppRemove { id: "a.b".into() }),
         ("app_opened", Msg::AppOpened { id: "a.b".into() }),
         ("app_closed", Msg::AppClosed { id: "a.b".into() }),
-        ("host_state", Msg::HostState { running: true, id: "a.b".into() }),
-        ("bind_int", Msg::BindSet { bind: 3, id: "a.b".into(), value: BindValue::Int(-42) }),
-        ("bind_bool", Msg::BindSet { bind: 4, id: "a.b".into(), value: BindValue::Bool(true) }),
-        ("bind_text", Msg::BindSet { bind: 5, id: "a.b".into(), value: BindValue::Text("Muted".into()) }),
-        ("event", Msg::Event { elem: 7, kind: event::CHANGE, value: 55, id: "a.b".into() }),
+        (
+            "host_state",
+            Msg::HostState {
+                running: true,
+                id: "a.b".into(),
+            },
+        ),
+        (
+            "bind_int",
+            Msg::BindSet {
+                bind: 3,
+                id: "a.b".into(),
+                value: BindValue::Int(-42),
+            },
+        ),
+        (
+            "bind_bool",
+            Msg::BindSet {
+                bind: 4,
+                id: "a.b".into(),
+                value: BindValue::Bool(true),
+            },
+        ),
+        (
+            "bind_text",
+            Msg::BindSet {
+                bind: 5,
+                id: "a.b".into(),
+                value: BindValue::Text("Muted".into()),
+            },
+        ),
+        (
+            "event",
+            Msg::Event {
+                elem: 7,
+                kind: event::CHANGE,
+                value: 55,
+                id: "a.b".into(),
+            },
+        ),
         ("stream_start", Msg::StreamStart { fps: 10 }),
         ("stream_stop", Msg::StreamStop),
         (
             "stream_rect",
-            Msg::StreamRect(StreamRect { rect_id: 513, x: 10, y: 20, w: 300, h: 32, codec: codec_id::RLE16, total: 6, offset: 0, data: vec![0xFF, 0x00, 0x00, 0x03, 0xF8, 0x1F] }),
+            Msg::StreamRect(StreamRect {
+                rect_id: 513,
+                x: 10,
+                y: 20,
+                w: 300,
+                h: 32,
+                codec: codec_id::RLE16,
+                total: 6,
+                offset: 0,
+                data: vec![0xFF, 0x00, 0x00, 0x03, 0xF8, 0x1F],
+            }),
         ),
         ("stream_sync", Msg::StreamSync),
-        ("stream_info", Msg::StreamInfo { width: 240, height: 320, rotation: 0 }),
+        (
+            "stream_info",
+            Msg::StreamInfo {
+                width: 240,
+                height: 320,
+                rotation: 0,
+            },
+        ),
     ]
 }
 
@@ -92,7 +204,9 @@ fn vectors_match() {
     if std::env::var("FENIX_REGEN").is_ok() {
         std::fs::write(PATH, &want).unwrap();
     }
-    let have = std::fs::read_to_string(PATH).expect("proto/vectors.txt (run with FENIX_REGEN=1 once)").replace("\r\n", "\n");
+    let have = std::fs::read_to_string(PATH)
+        .expect("proto/vectors.txt (run with FENIX_REGEN=1 once)")
+        .replace("\r\n", "\n");
     assert_eq!(have, want, "proto/vectors.txt is stale");
 }
 
@@ -100,7 +214,8 @@ fn vectors_match() {
 fn round_trip() {
     for (i, (name, m)) in samples().into_iter().enumerate() {
         let frame = m.to_frame(i as u8);
-        let (seq, back) = Msg::from_frame(&frame[..frame.len() - 1]).unwrap_or_else(|e| panic!("{name}: {e}"));
+        let (seq, back) =
+            Msg::from_frame(&frame[..frame.len() - 1]).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert_eq!(seq, i as u8, "{name}");
         assert_eq!(back, m, "{name}");
     }
@@ -122,7 +237,10 @@ fn decoder_splits_stream_and_skips_garbage() {
 
 #[test]
 fn rle16() {
-    let px: Vec<u16> = std::iter::repeat(0x1234).take(300).chain([1, 2, 2]).collect();
+    let px: Vec<u16> = std::iter::repeat(0x1234)
+        .take(300)
+        .chain([1, 2, 2])
+        .collect();
     let enc = rle16_encode(&px);
     let mut back = vec![];
     rle16_decode(&enc, &mut back).unwrap();

@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 14 px
  * Bpp: 4
- * Opts: --font C:\Users\trqboi\Documents\fenixOS\design\fonts\phosphor\Phosphor-Bold.ttf -r 0xe138,0xe13a,0xe182,0xe3d4,0xe4f6 --size 14 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_icon_bold_14 -o C:\Users\trqboi\Documents\fenixOS\board\components\fenix_ui\fonts\fx_icon_bold_14.c
+ * Opts: --font design/fonts/phosphor/Phosphor-Bold.ttf -r 0xe138,0xe13a,0xe182,0xe3d4,0xe4f6 --size 14 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_icon_bold_14 -o board/components/fenix_ui/fonts/fx_icon_bold_14.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

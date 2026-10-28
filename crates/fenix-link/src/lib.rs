@@ -19,15 +19,23 @@ use serialport::{SerialPort, SerialPortType};
 pub enum Event {
     /// Scanning; no board found yet.
     Searching,
-    Connected { port: String, info: HelloAck },
-    Disconnected { reason: String },
+    Connected {
+        port: String,
+        info: HelloAck,
+    },
+    Disconnected {
+        reason: String,
+    },
     /// Any message from the board (PONG excluded).
     Msg(Msg),
     /// Round-trip time of the last heartbeat.
     Rtt(Duration),
     /// A CH340 port that did not answer HELLO (blank board, other firmware, or a
     /// fenixOS with another protocol: `detail` says which). Sent once per port until it changes.
-    Unresponsive { port: String, detail: String },
+    Unresponsive {
+        port: String,
+        detail: String,
+    },
     /// The link released the port (see `Link::pause`).
     Paused,
 }
@@ -69,7 +77,12 @@ pub fn list_ports() -> Vec<(PortInfo, bool)> {
         .into_iter()
         .filter_map(|p| match p.port_type {
             SerialPortType::UsbPort(u) => Some((
-                PortInfo { name: p.port_name, vid: u.vid, pid: u.pid, product: u.product },
+                PortInfo {
+                    name: p.port_name,
+                    vid: u.vid,
+                    pid: u.pid,
+                    product: u.product,
+                },
                 u.vid == USB_VID && u.pid == USB_PID,
             )),
             _ => None,
@@ -78,7 +91,11 @@ pub fn list_ports() -> Vec<(PortInfo, bool)> {
 }
 
 pub fn find_board_ports() -> Vec<String> {
-    list_ports().into_iter().filter(|(_, b)| *b).map(|(p, _)| p.name).collect()
+    list_ports()
+        .into_iter()
+        .filter(|(_, b)| *b)
+        .map(|(p, _)| p.name)
+        .collect()
 }
 
 /// Opens a port without resetting the ESP32: DTR/RTS both released.
@@ -111,7 +128,13 @@ impl Link {
             .name("fenix-link".into())
             .spawn(move || manager(opts, rx_out, ev_tx, st, pa))
             .expect("spawn link thread");
-        Self { tx, paused, events: Mutex::new(ev_rx), stop, handle: Some(handle) }
+        Self {
+            tx,
+            paused,
+            events: Mutex::new(ev_rx),
+            stop,
+            handle: Some(handle),
+        }
     }
 
     /// Release the serial port (for flashing) or take it back. While paused the
@@ -151,7 +174,13 @@ impl Drop for Link {
     }
 }
 
-fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, stop: Arc<AtomicBool>, paused: Arc<AtomicBool>) {
+fn manager(
+    opts: LinkOptions,
+    rx_out: Receiver<Msg>,
+    ev: Sender<Event>,
+    stop: Arc<AtomicBool>,
+    paused: Arc<AtomicBool>,
+) {
     let mut announced_search = false;
     let mut announced_pause = false;
     let mut unresponsive: std::collections::HashMap<String, String> = Default::default();
@@ -177,7 +206,10 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, stop: Ar
                 Ok((port, dec, info, early)) => {
                     announced_search = false;
                     unresponsive.remove(&name);
-                    let _ = ev.send(Event::Connected { port: name.clone(), info });
+                    let _ = ev.send(Event::Connected {
+                        port: name.clone(),
+                        info,
+                    });
                     for m in early {
                         let _ = ev.send(Event::Msg(m));
                     }
@@ -188,7 +220,10 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, stop: Ar
                 }
                 Err(detail) => {
                     if unresponsive.get(&name) != Some(&detail) {
-                        let _ = ev.send(Event::Unresponsive { port: name.clone(), detail: detail.clone() });
+                        let _ = ev.send(Event::Unresponsive {
+                            port: name.clone(),
+                            detail: detail.clone(),
+                        });
                         unresponsive.insert(name.clone(), detail);
                     }
                     continue;
@@ -226,7 +261,8 @@ fn handshake(name: &str, opts: &LinkOptions) -> Result<Handshake, String> {
     let mut early = Vec::new();
     while Instant::now() < deadline {
         if Instant::now() >= next_hello {
-            port.write_all(&Msg::hello().to_frame(seq)).map_err(|e| e.to_string())?;
+            port.write_all(&Msg::hello().to_frame(seq))
+                .map_err(|e| e.to_string())?;
             seq = seq.wrapping_add(1);
             next_hello = Instant::now() + Duration::from_millis(300);
         }
@@ -235,6 +271,9 @@ fn handshake(name: &str, opts: &LinkOptions) -> Result<Handshake, String> {
             Err(e) if e.kind() == std::io::ErrorKind::TimedOut => 0,
             Err(e) => return Err(e.to_string()),
         };
+        if n > 0 && std::env::var("FENIX_DEBUG").is_ok() {
+            eprintln!("hs {:02x?}", &buf[..n]);
+        }
         let mut ack = None;
         dec.push(&buf[..n], |p| {
             if let Ok((_, m)) = Msg::decode(&p) {
@@ -249,7 +288,12 @@ fn handshake(name: &str, opts: &LinkOptions) -> Result<Handshake, String> {
         });
         match ack {
             Some(Ok(a)) if a.proto == PROTO_VERSION => return Ok((port, dec, a, early)),
-            Some(Ok(a)) => return Err(format!("board protocol v{} != app v{}", a.proto, PROTO_VERSION)),
+            Some(Ok(a)) => {
+                return Err(format!(
+                    "board protocol v{} != app v{}",
+                    a.proto, PROTO_VERSION
+                ))
+            }
             Some(Err(t)) => return Err(t),
             None => {}
         }
@@ -362,7 +406,12 @@ impl Default for StreamCanvas {
 
 impl StreamCanvas {
     pub fn new(width: u16, height: u16) -> Self {
-        Self { width, height, px: vec![0; width as usize * height as usize], pending: None }
+        Self {
+            width,
+            height,
+            px: vec![0; width as usize * height as usize],
+            pending: None,
+        }
     }
 
     pub fn resize(&mut self, width: u16, height: u16) {
@@ -376,7 +425,12 @@ impl StreamCanvas {
         match m {
             Msg::StreamInfo { width, height, .. } => {
                 self.resize(*width, *height);
-                Some(Dirty { x: 0, y: 0, w: *width, h: *height })
+                Some(Dirty {
+                    x: 0,
+                    y: 0,
+                    w: *width,
+                    h: *height,
+                })
             }
             Msg::StreamRect(r) => {
                 if r.offset == 0 {
@@ -402,18 +456,30 @@ impl StreamCanvas {
     fn blit(&mut self, h: &fenix_proto::StreamRect, data: &[u8]) -> Option<Dirty> {
         let mut pix = Vec::with_capacity(h.w as usize * h.h as usize);
         match h.codec {
-            fenix_proto::codec_id::RAW => pix.extend(data.chunks_exact(2).map(|c| u16::from_be_bytes([c[0], c[1]]))),
+            fenix_proto::codec_id::RAW => pix.extend(
+                data.chunks_exact(2)
+                    .map(|c| u16::from_be_bytes([c[0], c[1]])),
+            ),
             fenix_proto::codec_id::RLE16 => fenix_proto::rle16_decode(data, &mut pix).ok()?,
             _ => return None,
         }
-        if pix.len() != h.w as usize * h.h as usize || h.x + h.w > self.width || h.y + h.h > self.height {
+        if pix.len() != h.w as usize * h.h as usize
+            || h.x + h.w > self.width
+            || h.y + h.h > self.height
+        {
             return None;
         }
         for row in 0..h.h as usize {
             let dst = (h.y as usize + row) * self.width as usize + h.x as usize;
-            self.px[dst..dst + h.w as usize].copy_from_slice(&pix[row * h.w as usize..(row + 1) * h.w as usize]);
+            self.px[dst..dst + h.w as usize]
+                .copy_from_slice(&pix[row * h.w as usize..(row + 1) * h.w as usize]);
         }
-        Some(Dirty { x: h.x, y: h.y, w: h.w, h: h.h })
+        Some(Dirty {
+            x: h.x,
+            y: h.y,
+            w: h.w,
+            h: h.h,
+        })
     }
 
     /// RGBA8 copy of the whole canvas (for PNG export and the UI).
@@ -421,7 +487,12 @@ impl StreamCanvas {
         let mut out = Vec::with_capacity(self.px.len() * 4);
         for &p in &self.px {
             let (r, g, b) = ((p >> 11) & 0x1F, (p >> 5) & 0x3F, p & 0x1F);
-            out.extend_from_slice(&[((r * 527 + 23) >> 6) as u8, ((g * 259 + 33) >> 6) as u8, ((b * 527 + 23) >> 6) as u8, 255]);
+            out.extend_from_slice(&[
+                ((r * 527 + 23) >> 6) as u8,
+                ((g * 259 + 33) >> 6) as u8,
+                ((b * 527 + 23) >> 6) as u8,
+                255,
+            ]);
         }
         out
     }
@@ -435,16 +506,39 @@ mod tests {
     #[test]
     fn canvas_applies_chunked_rle_rect() {
         let mut c = StreamCanvas::new(8, 4);
-        let px: Vec<u16> = (0..12).map(|i| if i < 6 { 0xF800 } else { 0x001F }).collect();
+        let px: Vec<u16> = (0..12)
+            .map(|i| if i < 6 { 0xF800 } else { 0x001F })
+            .collect();
         let enc = rle16_encode(&px);
         let (a, b) = enc.split_at(3);
         let mk = |offset: u32, data: &[u8]| {
-            Msg::StreamRect(StreamRect { rect_id: 1, x: 2, y: 1, w: 4, h: 3, codec: codec_id::RLE16, total: enc.len() as u32, offset, data: data.to_vec() })
+            Msg::StreamRect(StreamRect {
+                rect_id: 1,
+                x: 2,
+                y: 1,
+                w: 4,
+                h: 3,
+                codec: codec_id::RLE16,
+                total: enc.len() as u32,
+                offset,
+                data: data.to_vec(),
+            })
         };
         assert_eq!(c.apply(&mk(0, a)), None);
-        assert_eq!(c.apply(&mk(3, b)), Some(Dirty { x: 2, y: 1, w: 4, h: 3 }));
+        assert_eq!(
+            c.apply(&mk(3, b)),
+            Some(Dirty {
+                x: 2,
+                y: 1,
+                w: 4,
+                h: 3
+            })
+        );
         assert_eq!(c.px[8 + 2], 0xF800);
         assert_eq!(c.px[3 * 8 + 5], 0x001F);
-        assert_eq!(&c.to_rgba()[(8 + 2) * 4..(8 + 2) * 4 + 4], &[255, 0, 0, 255]);
+        assert_eq!(
+            &c.to_rgba()[(8 + 2) * 4..(8 + 2) * 4 + 4],
+            &[255, 0, 0, 255]
+        );
     }
 }

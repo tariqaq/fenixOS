@@ -6,7 +6,9 @@
 mod codec;
 mod msg;
 
-pub use codec::{cobs_decode, cobs_encode, crc16, decode_frame, encode_frame, FrameDecoder, FrameError};
+pub use codec::{
+    cobs_decode, cobs_encode, crc16, decode_frame, encode_frame, FrameDecoder, FrameError,
+};
 pub use msg::*;
 
 pub const PROTO_VERSION: u8 = 1;

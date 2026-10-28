@@ -38,7 +38,7 @@ FILL_ICONS = [
     "sun", "moon", "timer", "device-rotate", "hand-tap", "hard-drives", "desktop-tower",
     "info", "squares-four", "warning", "puzzle-piece", "check-circle", "x-circle", "monitor",
 ]
-FILL_SIZES = [16, 20, 26, 40]
+FILL_SIZES = [12, 14, 15, 16, 18, 20, 26, 28, 40]
 BOLD_ICONS = ["caret-left", "caret-right", "check", "plus", "x"]
 BOLD_SIZES = [10, 14]
 
@@ -56,10 +56,12 @@ def codepoints(css_name, names):
 
 def conv(name, ttf, size, rng):
     OUT.mkdir(parents=True, exist_ok=True)
-    cmd = ["npx", "--yes", CONV, "--font", str(FONTS / ttf), "-r", rng, "--size", str(size), "--bpp", "4",
+    # Repo-relative paths: lv_font_conv writes its options into the .c header comment.
+    rel = lambda p: p.relative_to(ROOT).as_posix()
+    cmd = ["npx", "--yes", CONV, "--font", rel(FONTS / ttf), "-r", rng, "--size", str(size), "--bpp", "4",
            "--format", "lvgl", "--no-compress", "--lv-include", "lvgl.h", "--lv-font-name", name,
-           "-o", str(OUT / f"{name}.c")]
-    subprocess.run(cmd, check=True, shell=(sys.platform == "win32"))
+           "-o", rel(OUT / f"{name}.c")]
+    subprocess.run(cmd, check=True, cwd=ROOT, shell=(sys.platform == "win32"))
 
 
 def main():

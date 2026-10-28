@@ -133,34 +133,86 @@ pub struct StreamRect {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Msg {
-    Hello { proto: u8 },
+    Hello {
+        proto: u8,
+    },
     HelloAck(HelloAck),
     Ping(u32),
     Pong(u32),
-    Log { level: u8, text: String },
-    Error { code: u8, text: String },
+    Log {
+        level: u8,
+        text: String,
+    },
+    Error {
+        code: u8,
+        text: String,
+    },
     Stats(Stats),
     TimeSet(u32),
     Reboot,
-    BoardState { screen: u8, dimmed: bool, rotation: u8, app_id: String },
+    BoardState {
+        screen: u8,
+        dimmed: bool,
+        rotation: u8,
+        app_id: String,
+    },
     AppListReq,
     AppList(Vec<AppEntry>),
-    AppInstallBegin { id: String, version: String, size: u32, sha256: [u8; 32] },
-    AppChunk { offset: u32, data: Vec<u8> },
-    AppAck { next_offset: u32 },
+    AppInstallBegin {
+        id: String,
+        version: String,
+        size: u32,
+        sha256: [u8; 32],
+    },
+    AppChunk {
+        offset: u32,
+        data: Vec<u8>,
+    },
+    AppAck {
+        next_offset: u32,
+    },
     AppInstallEnd,
-    AppResult { op: u8, code: u8, id: String, text: String },
-    AppRemove { id: String },
-    AppOpened { id: String },
-    AppClosed { id: String },
-    HostState { running: bool, id: String },
-    BindSet { bind: u16, id: String, value: BindValue },
-    Event { elem: u16, kind: u8, value: i32, id: String },
-    StreamStart { fps: u8 },
+    AppResult {
+        op: u8,
+        code: u8,
+        id: String,
+        text: String,
+    },
+    AppRemove {
+        id: String,
+    },
+    AppOpened {
+        id: String,
+    },
+    AppClosed {
+        id: String,
+    },
+    HostState {
+        running: bool,
+        id: String,
+    },
+    BindSet {
+        bind: u16,
+        id: String,
+        value: BindValue,
+    },
+    Event {
+        elem: u16,
+        kind: u8,
+        value: i32,
+        id: String,
+    },
+    StreamStart {
+        fps: u8,
+    },
     StreamStop,
     StreamRect(StreamRect),
     StreamSync,
-    StreamInfo { width: u16, height: u16, rotation: u8 },
+    StreamInfo {
+        width: u16,
+        height: u16,
+        rotation: u8,
+    },
 }
 
 struct W(Vec<u8>);
@@ -244,7 +296,9 @@ impl<'a> R<'a> {
 
 impl Msg {
     pub fn hello() -> Self {
-        Msg::Hello { proto: PROTO_VERSION }
+        Msg::Hello {
+            proto: PROTO_VERSION,
+        }
     }
 
     pub fn type_id(&self) -> u8 {
@@ -291,8 +345,19 @@ impl Msg {
                 w.bytes(&MAGIC).u8(*proto);
             }
             HelloAck(a) => {
-                w.bytes(&MAGIC).u8(a.proto).u8(a.fw.0).u8(a.fw.1).u8(a.fw.2).u16(a.width).u16(a.height).u8(a.rotation);
-                w.u32(a.free_heap).u16(a.apps_used_kb).u16(a.apps_total_kb).u8(a.reset_reason).u32(a.uptime_s);
+                w.bytes(&MAGIC)
+                    .u8(a.proto)
+                    .u8(a.fw.0)
+                    .u8(a.fw.1)
+                    .u8(a.fw.2)
+                    .u16(a.width)
+                    .u16(a.height)
+                    .u8(a.rotation);
+                w.u32(a.free_heap)
+                    .u16(a.apps_used_kb)
+                    .u16(a.apps_total_kb)
+                    .u8(a.reset_reason)
+                    .u32(a.uptime_s);
                 w.u8(a.time_valid as u8).bytes(&a.mac);
             }
             Ping(t) | Pong(t) => {
@@ -305,13 +370,23 @@ impl Msg {
                 w.u8(*code).bytes(text.as_bytes());
             }
             Stats(s) => {
-                w.u32(s.free_heap).u32(s.min_heap).u16(s.fps_x10).u32(s.rx_frames).u32(s.rx_errors).u32(s.stream_dropped);
+                w.u32(s.free_heap)
+                    .u32(s.min_heap)
+                    .u16(s.fps_x10)
+                    .u32(s.rx_frames)
+                    .u32(s.rx_errors)
+                    .u32(s.stream_dropped);
             }
             TimeSet(t) => {
                 w.u32(*t);
             }
             Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync => {}
-            BoardState { screen, dimmed, rotation, app_id } => {
+            BoardState {
+                screen,
+                dimmed,
+                rotation,
+                app_id,
+            } => {
                 w.u8(*screen).u8(*dimmed as u8).u8(*rotation).str(app_id);
             }
             AppList(list) => {
@@ -320,7 +395,12 @@ impl Msg {
                     w.str(&e.id).str(&e.version).bytes(&e.sha256);
                 }
             }
-            AppInstallBegin { id, version, size, sha256 } => {
+            AppInstallBegin {
+                id,
+                version,
+                size,
+                sha256,
+            } => {
                 w.str(id).str(version).u32(*size).bytes(sha256);
             }
             AppChunk { offset, data } => {
@@ -351,16 +431,33 @@ impl Msg {
                     BindValue::Text(v) => w.str(v),
                 };
             }
-            Event { elem, kind, value, id } => {
+            Event {
+                elem,
+                kind,
+                value,
+                id,
+            } => {
                 w.u16(*elem).u8(*kind).i32(*value).str(id);
             }
             StreamStart { fps } => {
                 w.u8(*fps);
             }
             StreamRect(r) => {
-                w.u16(r.rect_id).u16(r.x).u16(r.y).u16(r.w).u16(r.h).u8(r.codec).u32(r.total).u32(r.offset).bytes(&r.data);
+                w.u16(r.rect_id)
+                    .u16(r.x)
+                    .u16(r.y)
+                    .u16(r.w)
+                    .u16(r.h)
+                    .u8(r.codec)
+                    .u32(r.total)
+                    .u32(r.offset)
+                    .bytes(&r.data);
             }
-            StreamInfo { width, height, rotation } => {
+            StreamInfo {
+                width,
+                height,
+                rotation,
+            } => {
                 w.u16(*width).u16(*height).u8(*rotation);
             }
         }
@@ -400,8 +497,14 @@ impl Msg {
             }
             ty::PING => Msg::Ping(r.u32()?),
             ty::PONG => Msg::Pong(r.u32()?),
-            ty::LOG => Msg::Log { level: r.u8()?, text: r.text() },
-            ty::ERROR => Msg::Error { code: r.u8()?, text: r.text() },
+            ty::LOG => Msg::Log {
+                level: r.u8()?,
+                text: r.text(),
+            },
+            ty::ERROR => Msg::Error {
+                code: r.u8()?,
+                text: r.text(),
+            },
             ty::STATS => Msg::Stats(Stats {
                 free_heap: r.u32()?,
                 min_heap: r.u32()?,
@@ -412,25 +515,52 @@ impl Msg {
             }),
             ty::TIME_SET => Msg::TimeSet(r.u32()?),
             ty::REBOOT => Msg::Reboot,
-            ty::BOARD_STATE => Msg::BoardState { screen: r.u8()?, dimmed: r.u8()? != 0, rotation: r.u8()?, app_id: r.str()? },
+            ty::BOARD_STATE => Msg::BoardState {
+                screen: r.u8()?,
+                dimmed: r.u8()? != 0,
+                rotation: r.u8()?,
+                app_id: r.str()?,
+            },
             ty::APP_LIST_REQ => Msg::AppListReq,
             ty::APP_LIST => {
                 let n = r.u8()?;
                 let mut v = Vec::with_capacity(n as usize);
                 for _ in 0..n {
-                    v.push(AppEntry { id: r.str()?, version: r.str()?, sha256: r.arr()? });
+                    v.push(AppEntry {
+                        id: r.str()?,
+                        version: r.str()?,
+                        sha256: r.arr()?,
+                    });
                 }
                 Msg::AppList(v)
             }
-            ty::APP_INSTALL_BEGIN => Msg::AppInstallBegin { id: r.str()?, version: r.str()?, size: r.u32()?, sha256: r.arr()? },
-            ty::APP_CHUNK => Msg::AppChunk { offset: r.u32()?, data: r.rest().to_vec() },
-            ty::APP_ACK => Msg::AppAck { next_offset: r.u32()? },
+            ty::APP_INSTALL_BEGIN => Msg::AppInstallBegin {
+                id: r.str()?,
+                version: r.str()?,
+                size: r.u32()?,
+                sha256: r.arr()?,
+            },
+            ty::APP_CHUNK => Msg::AppChunk {
+                offset: r.u32()?,
+                data: r.rest().to_vec(),
+            },
+            ty::APP_ACK => Msg::AppAck {
+                next_offset: r.u32()?,
+            },
             ty::APP_INSTALL_END => Msg::AppInstallEnd,
-            ty::APP_RESULT => Msg::AppResult { op: r.u8()?, code: r.u8()?, id: r.str()?, text: r.text() },
+            ty::APP_RESULT => Msg::AppResult {
+                op: r.u8()?,
+                code: r.u8()?,
+                id: r.str()?,
+                text: r.text(),
+            },
             ty::APP_REMOVE => Msg::AppRemove { id: r.str()? },
             ty::APP_OPENED => Msg::AppOpened { id: r.str()? },
             ty::APP_CLOSED => Msg::AppClosed { id: r.str()? },
-            ty::HOST_STATE => Msg::HostState { running: r.u8()? != 0, id: r.str()? },
+            ty::HOST_STATE => Msg::HostState {
+                running: r.u8()? != 0,
+                id: r.str()?,
+            },
             ty::BIND_SET => {
                 let bind = r.u16()?;
                 let kind = r.u8()?;
@@ -443,7 +573,12 @@ impl Msg {
                 };
                 Msg::BindSet { bind, id, value }
             }
-            ty::EVENT => Msg::Event { elem: r.u16()?, kind: r.u8()?, value: r.i32()?, id: r.str()? },
+            ty::EVENT => Msg::Event {
+                elem: r.u16()?,
+                kind: r.u8()?,
+                value: r.i32()?,
+                id: r.str()?,
+            },
             ty::STREAM_START => Msg::StreamStart { fps: r.u8()? },
             ty::STREAM_STOP => Msg::StreamStop,
             ty::STREAM_RECT => Msg::StreamRect(StreamRect {
@@ -458,7 +593,11 @@ impl Msg {
                 data: r.rest().to_vec(),
             }),
             ty::STREAM_SYNC => Msg::StreamSync,
-            ty::STREAM_INFO => Msg::StreamInfo { width: r.u16()?, height: r.u16()?, rotation: r.u8()? },
+            ty::STREAM_INFO => Msg::StreamInfo {
+                width: r.u16()?,
+                height: r.u16()?,
+                rotation: r.u8()?,
+            },
             other => return Err(FrameError::UnknownType(other)),
         };
         r.end()?;

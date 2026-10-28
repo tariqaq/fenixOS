@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 40 px
  * Bpp: 4
- * Opts: --font C:\Users\trqboi\Documents\fenixOS\design\fonts\phosphor\Phosphor-Fill.ttf -r 0xe272,0xe3da,0xe404,0xe036,0xeb5a,0xeb56,0xe472,0xe330,0xe492,0xedf2,0xec90,0xe2a0,0xe562,0xe2ce,0xe464,0xe4e0,0xe596,0xe184,0xe4f8,0xe32e --size 40 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_icon_fill_40 -o C:\Users\trqboi\Documents\fenixOS\board\components\fenix_ui\fonts\fx_icon_fill_40.c
+ * Opts: --font design/fonts/phosphor/Phosphor-Fill.ttf -r 0xe272,0xe3da,0xe404,0xe036,0xeb5a,0xeb56,0xe472,0xe330,0xe492,0xedf2,0xec90,0xe2a0,0xe562,0xe2ce,0xe464,0xe4e0,0xe596,0xe184,0xe4f8,0xe32e --size 40 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_icon_fill_40 -o board/components/fenix_ui/fonts/fx_icon_fill_40.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

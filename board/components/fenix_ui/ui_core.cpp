@@ -1,0 +1,198 @@
+// LVGL glue: display (2 DMA bands, RGB565 swapped), touch, backlight dimming, stream hook, fps.
+// Choices from spike S1 (docs/board-info.md): 320x32 bands, no LVGL OS layer, 16 ms refresh.
+#include "esp_heap_caps.h"
+#include "esp_timer.h"
+#include "fenix_hal.h"
+#include "fenix_sys.h"
+#include "fenix_ui.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+namespace fx::ui {
+
+static constexpr int BAND_LINES = 32;
+
+static lv_display_t* s_disp;
+static uint8_t s_rot;
+
+// ---- Stream hook ----
+static bool s_stream;
+static bool s_stale;
+static lv_area_t s_stale_area;
+
+static void mark_stale(const lv_area_t* a) {
+  if (!s_stale) {
+    s_stale_area = *a;
+    s_stale = true;
+  } else {
+    s_stale_area.x1 = LV_MIN(s_stale_area.x1, a->x1);
+    s_stale_area.y1 = LV_MIN(s_stale_area.y1, a->y1);
+    s_stale_area.x2 = LV_MAX(s_stale_area.x2, a->x2);
+    s_stale_area.y2 = LV_MAX(s_stale_area.y2, a->y2);
+  }
+}
+
+// ---- fps ----
+static uint32_t s_frames;
+static int64_t s_fps_t0;
+static uint16_t s_fps_x10;
+
+static void flush_cb(lv_display_t* d, const lv_area_t* a, uint8_t* px) {
+  int w = lv_area_get_width(a), h = lv_area_get_height(a);
+  hal::display_push(a->x1, a->y1, w, h, px);
+  if (s_stream && !sys::stream_rect(a->x1, a->y1, w, h, px)) mark_stale(a);
+  if (lv_display_flush_is_last(d)) s_frames++;
+  lv_display_flush_ready(d);
+}
+
+static uint32_t tick_cb() { return esp_timer_get_time() / 1000; }
+
+// ---- Backlight ----
+static uint8_t s_level = 200, s_dim_pct = 20;
+static uint16_t s_dim_after_s = 60;
+static bool s_dimmed;
+static int s_bl_now = -1;
+
+static void bl_exec(void*, int32_t v) {
+  s_bl_now = v;
+  hal::backlight_set(v);
+}
+
+static void bl_fade(int to, uint32_t ms) {
+  lv_anim_delete(&s_bl_now, bl_exec);
+  if (s_bl_now < 0) s_bl_now = 0;
+  lv_anim_t a;
+  lv_anim_init(&a);
+  lv_anim_set_var(&a, &s_bl_now);
+  lv_anim_set_exec_cb(&a, bl_exec);
+  lv_anim_set_values(&a, s_bl_now, to);
+  lv_anim_set_duration(&a, ms);
+  lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+  lv_anim_start(&a);
+}
+
+static int dim_target() {
+  int v = s_level * s_dim_pct / 100;
+  return v < 4 ? 4 : v;
+}
+
+void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s) {
+  s_level = level;
+  s_dim_pct = dim_pct;
+  s_dim_after_s = dim_after_s;
+  bl_fade(s_dimmed ? dim_target() : s_level, FX_MOTION_FAST_MS);
+}
+
+bool dimmed() { return s_dimmed; }
+
+void backlight_fade_out() {
+  bl_fade(0, FX_MOTION_SLOW_MS);
+  int64_t end = esp_timer_get_time() + (FX_MOTION_SLOW_MS + 40) * 1000;
+  while (esp_timer_get_time() < end) {
+    lv_timer_handler();
+    vTaskDelay(pdMS_TO_TICKS(5));
+  }
+  hal::backlight_set(0);
+}
+
+// ---- Touch ----
+// The first touch while dimmed only wakes the screen: it is swallowed until released.
+static bool s_swallow;
+
+static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
+  int16_t x, y;
+  bool down = hal::touch_read(&x, &y);
+  if (down && s_dimmed) {
+    s_dimmed = false;
+    s_swallow = true;
+    bl_fade(s_level, FX_MOTION_FAST_MS);
+  }
+  if (s_swallow) {
+    if (!down) s_swallow = false;
+    d->state = LV_INDEV_STATE_RELEASED;
+    return;
+  }
+  if (down) {
+    d->point.x = x;
+    d->point.y = y;
+  }
+  d->state = down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+
+// ---- Core ----
+
+void init(uint8_t rotation) {
+  lv_init();
+  lv_tick_set_cb(tick_cb);
+  size_t bytes = 320 * BAND_LINES * 2;
+  void* b1 = heap_caps_malloc(bytes, MALLOC_CAP_DMA);
+  void* b2 = heap_caps_malloc(bytes, MALLOC_CAP_DMA);
+  s_rot = rotation & 3;
+  hal::display_set_rotation(s_rot);
+  s_disp = lv_display_create(hal::display_width(), hal::display_height());
+  lv_display_set_color_format(s_disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
+  lv_display_set_flush_cb(s_disp, flush_cb);
+  lv_display_set_buffers(s_disp, b1, b2, bytes, LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_indev_t* in = lv_indev_create();
+  lv_indev_set_type(in, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_read_cb(in, touch_cb);
+  lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+  s_fps_t0 = esp_timer_get_time();
+  s_bl_now = 0;
+}
+
+uint8_t rotation() { return s_rot; }
+bool portrait() { return (s_rot & 1) == 0; }
+int width() { return lv_display_get_horizontal_resolution(s_disp); }
+int height() { return lv_display_get_vertical_resolution(s_disp); }
+uint16_t fps_x10() { return s_fps_x10; }
+
+void set_rotation(uint8_t r) {
+  r &= 3;
+  if (r == s_rot) return;
+  s_rot = r;
+  hal::display_wait();
+  hal::display_set_rotation(r);
+  lv_display_set_resolution(s_disp, hal::display_width(), hal::display_height());
+  nav_rebuild();
+  lv_obj_invalidate(lv_screen_active());
+}
+
+void stream_enable(bool on) {
+  s_stream = on;
+  sys::stream_set_active(on);
+  s_stale = false;
+  if (on) stream_full_refresh();
+}
+
+void stream_full_refresh() {
+  lv_area_t a{0, 0, (int32_t)width() - 1, (int32_t)height() - 1};
+  mark_stale(&a);
+}
+
+uint32_t step() {
+  uint32_t wait = lv_timer_handler();
+  int64_t now = esp_timer_get_time();
+  // Re-send areas the stream dropped, once the TX buffer has drained enough.
+  if (s_stream && s_stale) {
+    size_t bytes = (size_t)lv_area_get_width(&s_stale_area) * lv_area_get_height(&s_stale_area) * 2;
+    if (sys::stream_has_room(bytes < 8192 ? bytes : 8192)) {
+      lv_area_t a = s_stale_area;
+      s_stale = false;
+      lv_obj_invalidate_area(lv_screen_active(), &a);
+    }
+  }
+  // Auto-dim.
+  if (!s_dimmed && s_dim_after_s && lv_display_get_inactive_time(s_disp) > s_dim_after_s * 1000u) {
+    s_dimmed = true;
+    bl_fade(dim_target(), FX_MOTION_SLOW_MS);
+  }
+  if (now - s_fps_t0 >= 1000000) {
+    s_fps_x10 = s_frames * 10000000LL / (now - s_fps_t0);
+    s_frames = 0;
+    s_fps_t0 = now;
+  }
+  return wait < 1 ? 1 : (wait > 10 ? 10 : wait);
+}
+
+}  // namespace fx::ui

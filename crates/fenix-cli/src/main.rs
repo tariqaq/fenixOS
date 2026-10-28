@@ -31,7 +31,14 @@ fn main() {
     let code = match cmd {
         "ports" => {
             for (p, board) in fenix_link::list_ports() {
-                println!("{} {:04x}:{:04x} {}{}", p.name, p.vid, p.pid, p.product.unwrap_or_default(), if board { "  <- board" } else { "" });
+                println!(
+                    "{} {:04x}:{:04x} {}{}",
+                    p.name,
+                    p.vid,
+                    p.pid,
+                    p.product.unwrap_or_default(),
+                    if board { "  <- board" } else { "" }
+                );
             }
             0
         }
@@ -42,7 +49,11 @@ fn main() {
         }
         "time" => one_shot(opts, Msg::TimeSet(now_s())),
         "reboot" => one_shot(opts, Msg::Reboot),
-        "shot" => shot(opts, args.get(1).map(String::as_str).unwrap_or("shot.png"), arg_u64(&args, 2, 3)),
+        "shot" => shot(
+            opts,
+            args.get(1).map(String::as_str).unwrap_or("shot.png"),
+            arg_u64(&args, 2, 3),
+        ),
         "list" => list(opts),
         "install" => match (args.get(1), args.get(2), args.get(3)) {
             (Some(f), Some(id), Some(v)) => install(opts, Path::new(f), id, v),
@@ -68,13 +79,25 @@ fn arg_u64(args: &[String], i: usize, def: u64) -> u64 {
 }
 
 fn now_s() -> u32 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as u32).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as u32)
+        .unwrap_or(0)
 }
 
 fn ts() -> String {
-    let ms = SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+    let ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
     let s = (ms / 1000) % 86_400;
-    format!("{:02}:{:02}:{:02}.{:03}", (s / 3600 + 8) % 24, (s / 60) % 60, s % 60, ms % 1000)
+    format!(
+        "{:02}:{:02}:{:02}.{:03}",
+        (s / 3600 + 8) % 24,
+        (s / 60) % 60,
+        s % 60,
+        ms % 1000
+    )
 }
 
 /// Wait for a connection, then print events for `secs`. `stop_after` ends early.
@@ -179,8 +202,18 @@ fn shot(opts: LinkOptions, out: &str, secs: u64) -> i32 {
     link.send(Msg::StreamStop);
     std::thread::sleep(Duration::from_millis(200));
     let dt = t0.elapsed().as_secs_f32();
-    println!("{rects} rects, {:.1} KB/s, canvas {}x{}", bytes as f32 / 1024.0 / dt, canvas.width, canvas.height);
-    match write_png(out, canvas.width as u32, canvas.height as u32, &canvas.to_rgba()) {
+    println!(
+        "{rects} rects, {:.1} KB/s, canvas {}x{}",
+        bytes as f32 / 1024.0 / dt,
+        canvas.width,
+        canvas.height
+    );
+    match write_png(
+        out,
+        canvas.width as u32,
+        canvas.height as u32,
+        &canvas.to_rgba(),
+    ) {
         Ok(()) => {
             println!("saved {out}");
             0
@@ -211,7 +244,16 @@ fn list(opts: LinkOptions) -> i32 {
     while Instant::now() < end {
         if let Some(Event::Msg(Msg::AppList(v))) = link.recv_event(Duration::from_millis(100)) {
             for e in &v {
-                println!("{} {} {}", e.id, e.version, e.sha256.iter().take(6).map(|b| format!("{b:02x}")).collect::<String>());
+                println!(
+                    "{} {} {}",
+                    e.id,
+                    e.version,
+                    e.sha256
+                        .iter()
+                        .take(6)
+                        .map(|b| format!("{b:02x}"))
+                        .collect::<String>()
+                );
             }
             println!("{} app(s)", v.len());
             return 0;
@@ -234,7 +276,12 @@ fn install(opts: LinkOptions, file: &Path, id: &str, version: &str) -> i32 {
         return 1;
     }
     let t0 = Instant::now();
-    link.send(Msg::AppInstallBegin { id: id.into(), version: version.into(), size: data.len() as u32, sha256: sha });
+    link.send(Msg::AppInstallBegin {
+        id: id.into(),
+        version: version.into(),
+        size: data.len() as u32,
+        sha256: sha,
+    });
     let mut sent = 0usize;
     let mut acked = 0usize;
     const WINDOW: usize = 4 * fenix_proto::MAX_CHUNK;
@@ -242,7 +289,10 @@ fn install(opts: LinkOptions, file: &Path, id: &str, version: &str) -> i32 {
     while Instant::now() < end {
         while sent < data.len() && sent < acked + WINDOW {
             let n = (data.len() - sent).min(fenix_proto::MAX_CHUNK);
-            link.send(Msg::AppChunk { offset: sent as u32, data: data[sent..sent + n].to_vec() });
+            link.send(Msg::AppChunk {
+                offset: sent as u32,
+                data: data[sent..sent + n].to_vec(),
+            });
             sent += n;
         }
         if acked == data.len() && sent == data.len() {
@@ -252,7 +302,10 @@ fn install(opts: LinkOptions, file: &Path, id: &str, version: &str) -> i32 {
         match link.recv_event(Duration::from_millis(100)) {
             Some(Event::Msg(Msg::AppAck { next_offset })) => acked = next_offset as usize,
             Some(Event::Msg(Msg::AppResult { op, code, id, text })) => {
-                println!("result op {op} code {code} {id} {text} in {:.2} s", t0.elapsed().as_secs_f32());
+                println!(
+                    "result op {op} code {code} {id} {text} in {:.2} s",
+                    t0.elapsed().as_secs_f32()
+                );
                 return if code == app::OK { 0 } else { 1 };
             }
             Some(e) => print_event(&e),
@@ -271,7 +324,9 @@ fn remove(opts: LinkOptions, id: &str) -> i32 {
     link.send(Msg::AppRemove { id: id.into() });
     let end = Instant::now() + Duration::from_secs(5);
     while Instant::now() < end {
-        if let Some(Event::Msg(Msg::AppResult { code, text, .. })) = link.recv_event(Duration::from_millis(100)) {
+        if let Some(Event::Msg(Msg::AppResult { code, text, .. })) =
+            link.recv_event(Duration::from_millis(100))
+        {
             println!("remove: code {code} {text}");
             return if code == app::OK { 0 } else { 1 };
         }

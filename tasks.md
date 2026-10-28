@@ -59,7 +59,15 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 - [~] P1 Spikes on the board (S1 done: QIO 80 MHz flash, LCD 80 MHz, 2×32-line buffers, no LVGL OS layer; S2 fonts generated; S3 done: 921600 baud; next S4 stream codec on the real UI, S5 deep sleep, S6 LED, S7 espflash, S8 WebGL; results in `docs/board-info.md`): S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
 - [x] P2 Design round 2 (4 artboards + welcome row published; user review pending, choices logged in `docs/mockups.md`) (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (optional storyboard for own reference, no review)
 - [~] P3 Link protocol (done: `proto/spec.md`, fenix-proto Rust + 31 golden vectors in `proto/vectors.txt`, C++ `fenix_proto` + MSVC host test 31/31; fenix-link with pause + StreamCanvas, `fenix` CLI built; next: on-board link task in P4, then 1 h soak): `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
-- [ ] P4 Board core: fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
+- [~] P4 Board core: fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
+  - [x] fenix_hal: LED, deep sleep, touch calibration, time-valid flag (fixed: EN resets report POWERON, so the flag is cleared at boot by `time_boot_check`)
+  - [x] fenix_sys: NVS settings, clock (MYT), link task (UART0 921600, HELLO/PING/TIME_SET/REBOOT/STATS/APP_LIST stub), LittleFS mount, stream encoder (RLE16 bands into the 16 KB UART TX buffer, stale re-send)
+  - [x] fenix_ui: LVGL glue (display, touch, auto-dim, stream hook, fps), widgets, nav stack
+  - [x] fenix_apps (P5 started early): boot sweep, Home Tiles/Dock, Settings tree, Session sheet, Stream, LED
+  - [x] main: init order; built (796 KB), flashed COM9; `fenix hello`, `fenix time`, `fenix shot` all work; Home PNG matches HomeA
+  - [ ] Remote touch message (TOUCH 0x13, P→B) so screens can be driven and captured without a person; also used later by the PC mirror
+  - Screenshots: `fenix shot` over the link replaces the SDL2 sim (no one at the board overnight)
+  - Note: the first `fenix hello` after one flash failed 4× ("no HELLO_ACK") then worked every time; not reproduced since. Watch for it.
 - [ ] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
 - [ ] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
 - [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync

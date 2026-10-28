@@ -1,7 +1,7 @@
 /*******************************************************************************
  * Size: 64 px
  * Bpp: 4
- * Opts: --font C:\Users\trqboi\Documents\fenixOS\design\fonts\inter\InterDisplay-SemiBold.ttf -r 0x30-0x3A,0x2D,0x20 --size 64 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_font_clock_64 -o C:\Users\trqboi\Documents\fenixOS\board\components\fenix_ui\fonts\fx_font_clock_64.c
+ * Opts: --font design/fonts/inter/InterDisplay-SemiBold.ttf -r 0x30-0x3A,0x2D,0x20 --size 64 --bpp 4 --format lvgl --no-compress --lv-include lvgl.h --lv-font-name fx_font_clock_64 -o board/components/fenix_ui/fonts/fx_font_clock_64.c
  ******************************************************************************/
 
 #ifdef LV_LVGL_H_INCLUDE_SIMPLE

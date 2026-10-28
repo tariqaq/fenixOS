@@ -1,0 +1,4 @@
+dependencies:
+  lvgl/lvgl:
+    version: "9.5.0"
+    require: public  # fenix_ui.h exposes LVGL types
