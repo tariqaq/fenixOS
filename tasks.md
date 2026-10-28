@@ -75,8 +75,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - Note: the first `fenix hello` after one flash failed 4× ("no HELLO_ACK") then worked every time; not reproduced since. Watch for it.
 - [~] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
   - [x] Boot sweep line → fade to Home; Home Tiles + Dock (landscape + portrait); Settings (Display, Rotation, Home screen, Storage, Host PC, About); Session sheet; Stream (off / not streaming / on); auto-dim with first-touch wake; LED connect pulse; golden PNGs in `docs/screens/board/`
-  - [ ] Shut down → deep sleep check (link drops; wake by RTS reset remotely; tap-wake needs the user)
-  - [ ] Flipped rotations (2, 3) screenshots
+  - [x] Shut down → deep sleep: link goes silent; RTS reset wakes it (POWERON). Tap-wake: open item for the user
+  - [x] Flipped rotations (2, 3): screenshots in `docs/screens/board/`
   - [ ] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: come with P6
   - [ ] PC simulator (user asked in round 7): after P8, before release
 - [ ] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
@@ -92,4 +92,6 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 ## Open (needs user input or flashing)
 
 - [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)
+- [ ] Tap-to-wake from Shut down (deep sleep, ext0 on GPIO36), and the time surviving it
+- [ ] RGB LED levels (S6): connect pulse looks right, not too bright
 - [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; LED is tested in P1 S6, LDR is not in v0.1
