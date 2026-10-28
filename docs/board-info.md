@@ -94,7 +94,7 @@ v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood ou
 
 ## Design-relevant findings (2026-10-28)
 
-- **No TE pin wired** on the LCD connector, so there is no hardware vsync. Use sprites + dirty-rect DMA pushes (see `docs/PLAN.md` §2).
+- **No TE pin wired** on the LCD connector, so there is no hardware vsync. Use sprites + dirty-rect DMA pushes (see `docs/legacy/PLAN.md` §2).
 - **UART0 is shared** between the PC link and the ESP-IDF console. Firmware must turn off console logs on UART0.
 - **DTR/RTS drive the auto-reset circuit.** The PC app opens the port with both released, which was verified not to reset the board (see below).
 - **No PSRAM**: no room for a full 150 KB framebuffer.
@@ -107,7 +107,7 @@ v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood ou
 ## Findings while building v0.1 (2026-10-28)
 
 - **Port open does not reset the board.** Verified: `open_port` (DTR/RTS released) gives no boot log or reset (`esp_reset_reason` = 1, power-on, with uptime growing across sessions). Note (2026-10-29): an EN-pin reset also reports reason 1 on the ESP32. After an `esptool` hard reset (RTS pulls EN), the board logged `boot reason 1, up 39 s`. So the proof is the uptime that keeps growing, not the reason code.
-- **LCD read-back works** (MISO on IO12 is wired). `fenix shot` / `rawshot` capture exact screenshots, and `docs/screens/` holds the README ones.
+- **LCD read-back works** (MISO on IO12 is wired). `fenix shot` / `rawshot` capture exact screenshots, and `docs/legacy/screens/` holds the README ones.
 - **Colours are correct** with `invert=false`, `rgb_order=false` on the ILI9341: no inversion fix needed.
 - **Touch works** with the default raw range (taps, page cycling and events verified with the stylus). Hold the screen at boot to calibrate.
 - **Render cost:** a full CPU page (gauge, KV, 16 core bars, sparkline, header) takes ~27 ms, Overview ~15–25 ms. Dirty-only redraw keeps a 1 Hz poll at ~1–2 frames/s.

@@ -168,7 +168,8 @@ Details and the options offered: `docs/decisions.md`.
 - The old pre-scrub commits stay reachable on GitHub by hash only (accepted).
 - PC app: **start with Windows is a setting, off by default**; **self-update with the Tauri updater from GitHub Releases** (signed), then offer to flash the matching firmware; **closing the window destroys the webview** (tray only).
 - Board extra: **RGB LED status light**. Not in v0.1: LDR auto-brightness, sounds, developer overlay, factory reset.
+- Mock-up review (round 7): canvas approved as the spec; Home has **both** Tiles and Dock styles (Settings › Home screen); boot = grey track with a white sweep line; elevation **per action** (no admin setting); tray menu, 3D first-run experience, single instance, permissions sheet, log view and a board UI simulator are in v0.1.
 
 ## 12. Open questions
 
-Settled through the mock-up review rather than the picker: home-screen layout per orientation, tile style on the board, the boot animation, app tile colours, how the PC dashboard looks, and "Run as administrator" vs per-action elevation. Canvas and question list: `docs/mockups.md`.
+None for the design. The build plan is `docs/PLAN.md`; its §8 lists the small questions asked later (licence, "show welcome again").

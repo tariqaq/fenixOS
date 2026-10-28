@@ -41,11 +41,27 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
   - [x] Round 5 structure (custom dark title bar, board/app/crates layout, lockstep SemVer, Settings + Display + Storage/host)
   - [x] Round 6 PC behaviour + board extras (autostart setting off by default, Tauri updater, destroy webview on close, RGB LED status)
 - [x] Go public (2026-10-29, verified PUBLIC, scrubbed paths 404): scrub history first (packing slip + order number, vendor package, CH340 driver, `firmware/` images; local copies kept + backed up in scratchpad bundle), force-push, set public, verify
-- [ ] Research where needed (web), cross-check sources, document findings
 - [x] Lock the design system in `DESIGN.md` (colour tokens, type sizes, radii, motion, icon map)
 - [x] Wireframes / mock-up slides: 20 artboards (13 board, 7 PC) on a private canvas; list + open questions in `docs/mockups.md`
-- [~] Iterate with user: waiting for review of the canvas
-- [ ] Detailed, scoped build plan (`docs/PLAN.md` for fenixOS; the FenixDeck plan moves to `docs/legacy/`)
+- [x] Iterate with user: review round 1 done (both home styles, sweep-line boot, per-action elevation, tray menu, 3D OOTB, single instance, permissions, logs, simulator); canvas approved as the spec. `docs/decisions.md` round 7, `docs/mockups.md`
+- [x] Detailed, scoped build plan: `docs/PLAN.md`. FenixDeck docs moved to `docs/legacy/` (PLAN, protocol, metrics-validation, screens). Version pinning is web-checked in P0, not now
+- [x] Standing by for the go-ahead to start P0
+
+## fenixOS v0.1 build (plan: `docs/PLAN.md`; not started)
+
+Each phase: acceptance check, docs, stale sweep, commit + pull --rebase + push.
+
+- [ ] P0 Repo foundation: licence (ask user), README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
+- [ ] P1 Spikes on the board: S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
+- [ ] P2 Design round 2 (with P1): Settings › Home screen, tray menu, permissions sheet, log view, OOTB storyboard; user review
+- [ ] P3 Link protocol: `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
+- [ ] P4 Board core: fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
+- [ ] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
+- [ ] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
+- [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
+- [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
+- [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install
+- [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
 
 ## Decisions
 
@@ -54,4 +70,4 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
 ## Open (needs user input or flashing)
 
 - [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)
-- [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; test in firmware or measure
+- [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; LED is tested in P1 S6, LDR is not in v0.1

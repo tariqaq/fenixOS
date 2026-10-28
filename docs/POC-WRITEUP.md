@@ -50,7 +50,7 @@ All 9 phases (0–8) are done and verified on the hardware.
 - Stats were validated against independent sources: 19 checks pass, 0 fail.
 - Footprints: firmware 334 KB, board heap ~159 KB free, PC app 0.07 % CPU / 29 MB in the tray.
 
-Screenshots of the live board (exact LCD read-back): `docs/screens/v01-live-overview.png`, `docs/screens/v01-live-cpu.png`.
+Screenshots of the live board (exact LCD read-back): `docs/legacy/screens/v01-live-overview.png`, `docs/legacy/screens/v01-live-cpu.png`.
 
 ### Timeline
 
@@ -548,7 +548,7 @@ Everything that can run on this board, grouped by layer, with what we know about
 
 ## 8. Wire protocol v1
 
-Full spec: `docs/protocol.md`. Rust: `crates/fenix-proto`. C++: `board/components/fenix_proto`. Golden test vectors: `crates/fenix-proto/vectors/vectors.txt` (19 vectors; both implementations decode them and encode them byte-identically). The protocol is reusable as-is for any PC ↔ board link.
+Full spec: `docs/legacy/protocol.md`. Rust: `crates/fenix-proto`. C++: `board/components/fenix_proto`. Golden test vectors: `crates/fenix-proto/vectors/vectors.txt` (19 vectors; both implementations decode them and encode them byte-identically). The protocol is reusable as-is for any PC ↔ board link.
 
 ### Transport and framing
 
@@ -756,7 +756,7 @@ All measured on the hardware on 2026-10-28.
 
 Conventions: Task Manager's (CPU as % of all logical processors, memory as private working set), summed over `fenixdeck.exe` and only its own WebView2 processes.
 
-### Metrics accuracy (`docs/metrics-validation.md`)
+### Metrics accuracy (`docs/legacy/metrics-validation.md`)
 
 15 s window, means compared: 19 pass, 0 fail, 1 info.
 
@@ -913,10 +913,10 @@ These are recommendations from what the PoC showed, not decisions.
 | `pics/ANALYSIS.md` | **Ready** | Hardware analysis, per-image notes, corrections. Take with all images in `pics/` |
 | `docs/board-info.md` | **Ready** | esptool read-out, stock backup + restore, hardware findings. Mentions FenixDeck paths (`board/`, `fenix shot`) |
 | `docs/vendor/README.md` | **Ready** | What the vendor package holds and where (the package itself is local only) |
-| `docs/protocol.md` | **Ready if the protocol is reused** | Complete spec; references the FenixDeck crate paths |
-| `docs/metrics-validation.md` | Optional | Only relevant if the PC monitor carries over |
+| `docs/legacy/protocol.md` | **Ready if the protocol is reused** | Complete spec; references the FenixDeck crate paths |
+| `docs/legacy/metrics-validation.md` | Optional | Only relevant if the PC monitor carries over |
 | `docs/toolchain.md` | Reference only | Versions and gotchas of this toolchain; expected to change (summarised in sections 6 and 12) |
-| `docs/PLAN.md` | Historical | The FenixDeck plan, now superseded by this write-up |
+| `docs/legacy/PLAN.md` | Historical | The FenixDeck plan, now superseded by this write-up |
 | `AGENTS.md` | Reusable | The 6 working rules (no co-authoring, commit/push often, plan in `tasks.md`, balance knowledge/search/browser, document findings, clean stale content) |
 | `README.md`, `tasks.md` | No | FenixDeck-specific |
 
@@ -925,7 +925,7 @@ These are recommendations from what the PoC showed, not decisions.
 | Path | Notes |
 |---|---|
 | `pics/*.jpg` (17 files; 16 in git, the packing slip is local only) | Board photos, manual, box label, two store listings. Analysed in `pics/ANALYSIS.md` |
-| `docs/screens/v01-live-overview.png`, `v01-live-cpu.png` | Exact LCD read-back of the PoC UI |
+| `docs/legacy/screens/v01-live-overview.png`, `v01-live-cpu.png` | Exact LCD read-back of the PoC UI |
 | `docs/vendor/.../5-Schematic/*.jpg` (local only) | MCU and LCM schematics, WROOM pin definition |
 | `docs/vendor/.../3-Structure_Diagram/Dimensions.png` (local only) | Board dimensions (for cases/mounts) |
 

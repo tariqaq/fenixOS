@@ -71,3 +71,19 @@ Consequences:
 | PC app self-update | **Tauri updater + GitHub Releases (Rec.)** / notify only / manual | **Tauri updater + GitHub Releases** on this repo: signed updates (signing key kept secret, never in git); after updating, the app offers to flash the matching board firmware |
 | Close window | **Destroy webview (Rec.)** / hide window | **Destroy webview** (PoC-proven: tray ~29 MB, 1 process); engine, board link and sidecar apps keep running |
 | Board extras (multi-select) | RGB LED status light / auto-brightness (LDR) / UI sounds / none | **RGB LED status light** (subtle states such as host connected / waiting / error; V1.4 LED resistors unverified, so brightness needs tuning). Not in v0.1: LDR auto-brightness, sounds |
+
+## 2026-10-29: round 7, mock-up review
+
+| Topic | Options | Picked |
+|---|---|---|
+| Home layout | Tiles (2a) / icon dock (2b) | **Both**, chosen by the user in board Settings › Home screen (Tiles / Dock) |
+| Boot animation | Spinner (first draft) / other | **Grey track with a white line sweeping left to right** |
+| Tile colours, PC tile size, switch place | Keep / change | **Keep** as drawn |
+| Elevation | "Run as administrator" setting / per action (Rec.) | **Per action**: no admin setting; an app's PC half marked `elevated` starts through a UAC prompt, the rest of fenixOS never runs elevated |
+| Tray menu | Draw it | **Open fenixOS, board status line, Quit** |
+| First run | Draw it | **OOTB with a 3D board model**: if a board is already plugged in, wait 3 s, then a smooth "plugged in" animation and continue; otherwise animate a plug-in prompt. Creative direction left to Claude, within the design language |
+| Single instance | Yes / no | **Yes** |
+| App permissions sheet before install | Yes / no | **Yes** |
+| Log view | Yes / no | **Yes** |
+| Board UI simulator on the PC for testing | Yes / no | **Yes** |
+| The canvas | Review | **Approved: build it exactly as drawn** |

@@ -1,5 +1,7 @@
 # Toolchain
 
+The installed versions below still apply to fenixOS. The "Build commands" and "Debug knobs" sections are the FenixDeck PoC's (legacy) and are replaced in `docs/PLAN.md` P0.
+
 Set up on 2026-10-28 (Windows 11).
 
 | Tool | Version | Notes |
