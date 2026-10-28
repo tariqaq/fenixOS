@@ -171,4 +171,4 @@ Details and the options offered: `docs/decisions.md`.
 
 ## 12. Open questions
 
-Settled through the mock-up review rather than the picker: home-screen layout per orientation, tile style on the board, the boot animation, app tile colours, and how the PC dashboard looks.
+Settled through the mock-up review rather than the picker: home-screen layout per orientation, tile style on the board, the boot animation, app tile colours, how the PC dashboard looks, and "Run as administrator" vs per-action elevation. Canvas and question list: `docs/mockups.md`.

@@ -42,8 +42,9 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
   - [x] Round 6 PC behaviour + board extras (autostart setting off by default, Tauri updater, destroy webview on close, RGB LED status)
 - [x] Go public (2026-10-29, verified PUBLIC, scrubbed paths 404): scrub history first (packing slip + order number, vendor package, CH340 driver, `firmware/` images; local copies kept + backed up in scratchpad bundle), force-push, set public, verify
 - [ ] Research where needed (web), cross-check sources, document findings
-- [~] Wireframes / mock-up slides (board screens + PC app screens, per phase), published for review
-- [ ] Iterate with user
+- [x] Lock the design system in `DESIGN.md` (colour tokens, type sizes, radii, motion, icon map)
+- [x] Wireframes / mock-up slides: 20 artboards (13 board, 7 PC) on a private canvas; list + open questions in `docs/mockups.md`
+- [~] Iterate with user: waiting for review of the canvas
 - [ ] Detailed, scoped build plan (`docs/PLAN.md` for fenixOS; the FenixDeck plan moves to `docs/legacy/`)
 
 ## Decisions
@@ -54,4 +55,3 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
 
 - [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)
 - [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; test in firmware or measure
-- [ ] Next: user decides the fenixOS direction and code layout
