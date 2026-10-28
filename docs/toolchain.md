@@ -38,6 +38,9 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `flash`, `monitor`, `size`). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
+- C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)
+- Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build -p COM9 -b 460800 build flash`, then `python tools/serial_read.py 30 --reset`
+- Board fonts: `python tools/gen_fonts.py` (Inter + Phosphor via `lv_font_conv`)
 - Version check / sync: `python tools/version.py --check` / `python tools/version.py`
 - Design tokens: `python tools/gen_tokens.py` (writes `board/components/fenix_ui/include/fenix_tokens.h` and `app/src/lib/tokens.css`; `--check` in CI)
 
