@@ -10,7 +10,7 @@ The framing is kept from the FenixDeck PoC (`docs/legacy/protocol.md`), where it
 
 ## Transport
 
-- USB serial through the CH340C, **8N1, no flow control**. The baud rate is fixed per release (`BAUD` in both codecs; value from spike S3, `docs/board-info.md`).
+- USB serial through the CH340C at **921600 baud, 8N1, no flow control** (`BAUD` in both codecs; chosen in spike S3, `docs/board-info.md`).
 - The PC opens the port with **DTR and RTS released**. Asserting them can reset the board through its auto-reset circuit.
 - After a reset the ROM bootloader prints text at 115200. Receivers drop bytes until a valid frame arrives.
 - Only `fenix-link` resets the board on purpose (reboot request, flashing).

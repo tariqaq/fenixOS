@@ -1,0 +1,10 @@
+[package]
+name = "fenix-link"
+description = "fenixOS board discovery, handshake, heartbeat, reconnect and stream canvas over USB serial"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+fenix-proto.workspace = true
+serialport = { version = "4.10.1", default-features = false }

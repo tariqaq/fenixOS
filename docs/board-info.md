@@ -140,3 +140,20 @@ Findings:
 - Portrait (rotation 0) and landscape (1) perform the same.
 - Motion rule that follows: transitions use **slides and scrims** (≥ 40 fps) rather than layer opacity on big areas (~36 fps).
 - Touch mapping per rotation needs a person at the board; it is checked in the morning review (LovyanGFX rotates touch with the panel).
+
+### S2: board fonts
+
+`tools/gen_fonts.py` builds 11 Inter text fonts (4 bpp, uncompressed for render speed: 64/56 px clock digits, 22, 17, 15, 15 semibold, 13 ×3 weights, 12 ×2) and 6 Phosphor icon fonts (fill 16/20/26/40, bold 10/14) with `lv_font_conv` 1.5.3: 642 KB of C source. Flash cost is measured in the first full firmware build (P4). Tabular clock digits: `lv_font_conv` cannot apply Inter's `tnum` feature, so the clock widget places each digit in a fixed-width cell.
+
+### S3: link speed (UART0 ↔ CH340C)
+
+`board/spikes/s3` echoes UART0; `tools/spike_s3_baud.py` sends random 1000-byte blocks with a CRC32 and checks the echo, 90 s per rate (ping-pong, so throughput is latency-bound, not the line rate).
+
+| Baud | Blocks ok | Bad | Echo throughput |
+|---|---|---|---|
+| 460800 | 3175 | 0 | 34.4 KiB/s each way |
+| **921600** | **4860** | **0** | **52.7 KiB/s each way** |
+| 1500000 | 4842 | 5 | 52.5 KiB/s |
+| 2000000 | 899 | 135 | 9.8 KiB/s |
+
+**Decision: 921600 baud** for the fenixOS link (raw line rate ~90 KiB/s, double the PoC). 1.5 Mbaud gives no gain and drops blocks; 2 Mbaud fails. (The PoC's 921600 failure was an `esptool` bulk flash read, a different path.) With the console off, the app must route UART0 to GPIO1/3 itself (`uart_set_pin`); without it nothing is received.

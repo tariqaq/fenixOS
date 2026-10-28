@@ -1,0 +1,16 @@
+[package]
+name = "fenix-cli"
+description = "fenixOS developer CLI (board link, stream shots, app install)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "fenix"
+path = "src/main.rs"
+
+[dependencies]
+fenix-proto.workspace = true
+fenix-link.workspace = true
+sha2 = "0.10"
+png = "0.17"

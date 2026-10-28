@@ -8,7 +8,7 @@
 namespace fnx {
 
 constexpr uint8_t PROTO_VERSION = 1;
-constexpr uint32_t BAUD = 460800;
+constexpr uint32_t BAUD = 921600;
 constexpr size_t MAX_PAYLOAD = 1200;
 constexpr size_t MAX_CHUNK = 1024;
 // Worst-case wire size of one frame: COBS overhead + CRC + delimiter.

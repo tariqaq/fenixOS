@@ -15,7 +15,7 @@ pub const MAX_PAYLOAD: usize = 1200;
 /// Max data bytes in one `APP_CHUNK` or `STREAM_RECT`.
 pub const MAX_CHUNK: usize = 1024;
 /// Link baud rate (spike S3, `docs/board-info.md`).
-pub const BAUD: u32 = 460_800;
+pub const BAUD: u32 = 921_600;
 /// CH340 USB ids of the ESP32-2432S028R.
 pub const USB_VID: u16 = 0x1A86;
 pub const USB_PID: u16 = 0x7523;
