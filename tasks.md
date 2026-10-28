@@ -56,10 +56,10 @@ Progress rule: update this file after every step (done / in progress / blocked +
 Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC prompt at the start for an elevated helper; keep COM9 enumerated (no physical replug needed); kill + relaunch the PC app to see changes; pick recommended options and log them.
 
 - [x] P0 Repo foundation (CI first run pending check) (elevated helper running: scratchpad `elev/helper.ps1`, drop `*.ps1` in `elev/queue`, output in `elev/out`): MIT licence, README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
-- [~] P1 Spikes on the board (S1 done: QIO 80 MHz flash, LCD 80 MHz, 2×32-line buffers, no LVGL OS layer; S2 fonts generated; S3 done: 921600 baud; next S4 stream codec on the real UI, S5 deep sleep, S6 LED, S7 espflash, S8 WebGL; results in `docs/board-info.md`): S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
+- [~] P1 Spikes on the board (S1 done: QIO 80 MHz flash, LCD 80 MHz, no LVGL OS layer; bands later 80 lines (P4); S2 fonts generated; S3 done: 921600 baud; S4 done in P4: RLE16 kept, stream throttled to the PC rate, ~11× on slides, link-bound ~45 KB/s; next S5 deep sleep (needs a person to tap-wake; RTS reset works remotely), S6 LED levels (needs eyes), S7 espflash (in P8), S8 WebGL (in P9); results in `docs/board-info.md`): S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
 - [x] P2 Design round 2 (4 artboards + welcome row published; user review pending, choices logged in `docs/mockups.md`) (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (optional storyboard for own reference, no review)
 - [~] P3 Link protocol (done: `proto/spec.md`, fenix-proto Rust + 31 golden vectors in `proto/vectors.txt`, C++ `fenix_proto` + MSVC host test 31/31; fenix-link with pause + StreamCanvas, `fenix` CLI built; next: on-board link task in P4, then 1 h soak): `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
-- [~] P4 Board core: fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
+- [x] P4 Board core (accepted 2026-10-29: `fenix hello`/`time` work, STATS heap ~134 KB min ~121 KB, 0 RX errors, slides 34.5 fps / 29 fps while streaming): fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
   - [x] fenix_hal: LED, deep sleep, touch calibration, time-valid flag (fixed: EN resets report POWERON, so the flag is cleared at boot by `time_boot_check`)
   - [x] fenix_sys: NVS settings, clock (MYT), link task (UART0 921600, HELLO/PING/TIME_SET/REBOOT/STATS/APP_LIST stub), LittleFS mount, stream encoder (RLE16 bands into the 16 KB UART TX buffer, stale re-send)
   - [x] fenix_ui: LVGL glue (display, touch, auto-dim, stream hook, fps), widgets, nav stack
@@ -69,9 +69,16 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] `tools/capture_screens.sh`: erases NVS, drives every system screen, saves PNGs; golden copies in `docs/screens/board/` (16 screens: landscape, portrait, Tiles, Dock)
   - [x] Fixed on the way: non-clickable layout boxes (taps were lost), clickable scroll containers (swipes did not scroll), flex track centring (Dock sat left), screen swap double delete, "20%" label wrap, portrait navbar overlap (back label dropped)
   - Screenshots come from the real board over the link while nobody is at it; the PC simulator the user asked for is still planned (see P5)
-  - [ ] Next: stale sweep for P4, then P4 accept check (boot ≤ 1 s, heap/fps in STATS) and close P4
+  - [x] Perf pass: stale `board/sdkconfig` fixed (13 → 25 fps), 80-line bands (34.5 fps), stream throttled to the PC rate (29 fps while streaming), wake-from-dim activity bug fixed; `fenix bench`. Numbers in `docs/board-info.md` "Rendering speed"
+  - [x] Stale sweep for P4 (docs, comments, CLI help)
+  - Boot-to-screen ≤ 1 s not measured with a camera; HELLO answers ~2 s after reset
   - Note: the first `fenix hello` after one flash failed 4× ("no HELLO_ACK") then worked every time; not reproduced since. Watch for it.
-- [ ] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
+- [~] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
+  - [x] Boot sweep line → fade to Home; Home Tiles + Dock (landscape + portrait); Settings (Display, Rotation, Home screen, Storage, Host PC, About); Session sheet; Stream (off / not streaming / on); auto-dim with first-touch wake; LED connect pulse; golden PNGs in `docs/screens/board/`
+  - [ ] Shut down → deep sleep check (link drops; wake by RTS reset remotely; tap-wake needs the user)
+  - [ ] Flipped rotations (2, 3) screenshots
+  - [ ] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: come with P6
+  - [ ] PC simulator (user asked in round 7): after P8, before release
 - [ ] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
 - [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings

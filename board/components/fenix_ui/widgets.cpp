@@ -110,7 +110,8 @@ lv_obj_t* group(lv_obj_t* parent) {
   lv_obj_set_style_bg_color(g, col(FX_COLOR_SURFACE_1), 0);
   lv_obj_set_style_bg_opa(g, LV_OPA_COVER, 0);
   lv_obj_set_style_radius(g, FX_RADIUS_BOARD_GROUP, 0);
-  lv_obj_set_style_clip_corner(g, true, 0);
+  // No clip_corner: corner masks cost most of the frame time in slides (13 -> see board-info).
+  // Pressed rows round their own highlight instead (list_row).
   return g;
 }
 
@@ -130,6 +131,7 @@ lv_obj_t* list_row(lv_obj_t* g, const char* icon, uint32_t icon_bg, const char* 
   lv_obj_set_size(r, LV_PCT(100), FX_ROW);
   lv_obj_set_style_pad_hor(r, 10, 0);
   pressable(r);
+  lv_obj_set_style_radius(r, FX_RADIUS_BOARD_GROUP, LV_STATE_PRESSED);
   if (icon) {
     lv_obj_t* sq = box(r);
     lv_obj_set_size(sq, 24, 24);

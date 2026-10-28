@@ -85,7 +85,7 @@ static void stream_set(bool on, uint8_t fps) {
   s_shell.streaming = on;
   s_shell.stream_fps = fps;
   if (on) send_stream_info();
-  stream_enable(on);
+  stream_enable(on, fps);
   refresh_if_top(stream_screen);
 }
 

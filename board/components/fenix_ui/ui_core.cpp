@@ -1,5 +1,6 @@
 // LVGL glue: display (2 DMA bands, RGB565 swapped), touch, backlight dimming, stream hook, fps.
-// Choices from spike S1 (docs/board-info.md): 320x32 bands, no LVGL OS layer, 16 ms refresh.
+// Choices from spike S1 and P4 profiling (docs/board-info.md): 320x80 bands, no LVGL OS layer,
+// 16 ms refresh.
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "fenix_hal.h"
@@ -10,20 +11,28 @@
 
 namespace fx::ui {
 
-static constexpr int BAND_LINES = 32;
+static constexpr int BAND_LINES = 80;
 
 static lv_display_t* s_disp;
 static uint8_t s_rot;
 
 // ---- Stream hook ----
+// Only frames on the PC's rate are encoded (STREAM_START fps); areas of the frames in between,
+// and bands the TX buffer had no room for, are marked stale and redrawn for the stream once the
+// screen is idle (or after STALE_MAX_US at the latest).
+static constexpr int64_t STALE_MAX_US = 1000000;
 static bool s_stream;
+static int64_t s_stream_period_us = 100000, s_last_stream_frame;
+static bool s_stream_frame;  // the frame being rendered goes to the stream
 static bool s_stale;
+static int64_t s_stale_since;
 static lv_area_t s_stale_area;
 
 static void mark_stale(const lv_area_t* a) {
   if (!s_stale) {
     s_stale_area = *a;
     s_stale = true;
+    s_stale_since = esp_timer_get_time();
   } else {
     s_stale_area.x1 = LV_MIN(s_stale_area.x1, a->x1);
     s_stale_area.y1 = LV_MIN(s_stale_area.y1, a->y1);
@@ -33,15 +42,31 @@ static void mark_stale(const lv_area_t* a) {
 }
 
 // ---- fps ----
-static uint32_t s_frames;
-static int64_t s_fps_t0;
-static uint16_t s_fps_x10;
+// Animation fps: only frames that follow another within 100 ms count, so idle time does not
+// pull the number down. Kept in 1 s buckets; fps_x10() covers the last 5 (one STATS period).
+static int64_t s_last_frame, s_fps_t0;
+static uint32_t s_int_n, s_int_us;
+static uint32_t s_hist_n[5], s_hist_us[5];
+static int s_fps_i;
+
+static void refr_start_cb(lv_event_t*) {
+  int64_t now = esp_timer_get_time();
+  s_stream_frame = s_stream && now - s_last_stream_frame >= s_stream_period_us;
+  if (s_stream_frame) s_last_stream_frame = now;
+}
 
 static void flush_cb(lv_display_t* d, const lv_area_t* a, uint8_t* px) {
   int w = lv_area_get_width(a), h = lv_area_get_height(a);
   hal::display_push(a->x1, a->y1, w, h, px);
-  if (s_stream && !sys::stream_rect(a->x1, a->y1, w, h, px)) mark_stale(a);
-  if (lv_display_flush_is_last(d)) s_frames++;
+  if (s_stream && !(s_stream_frame && sys::stream_rect(a->x1, a->y1, w, h, px))) mark_stale(a);
+  if (lv_display_flush_is_last(d)) {
+    int64_t now = esp_timer_get_time();
+    if (now - s_last_frame < 100000) {
+      s_int_n++;
+      s_int_us += now - s_last_frame;
+    }
+    s_last_frame = now;
+  }
   lv_display_flush_ready(d);
 }
 
@@ -105,6 +130,7 @@ static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
   if (down && s_dimmed) {
     s_dimmed = false;
     s_swallow = true;
+    lv_display_trigger_activity(s_disp);  // a swallowed press does not count as activity
     bl_fade(s_level, FX_MOTION_FAST_MS);
   }
   if (s_swallow) {
@@ -133,6 +159,7 @@ void init(uint8_t rotation) {
   lv_display_set_color_format(s_disp, LV_COLOR_FORMAT_RGB565_SWAPPED);
   lv_display_set_flush_cb(s_disp, flush_cb);
   lv_display_set_buffers(s_disp, b1, b2, bytes, LV_DISPLAY_RENDER_MODE_PARTIAL);
+  lv_display_add_event_cb(s_disp, refr_start_cb, LV_EVENT_REFR_START, nullptr);
   lv_indev_t* in = lv_indev_create();
   lv_indev_set_type(in, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(in, touch_cb);
@@ -145,7 +172,14 @@ uint8_t rotation() { return s_rot; }
 bool portrait() { return (s_rot & 1) == 0; }
 int width() { return lv_display_get_horizontal_resolution(s_disp); }
 int height() { return lv_display_get_vertical_resolution(s_disp); }
-uint16_t fps_x10() { return s_fps_x10; }
+uint16_t fps_x10() {
+  uint32_t n = 0, us = 0;
+  for (int i = 0; i < 5; i++) {
+    n += s_hist_n[i];
+    us += s_hist_us[i];
+  }
+  return us ? (uint64_t)n * 10000000ULL / us : 0;
+}
 
 void set_rotation(uint8_t r) {
   r &= 3;
@@ -158,8 +192,9 @@ void set_rotation(uint8_t r) {
   lv_obj_invalidate(lv_screen_active());
 }
 
-void stream_enable(bool on) {
+void stream_enable(bool on, uint8_t fps) {
   s_stream = on;
+  s_stream_period_us = 1000000 / (fps ? fps : 10);
   sys::stream_set_active(on);
   s_stale = false;
   if (on) stream_full_refresh();
@@ -173,12 +208,15 @@ void stream_full_refresh() {
 uint32_t step() {
   uint32_t wait = lv_timer_handler();
   int64_t now = esp_timer_get_time();
-  // Re-send areas the stream dropped, once the TX buffer has drained enough.
+  // Redraw stale areas for the stream when the screen is idle (or they waited too long),
+  // and the TX buffer has drained enough. That redraw is always a stream frame.
   if (s_stream && s_stale) {
+    bool idle = now - s_last_frame > s_stream_period_us;
     size_t bytes = (size_t)lv_area_get_width(&s_stale_area) * lv_area_get_height(&s_stale_area) * 2;
-    if (sys::stream_has_room(bytes < 8192 ? bytes : 8192)) {
+    if ((idle || now - s_stale_since > STALE_MAX_US) && sys::stream_has_room(bytes < 8192 ? bytes : 8192)) {
       lv_area_t a = s_stale_area;
       s_stale = false;
+      s_last_stream_frame = 0;
       lv_obj_invalidate_area(lv_screen_active(), &a);
     }
   }
@@ -188,8 +226,10 @@ uint32_t step() {
     bl_fade(dim_target(), FX_MOTION_SLOW_MS);
   }
   if (now - s_fps_t0 >= 1000000) {
-    s_fps_x10 = s_frames * 10000000LL / (now - s_fps_t0);
-    s_frames = 0;
+    s_hist_n[s_fps_i] = s_int_n;
+    s_hist_us[s_fps_i] = s_int_us;
+    s_fps_i = (s_fps_i + 1) % 5;
+    s_int_n = s_int_us = 0;
     s_fps_t0 = now;
   }
   return wait < 1 ? 1 : (wait > 10 ? 10 : wait);

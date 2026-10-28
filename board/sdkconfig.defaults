@@ -19,3 +19,6 @@ CONFIG_LV_USE_CLIB_MALLOC=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_DEF_REFR_PERIOD=16
+# Rendering speed (P4 profiling, docs/board-info.md): corner masks for many radii, style lookups.
+CONFIG_LV_DRAW_SW_CIRCLE_CACHE_SIZE=16
+CONFIG_LV_OBJ_STYLE_CACHE=y

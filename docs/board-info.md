@@ -136,7 +136,7 @@ Findings:
 - **LCD SPI at 80 MHz works**: a colour-bar write at 80 MHz read back over MISO (20 MHz) with **0 wrong pixels**, and `display_selftest()` stays in `fenix_hal` for later checks. HSPI pins 14/13/12/15 are the IOMUX pins, so 80 MHz needs no GPIO matrix.
 - **LVGL's FreeRTOS OS layer with 2 draw units halves the frame rate** here (task hand-off cost outweighs the second core for these small areas). Not used; LVGL runs in one UI task.
 - `CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM` overflows IRAM by ~30 KB. Not used.
-- Draw buffers: **2 × 320 × 32 lines = 40 KB** (16→24→40 lines gave 25→28→31 fps on the fade; 32 is the balance). Heap after LVGL init and buffers: ~243 KB free of ~297 KB.
+- Draw buffers: **2 × 320 × 32 lines = 40 KB** (16→24→40 lines gave 25→28→31 fps on the fade; 32 is the balance). Heap after LVGL init and buffers: ~243 KB free of ~297 KB. (Corrected in P4: the real system screens render fastest with **80-line** bands, see "Rendering speed" below.)
 - Portrait (rotation 0) and landscape (1) perform the same.
 - Motion rule that follows: transitions use **slides and scrims** (≥ 40 fps) rather than layer opacity on big areas (~36 fps).
 - Touch mapping per rotation needs a person at the board; it is checked in the morning review (LovyanGFX rotates touch with the panel).
@@ -160,7 +160,7 @@ Findings:
 
 ## fenixOS board core (P4, 2026-10-29)
 
-- **Image:** 796 KB app (`fenixos.bin`, 62% of the 2 MB factory slot free). Free heap with Home shown: ~140 KB (`HELLO_ACK` 143,668 B; the gate is ≥ 60 KB).
+- **Image:** ~790 KB app (`fenixos.bin`, 62% of the 2 MB factory slot free). Free heap with Home shown: ~134 KB, minimum ~120 KB with 80-line bands (the gate is ≥ 60 KB).
 - **Link task:** UART0 at 921600 with a 4 KB RX and a 16 KB TX buffer. The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
 - **Stream:** each flushed area is cut into bands of ≤ 3 KB raw and sent RLE16 (raw when RLE is not smaller). A static Home screen streams at ~3–4 KB/s.
 - **Reset reason:** a reset through the EN pin (the PC's RTS line, esptool, `serial_read.py --reset`) reports `ESP_RST_POWERON`, the same as a cold power-on, and the RTC clock restarts. So the "time valid" flag is cleared at boot on POWERON (`hal::time_boot_check`); it survives `esp_restart` and deep sleep. (Corrected: the first version also required reset reason ≠ POWERON when reading the flag, so the time never became valid after a PC-triggered reset.)
@@ -169,3 +169,22 @@ Findings:
   - A flex column centres items inside its track, which is only as wide as the widest item. `track_cross_place` must be CENTER too, or centred layouts (Dock home) sit to the left.
   - Instant screen swaps go through `lv_screen_load_anim(..., 0, 0, true)`, never `lv_screen_load` plus a manual delete: that can delete the old screen twice while a slide is still running.
 - **First `fenix hello` after one flash** failed 4 times with "no HELLO_ACK", then always worked (a raw Python HELLO got answers at the same time). Not reproduced in ~20 later flashes. Watch for it.
+
+### Rendering speed (P4, 2026-10-29)
+
+Measured with `fenix bench` (opens and closes Settings every second: two full-screen slides) and the animation fps in `STATS` (frames ≤ 100 ms apart only).
+
+| Change | Slide fps | Render per frame | Free heap |
+|---|---|---|---|
+| Start (stale `sdkconfig`, 32-line bands) | 13 | ~46 ms | 143 KB |
+| Fresh `sdkconfig` from `sdkconfig.defaults` | 25 | ~26 ms | 196 KB |
+| + LVGL circle cache 16, style cache | 25 | ~26 ms | 196 KB |
+| + 48-line bands | 29 | | 175 KB |
+| **+ 80-line bands (kept)** | **34.5** | ~21 ms | **134 KB** (min 121) |
+| 80-line bands, streaming every frame | 21.7 | | 129 KB |
+| **80-line bands, stream throttled to the PC rate (kept)** | **29** | | 134 KB |
+
+- **Stale `board/sdkconfig`:** it was made before `sdkconfig.defaults` had its final values, and IDF never re-applies defaults to an existing `sdkconfig`. The firmware ran DIO 40 MHz flash, LVGL's own 64 KB pool and a 33 ms refresh. Fix: delete `board/sdkconfig` after editing `sdkconfig.defaults` (`docs/toolchain.md`). CI always builds from the defaults.
+- Rounded-corner clipping (`clip_corner` on grouped lists) cost nothing measurable here; it is off anyway, and pressed rows round their own highlight.
+- **Bands:** fewer, taller bands mean fewer passes over the object tree per frame. 80 lines = 3 bands in landscape, 4 in portrait.
+- **Stream throttle:** only frames on the PC's `STREAM_START` rate are encoded. Areas drawn in between, and bands that did not fit the TX buffer, are marked stale and redrawn for the stream when the screen is idle (or after 1 s). During slides the stream is link-bound (~45 KB/s, ~3.5 screens of pixels per s, RLE ~11×).

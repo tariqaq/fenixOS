@@ -17,7 +17,7 @@ use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
-use fenix_proto::{app, Msg};
+use fenix_proto::{app, Msg, Stats};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -64,6 +64,11 @@ fn main() {
             (Some(x), Some(y)) => tap(opts, x, y),
             _ => usage(),
         },
+        "bench" => bench(
+            opts,
+            arg_u64(&args, 1, 10),
+            args.iter().any(|a| a == "nostream"),
+        ),
         "shot" => shot(
             opts,
             args.get(1).map(String::as_str).unwrap_or("shot.png"),
@@ -85,7 +90,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|list|install <fxp> <id> <ver>|remove <id>|soak <min> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <fxp> <id> <ver>|remove <id>|soak <min> [--port COMx]");
     2
 }
 
@@ -238,6 +243,69 @@ fn wait_connected(link: &Link, secs: u64) -> bool {
         }
     }
     false
+}
+
+/// Stream benchmark: stream while opening and closing Settings every second
+/// (landscape Tiles home), then report throughput and what the board dropped.
+fn bench(opts: LinkOptions, secs: u64, nostream: bool) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        eprintln!("no board");
+        return 1;
+    }
+    if !nostream {
+        link.send(Msg::StreamStart { fps: 10 });
+        link.send(Msg::StreamSync);
+    }
+    let mut canvas = StreamCanvas::default();
+    let (mut rects, mut bytes, mut px) = (0u32, 0usize, 0u64);
+    let mut stats: Vec<Stats> = Vec::new();
+    let t0 = Instant::now();
+    let end = t0 + Duration::from_secs(secs.max(2));
+    let mut next_tap = t0 + Duration::from_millis(500);
+    let mut open = false;
+    while Instant::now() < end {
+        if Instant::now() >= next_tap {
+            let (x, y) = if open { (30, 16) } else { (58, 200) };
+            link.send(Msg::Touch { x, y, down: true });
+            std::thread::sleep(Duration::from_millis(60));
+            link.send(Msg::Touch { x, y, down: false });
+            open = !open;
+            next_tap += Duration::from_secs(1);
+        }
+        if let Some(Event::Msg(m)) = link.recv_event(Duration::from_millis(20)) {
+            match &m {
+                Msg::StreamRect(r) => bytes += r.data.len(),
+                Msg::Stats(s) => stats.push(s.clone()),
+                Msg::Log { text, .. } => println!("log: {text}"),
+                _ => {}
+            }
+            if let Some(d) = canvas.apply(&m) {
+                rects += 1;
+                px += d.w as u64 * d.h as u64;
+            }
+        }
+    }
+    link.send(Msg::StreamStop);
+    let dt = t0.elapsed().as_secs_f32();
+    let full = (canvas.width as u64 * canvas.height as u64).max(1);
+    println!(
+        "{secs} s: {rects} rects, {:.1} KB/s, {:.1} screens/s of pixels, {:.1}x RLE ratio",
+        bytes as f32 / 1024.0 / dt,
+        px as f32 / full as f32 / dt,
+        (px * 2) as f32 / bytes.max(1) as f32
+    );
+    if let (Some(a), Some(b)) = (stats.first(), stats.last()) {
+        println!(
+            "board: fps {:.1}, heap {} (min {}), stream dropped +{}, rx errors {}",
+            b.fps_x10 as f32 / 10.0,
+            b.free_heap,
+            b.min_heap,
+            b.stream_dropped - a.stream_dropped,
+            b.rx_errors
+        );
+    }
+    0
 }
 
 fn shot(opts: LinkOptions, out: &str, secs: u64) -> i32 {

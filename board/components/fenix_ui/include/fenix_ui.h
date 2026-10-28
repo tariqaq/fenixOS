@@ -26,8 +26,8 @@ bool dimmed();
 // Fade the backlight to 0 (blocking, ~FX_MOTION_SLOW_MS).
 void backlight_fade_out();
 
-// Stream hook: when on, every flushed area is also sent to the PC.
-void stream_enable(bool on);
+// Stream hook: when on, frames are sent to the PC at up to `fps` (the PC's STREAM_START rate).
+void stream_enable(bool on, uint8_t fps);
 void stream_full_refresh();
 
 // ---- Screen stack ----
