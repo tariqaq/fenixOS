@@ -22,3 +22,7 @@ node_modules/
 /app/src-tauri/gen/
 /app/src-tauri/resources/firmware/
 *.log
+/board/spikes/*/build/
+/board/spikes/*/sdkconfig
+/board/spikes/*/sdkconfig.old
+/board/spikes/*/managed_components/
