@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings, About</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 640px; height: 480px; background: #000000; overflow: hidden">
+<div style="width: 320px; height: 240px; transform: scale(2); transform-origin: 0 0; display: flex; flex-direction: column; overflow: hidden">
+<div style="height: 32px; flex: 0 0 32px; position: relative; display: flex; align-items: center; padding: 0 8px">
+<button type="button" style="height: 32px; border: 0; background: transparent; color: #0A84FF; padding: 0 4px; display: flex; align-items: center; gap: 2px; font-size: 15px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#0A84FF"><path d="M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z"></path></svg>
+<span>Settings</span>
+</button>
+<p style="margin: 0; position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 600; pointer-events: none">About</p>
+</div>
+<div style="padding: 8px 12px 0 12px">
+<dl style="margin: 0; background: #1C1C1E; border-radius: 12px; padding: 0 10px">
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">fenixOS</dt><dd style="margin: 0; font-size: 13px; color: #98989F">v0.1.0</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">Board</dt><dd style="margin: 0; font-size: 13px; color: #98989F">ESP32-2432S028R</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">Chip</dt><dd style="margin: 0; font-size: 13px; color: #98989F">ESP32-D0WD-V3 rev 3.1</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">CPU</dt><dd style="margin: 0; font-size: 13px; color: #98989F">2 cores, 240 MHz</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">Memory free</dt><dd style="margin: 0; font-size: 13px; color: #98989F">[live] KB of 520 KB</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">Flash</dt><dd style="margin: 0; font-size: 13px; color: #98989F">4 MB</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between"><dt style="font-size: 13px">Display</dt><dd style="margin: 0; font-size: 13px; color: #98989F">2.8 in, 320 × 240, ILI9341</dd></div>
+</dl>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

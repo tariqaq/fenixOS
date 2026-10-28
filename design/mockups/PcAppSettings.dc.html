@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fenixOS PC, app settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+html,body{overflow-x:clip}
+button,select{font-family:inherit}
+a{color:#0A84FF;text-decoration:none}a:hover{color:#409CFF}
+button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="min-height: 800px; background: #000000; display: flex; flex-direction: column">
+<div style="height: 40px; flex: 0 0 40px; display: flex; align-items: center; background: #161618; border-bottom: 1px solid #2C2C2E">
+<p style="margin: 0 0 0 16px; font-size: 13px; font-weight: 600; color: #98989F">fenixOS</p>
+<div style="margin-left: auto; display: flex">
+<button type="button" aria-label="Minimize" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5" stroke="#FFFFFF" stroke-width="1"></line></svg></button>
+<button type="button" aria-label="Maximize" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="#FFFFFF" stroke-width="1"></rect></svg></button>
+<button type="button" aria-label="Close to tray" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0 0 L10 10 M10 0 L0 10" stroke="#FFFFFF" stroke-width="1"></path></svg></button>
+</div>
+</div>
+<div style="flex: 1; display: flex; flex-wrap: wrap">
+<nav aria-label="fenixOS" style="flex: 1 1 220px; max-width: 260px; background: #1C1C1E; padding: 16px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px">
+<a href="PcDashboard.dc.html" aria-current="page" style="height: 36px; border-radius: 8px; background: #2C2C2E; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#0A84FF"><path d="M120,56v48a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40h48A16,16,0,0,1,120,56Zm80-16H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,200,40Zm-96,96H56a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,104,136Zm96,0H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,200,136Z"></path></svg>
+<span>Apps</span>
+</a>
+<a href="PcBoard.dc.html" style="height: 36px; border-radius: 8px; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; font-size: 15px">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#98989F"><path d="M104,104h48v48H104Zm136,48a8,8,0,0,1-8,8H216v40a16,16,0,0,1-16,16H160v16a8,8,0,0,1-16,0V216H112v16a8,8,0,0,1-16,0V216H56a16,16,0,0,1-16-16V160H24a8,8,0,0,1,0-16H40V112H24a8,8,0,0,1,0-16H40V56A16,16,0,0,1,56,40H96V24a8,8,0,0,1,16,0V40h32V24a8,8,0,0,1,16,0V40h40a16,16,0,0,1,16,16V96h16a8,8,0,0,1,0,16H216v32h16A8,8,0,0,1,240,152ZM168,96a8,8,0,0,0-8-8H96a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8Z"></path></svg>
+<span>Board</span>
+</a>
+<a href="PcSettings.dc.html" style="height: 36px; border-radius: 8px; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; font-size: 15px">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#98989F"><path d="M237.94,107.21a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A111.92,111.92,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.63a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.91,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"></path></svg>
+<span>Settings</span>
+</a>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; padding: 24px 32px 32px 32px; box-sizing: border-box">
+<div style="max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px">
+<a href="PcDashboard.dc.html" style="align-self: flex-start; display: flex; align-items: center; gap: 4px; font-size: 15px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#0A84FF"><path d="M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z"></path></svg>
+<span>Apps</span>
+</a>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px">
+<div style="width: 64px; height: 64px; border-radius: 16px; background: #B55400; display: flex; align-items: center; justify-content: center; flex: 0 0 64px">
+<svg aria-hidden="true" width="32" height="32" viewBox="0 0 256 256" fill="#FFFFFF"><path d="M32,80a8,8,0,0,1,8-8H77.17a28,28,0,0,1,53.66,0H216a8,8,0,0,1,0,16H130.83a28,28,0,0,1-53.66,0H40A8,8,0,0,1,32,80Zm184,88H194.83a28,28,0,0,0-53.66,0H40a8,8,0,0,0,0,16H141.17a28,28,0,0,0,53.66,0H216a8,8,0,0,0,0-16Z"></path></svg>
+</div>
+<div style="flex: 1; min-width: 200px; display: flex; flex-direction: column; gap: 2px">
+<h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em">Stream Deck</h1>
+<p style="margin: 0; font-size: 14px; color: #98989F">Buttons and sliders on the board that control this PC</p>
+</div>
+<label style="display: flex; align-items: center; gap: 10px; font-size: 15px">
+<span>On for board</span>
+<button type="button" role="switch" aria-checked="true" aria-label="Stream Deck on the board" style="position: relative; width: 51px; height: 31px; border: 0; border-radius: 16px; background: #30D158; padding: 0"><span style="position: absolute; top: 2px; left: 22px; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF"></span></button>
+</label>
+</div>
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0 0 0 4px; font-size: 15px; font-weight: 600; color: #98989F">On the board</h2>
+<div style="background: #1C1C1E; border-radius: 14px; overflow: hidden">
+<div style="height: 48px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A">
+<span style="font-size: 15px">Mute button</span>
+<button type="button" role="switch" aria-checked="true" aria-label="Mute button" style="position: relative; width: 51px; height: 31px; border: 0; border-radius: 16px; background: #30D158; padding: 0"><span style="position: absolute; top: 2px; left: 22px; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF"></span></button>
+</div>
+<div style="height: 48px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A">
+<span style="font-size: 15px">Volume slider</span>
+<button type="button" role="switch" aria-checked="true" aria-label="Volume slider" style="position: relative; width: 51px; height: 31px; border: 0; border-radius: 16px; background: #30D158; padding: 0"><span style="position: absolute; top: 2px; left: 22px; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF"></span></button>
+</div>
+<div style="height: 48px; padding: 0 16px; display: flex; align-items: center; justify-content: space-between">
+<label for="step" style="font-size: 15px">Slider step</label>
+<select id="step" style="height: 30px; border: 0; border-radius: 8px; background: #2C2C2E; color: #FFFFFF; padding: 0 10px; font-size: 14px">
+<option>1 %</option>
+<option selected>5 %</option>
+<option>10 %</option>
+</select>
+</div>
+</div>
+<p style="margin: 0 0 0 4px; font-size: 12px; color: #98989F">These options come from the app. fenixOS shows every app's options in this same style.</p>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0 0 0 4px; font-size: 15px; font-weight: 600; color: #98989F">Permissions</h2>
+<div style="background: #1C1C1E; border-radius: 14px; overflow: hidden">
+<div style="height: 48px; padding: 0 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #38383A">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="#98989F"><path d="M160,32.25V223.69a8.29,8.29,0,0,1-3.91,7.18,8,8,0,0,1-9-.56l-65.57-51A4,4,0,0,1,80,176.16V79.84a4,4,0,0,1,1.55-3.15l65.57-51a8,8,0,0,1,10,.16A8.27,8.27,0,0,1,160,32.25ZM60,80H32A16,16,0,0,0,16,96v64a16,16,0,0,0,16,16H60a4,4,0,0,0,4-4V84A4,4,0,0,0,60,80Zm126.77,20.84a8,8,0,0,0-.72,11.3,24,24,0,0,1,0,31.72,8,8,0,1,0,12,10.58,40,40,0,0,0,0-52.88A8,8,0,0,0,186.74,100.84Zm40.89-26.17a8,8,0,1,0-11.92,10.66,64,64,0,0,1,0,85.34,8,8,0,1,0,11.92,10.66,80,80,0,0,0,0-106.66Z"></path></svg>
+<span style="font-size: 15px">Change the system volume</span>
+</div>
+<div style="height: 48px; padding: 0 16px; display: flex; align-items: center; gap: 12px">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="#98989F"><path d="M165.78,224H208a16,16,0,0,0,16-16V170.35A8,8,0,0,0,212.94,163a23.37,23.37,0,0,1-8.94,1.77c-13.23,0-24-11.1-24-24.73s10.77-24.73,24-24.73a23.37,23.37,0,0,1,8.94,1.77A8,8,0,0,0,224,109.65V72a16,16,0,0,0-16-16H171.78a35.36,35.36,0,0,0,.22-4,36,36,0,0,0-72,0,35.36,35.36,0,0,0,.22,4H64A16,16,0,0,0,48,72v32.22a35.36,35.36,0,0,0-4-.22,36,36,0,0,0,0,72,35.36,35.36,0,0,0,4-.22V208a16,16,0,0,0,16,16h42.22"></path></svg>
+<span style="font-size: 15px">Runs its own helper program while switched on</span>
+</div>
+</div>
+</section>
+<section style="display: flex; flex-direction: column; gap: 8px">
+<h2 style="margin: 0 0 0 4px; font-size: 15px; font-weight: 600; color: #98989F">App</h2>
+<dl style="margin: 0; background: #1C1C1E; border-radius: 14px; padding: 0 16px">
+<div style="height: 48px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 15px">Source</dt><dd style="margin: 0; font-size: 15px; color: #98989F">github.com/tariqaq/[repo]</dd></div>
+<div style="height: 48px; display: flex; align-items: center; justify-content: space-between"><dt style="font-size: 15px">Version</dt><dd style="margin: 0; font-size: 15px; color: #98989F">[version]</dd></div>
+</dl>
+</section>
+<button type="button" style="align-self: flex-start; height: 40px; border: 0; border-radius: 10px; background: #1C1C1E; color: #FF453A; padding: 0 16px; font-size: 15px; font-weight: 600">Remove app</button>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

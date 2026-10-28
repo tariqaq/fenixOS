@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fenixOS PC, board update</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+html,body{overflow-x:clip}
+button{font-family:inherit}
+a{color:#0A84FF;text-decoration:none}a:hover{color:#409CFF}
+button:focus-visible,a:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="min-height: 800px; background: #000000; display: flex; flex-direction: column">
+<div style="height: 40px; flex: 0 0 40px; display: flex; align-items: center; background: #161618; border-bottom: 1px solid #2C2C2E">
+<p style="margin: 0 0 0 16px; font-size: 13px; font-weight: 600; color: #98989F">fenixOS</p>
+<div style="margin-left: auto; display: flex">
+<button type="button" aria-label="Minimize" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5" stroke="#FFFFFF" stroke-width="1"></line></svg></button>
+<button type="button" aria-label="Maximize" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="#FFFFFF" stroke-width="1"></rect></svg></button>
+<button type="button" aria-label="Close to tray" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0 0 L10 10 M10 0 L0 10" stroke="#FFFFFF" stroke-width="1"></path></svg></button>
+</div>
+</div>
+<div style="flex: 1; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: 40px; padding: 48px 24px; background: #0C0C0D">
+<div style="flex: 0 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0 0 0 4px; font-size: 13px; font-weight: 600; color: #98989F">On connect, when versions differ</p>
+<div role="dialog" aria-labelledby="upd-title" style="background: #2C2C2E; border-radius: 20px; padding: 28px 24px 20px 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; box-shadow: 0 24px 64px rgba(0,0,0,0.6)">
+<svg aria-hidden="true" width="44" height="44" viewBox="0 0 256 256" fill="#FF9F0A"><path d="M236.8,188.09,149.35,36.22h0a24.76,24.76,0,0,0-42.7,0L19.2,188.09a23.51,23.51,0,0,0,0,23.72A24.35,24.35,0,0,0,40.55,224h174.9a24.35,24.35,0,0,0,21.33-12.19A23.51,23.51,0,0,0,236.8,188.09ZM120,104a8,8,0,0,1,16,0v40a8,8,0,0,1-16,0Zm8,88a12,12,0,1,1,12-12A12,12,0,0,1,128,192Z"></path></svg>
+<h2 id="upd-title" style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700">Board firmware is out of date</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #98989F">The board runs fenixOS v0.1.0. This app is v0.2.0. Update the board so both match. Your apps and settings stay.</p>
+<div style="width: 100%; margin-top: 16px; display: flex; flex-direction: column; gap: 8px">
+<button type="button" style="height: 44px; border: 0; border-radius: 12px; background: #0071E3; color: #FFFFFF; font-size: 17px; font-weight: 600">Update board</button>
+<button type="button" style="height: 44px; border: 0; border-radius: 12px; background: transparent; color: #0A84FF; font-size: 17px">Later</button>
+</div>
+</div>
+</div>
+<div style="flex: 0 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0 0 0 4px; font-size: 13px; font-weight: 600; color: #98989F">After Update board</p>
+<div role="dialog" aria-labelledby="prog-title" style="background: #2C2C2E; border-radius: 20px; padding: 28px 24px 24px 24px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; box-shadow: 0 24px 64px rgba(0,0,0,0.6)">
+<svg aria-hidden="true" width="44" height="44" viewBox="0 0 256 256" fill="#0A84FF"><path d="M104,104h48v48H104Zm136,48a8,8,0,0,1-8,8H216v40a16,16,0,0,1-16,16H160v16a8,8,0,0,1-16,0V216H112v16a8,8,0,0,1-16,0V216H56a16,16,0,0,1-16-16V160H24a8,8,0,0,1,0-16H40V112H24a8,8,0,0,1,0-16H40V56A16,16,0,0,1,56,40H96V24a8,8,0,0,1,16,0V40h32V24a8,8,0,0,1,16,0V40h40a16,16,0,0,1,16,16V96h16a8,8,0,0,1,0,16H216v32h16A8,8,0,0,1,240,152ZM168,96a8,8,0,0,0-8-8H96a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8Z"></path></svg>
+<h2 id="prog-title" style="margin: 8px 0 0 0; font-size: 22px; font-weight: 700">Updating the board</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.5; color: #98989F">Keep the board plugged in. It restarts on its own when done.</p>
+<div role="progressbar" aria-label="Firmware update" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62" style="width: 100%; margin-top: 20px; height: 6px; border-radius: 3px; background: #3A3A3C; overflow: hidden">
+<div style="width: 62%; height: 6px; border-radius: 3px; background: #0A84FF"></div>
+</div>
+<p style="margin: 4px 0 0 0; width: 100%; display: flex; font-size: 13px; color: #98989F">
+<span>Writing firmware…</span>
+<span style="margin-left: auto; font-variant-numeric: tabular-nums">62%</span>
+</p>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings, Home screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 640px; height: 480px; background: #000000; overflow: hidden">
+<div style="width: 320px; height: 240px; transform: scale(2); transform-origin: 0 0; display: flex; flex-direction: column">
+<div style="height: 32px; flex: 0 0 32px; position: relative; display: flex; align-items: center; padding: 0 8px">
+<button type="button" style="height: 32px; border: 0; background: transparent; color: #0A84FF; padding: 0 4px; display: flex; align-items: center; gap: 2px; font-size: 15px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#0A84FF"><path d="M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z"></path></svg>
+<span>Settings</span>
+</button>
+<p style="margin: 0; position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 600; pointer-events: none">Home screen</p>
+</div>
+<div role="radiogroup" aria-label="Home screen style" style="padding: 10px 12px 0 12px; display: flex; gap: 10px">
+<button type="button" role="radio" aria-checked="true" style="flex: 1; border: 0; background: transparent; color: #FFFFFF; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 140px; height: 105px; box-sizing: border-box; border-radius: 12px; border: 2px solid #0A84FF; background: #000000; padding: 8px; display: flex; flex-direction: column; gap: 5px">
+<span style="height: 16px; width: 54px; border-radius: 3px; background: #FFFFFF; align-self: flex-start"></span>
+<span style="height: 5px; width: 40px; border-radius: 2px; background: #98989F"></span>
+<span style="margin-top: auto; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px">
+<span style="height: 30px; border-radius: 5px; background: #636366"></span>
+<span style="height: 30px; border-radius: 5px; background: #4B48C9"></span>
+<span style="height: 30px; border-radius: 5px; background: #0062CC"></span>
+<span style="height: 30px; border-radius: 5px; background: #B55400"></span>
+</span>
+</span>
+<span style="display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600">
+<svg aria-hidden="true" width="12" height="12" viewBox="0 0 256 256" fill="#0A84FF"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm45.66,85.66-56,56a8,8,0,0,1-11.32,0l-24-24a8,8,0,0,1,11.32-11.32L112,148.69l50.34-50.35a8,8,0,0,1,11.32,11.32Z"></path></svg>
+<span>Tiles</span>
+</span>
+</button>
+<button type="button" role="radio" aria-checked="false" style="flex: 1; border: 0; background: transparent; color: #FFFFFF; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<span style="width: 140px; height: 105px; box-sizing: border-box; border-radius: 12px; border: 2px solid #2C2C2E; background: #000000; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 5px">
+<span style="height: 20px; width: 64px; border-radius: 3px; background: #FFFFFF; margin-top: 6px"></span>
+<span style="height: 5px; width: 44px; border-radius: 2px; background: #98989F"></span>
+<span style="margin-top: auto; display: flex; gap: 7px">
+<span style="width: 20px; height: 20px; border-radius: 6px; background: #636366"></span>
+<span style="width: 20px; height: 20px; border-radius: 6px; background: #4B48C9"></span>
+<span style="width: 20px; height: 20px; border-radius: 6px; background: #0062CC"></span>
+<span style="width: 20px; height: 20px; border-radius: 6px; background: #B55400"></span>
+</span>
+</span>
+<span style="font-size: 13px; color: #98989F">Dock</span>
+</button>
+</div>
+<p style="margin: 12px 16px 0 16px; font-size: 12px; line-height: 16px; color: #98989F; text-align: center">Tiles show big app tiles under the clock. Dock keeps the clock large with small icons below.</p>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -17,6 +17,7 @@ extern "C" void app_main(void) {
   cfg.source_clk = UART_SCLK_DEFAULT;
   uart_driver_install(u, 8192, 8192, 0, nullptr, 0);
   uart_param_config(u, &cfg);
+  uart_set_pin(u, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);  // console is off, so route the pins here
   static uint8_t buf[2048];
   char line[32];
   int ll = 0;

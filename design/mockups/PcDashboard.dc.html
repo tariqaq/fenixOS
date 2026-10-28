@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>fenixOS PC, apps</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+html,body{overflow-x:clip}
+button{font-family:inherit}
+a{color:#0A84FF;text-decoration:none}a:hover{color:#409CFF}
+button:focus-visible,a:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="min-height: 800px; background: #000000; display: flex; flex-direction: column">
+<div style="height: 40px; flex: 0 0 40px; display: flex; align-items: center; background: #161618; border-bottom: 1px solid #2C2C2E">
+<p style="margin: 0 0 0 16px; font-size: 13px; font-weight: 600; color: #98989F">fenixOS</p>
+<div style="margin-left: auto; display: flex">
+<button type="button" aria-label="Minimize" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="5" x2="10" y2="5" stroke="#FFFFFF" stroke-width="1"></line></svg></button>
+<button type="button" aria-label="Maximize" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="#FFFFFF" stroke-width="1"></rect></svg></button>
+<button type="button" aria-label="Close to tray" style="width: 46px; height: 40px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 10 10"><path d="M0 0 L10 10 M10 0 L0 10" stroke="#FFFFFF" stroke-width="1"></path></svg></button>
+</div>
+</div>
+<div style="flex: 1; display: flex; flex-wrap: wrap">
+<nav aria-label="fenixOS" style="flex: 1 1 220px; max-width: 260px; background: #1C1C1E; padding: 16px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px">
+<a href="PcDashboard.dc.html" aria-current="page" style="height: 36px; border-radius: 8px; background: #2C2C2E; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#0A84FF"><path d="M120,56v48a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40h48A16,16,0,0,1,120,56Zm80-16H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V56A16,16,0,0,0,200,40Zm-96,96H56a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,104,136Zm96,0H152a16,16,0,0,0-16,16v48a16,16,0,0,0,16,16h48a16,16,0,0,0,16-16V152A16,16,0,0,0,200,136Z"></path></svg>
+<span>Apps</span>
+</a>
+<a href="PcBoard.dc.html" style="height: 36px; border-radius: 8px; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; font-size: 15px">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#98989F"><path d="M104,104h48v48H104Zm136,48a8,8,0,0,1-8,8H216v40a16,16,0,0,1-16,16H160v16a8,8,0,0,1-16,0V216H112v16a8,8,0,0,1-16,0V216H56a16,16,0,0,1-16-16V160H24a8,8,0,0,1,0-16H40V112H24a8,8,0,0,1,0-16H40V56A16,16,0,0,1,56,40H96V24a8,8,0,0,1,16,0V40h32V24a8,8,0,0,1,16,0V40h40a16,16,0,0,1,16,16V96h16a8,8,0,0,1,0,16H216v32h16A8,8,0,0,1,240,152ZM168,96a8,8,0,0,0-8-8H96a8,8,0,0,0-8,8v64a8,8,0,0,0,8,8h64a8,8,0,0,0,8-8Z"></path></svg>
+<span>Board</span>
+</a>
+<a href="PcSettings.dc.html" style="height: 36px; border-radius: 8px; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; font-size: 15px">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#98989F"><path d="M237.94,107.21a8,8,0,0,0-3.89-5.4l-29.83-17-.12-33.62a8,8,0,0,0-2.83-6.08,111.91,111.91,0,0,0-36.72-20.67,8,8,0,0,0-6.46.59L128,41.85,97.88,25a8,8,0,0,0-6.47-.6A111.92,111.92,0,0,0,54.73,45.15a8,8,0,0,0-2.83,6.07l-.15,33.65-29.83,17a8,8,0,0,0-3.89,5.4,106.47,106.47,0,0,0,0,41.56,8,8,0,0,0,3.89,5.4l29.83,17,.12,33.63a8,8,0,0,0,2.83,6.08,111.91,111.91,0,0,0,36.72,20.67,8,8,0,0,0,6.46-.59L128,214.15,158.12,231a7.91,7.910,0,0,0,3.9,1,8.09,8.09,0,0,0,2.57-.42,112.1,112.1,0,0,0,36.68-20.73,8,8,0,0,0,2.83-6.07l.15-33.65,29.83-17a8,8,0,0,0,3.89-5.4A106.47,106.47,0,0,0,237.94,107.21ZM128,168a40,40,0,1,1,40-40A40,40,0,0,1,128,168Z"></path></svg>
+<span>Settings</span>
+</a>
+<div style="margin-top: auto; background: #2C2C2E; border-radius: 12px; padding: 12px; display: flex; gap: 10px; align-items: flex-start">
+<svg aria-hidden="true" width="20" height="20" viewBox="0 0 256 256" fill="#30D158" style="flex: 0 0 20px; margin-top: 1px"><path d="M251.2,118.4l-48-36A12,12,0,0,0,184,92v24H76V76H98.06a36,36,0,1,0,0-24H72A20,20,0,0,0,52,72v44H12a12,12,0,0,0,0,24H52v44a20,20,0,0,0,20,20H96v4a20,20,0,0,0,20,20h32a20,20,0,0,0,20-20V176a20,20,0,0,0-20-20H116a20,20,0,0,0-20,20v4H76V140H184v24a12,12,0,0,0,19.2,9.6l48-36a12,12,0,0,0,0-19.2ZM132,52a12,12,0,1,1-12,12A12,12,0,0,1,132,52ZM120,180h24v24H120Zm88-40V116l16,12Z"></path></svg>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<p style="margin: 0; font-size: 14px; font-weight: 600">Board connected</p>
+<p style="margin: 0; font-size: 12px; color: #A1A1A6">USB on COM9</p>
+<p style="margin: 0; font-size: 12px; color: #A1A1A6">fenixOS v0.1.0</p>
+</div>
+</div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; padding: 32px; box-sizing: border-box">
+<div style="max-width: 1120px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.01em">Apps</h1>
+<a href="PcAddApp.dc.html" style="height: 36px; border-radius: 10px; background: #0071E3; color: #FFFFFF; padding: 0 14px; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#FFFFFF"><path d="M228,128a12,12,0,0,1-12,12H140v76a12,12,0,0,1-24,0V140H40a12,12,0,0,1,0-24h76V40a12,12,0,0,1,24,0v76h76A12,12,0,0,1,228,128Z"></path></svg>
+<span>Add app</span>
+</a>
+</div>
+<sc-if value="{{showApps}}" hint-placeholder-val="{{ true }}">
+<p style="margin: 0; font-size: 15px; color: #98989F">Switch an app on to install it on the board. Click a tile for its settings.</p>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px">
+<sc-for list="{{tiles}}" as="t" hint-placeholder-count="2">
+<div style="height: 140px; border-radius: 20px; background: {{t.bg}}; position: relative">
+<a href="PcAppSettings.dc.html" style="position: absolute; inset: 0; border-radius: 20px; padding: 18px; color: #FFFFFF; display: flex; flex-direction: column; justify-content: space-between">
+<svg aria-hidden="true" width="28" height="28" viewBox="0 0 256 256" fill="{{t.iconFill}}"><path d="{{t.d}}"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 2px; padding-right: 64px">
+<span style="font-size: 17px; font-weight: 600">{{t.name}}</span>
+<span style="font-size: 12px; font-weight: 500; color: {{t.subColor}}">{{t.status}}</span>
+</span>
+</a>
+<button type="button" role="switch" aria-checked="{{t.checked}}" aria-label="{{t.switchLabel}}" onClick="{{t.toggle}}" style="position: absolute; right: 18px; bottom: 18px; width: 51px; height: 31px; border: 0; border-radius: 16px; background: {{t.track}}; padding: 0">
+<span style="position: absolute; top: 2px; left: {{t.knob}}; width: 27px; height: 27px; border-radius: 14px; background: #FFFFFF"></span>
+</button>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{showEmpty}}" hint-placeholder-val="{{ false }}">
+<div style="background: #1C1C1E; border-radius: 20px; padding: 48px 24px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px">
+<svg aria-hidden="true" width="40" height="40" viewBox="0 0 256 256" fill="#98989F"><path d="M165.78,224H208a16,16,0,0,0,16-16V170.35A8,8,0,0,0,212.94,163a23.37,23.37,0,0,1-8.94,1.77c-13.23,0-24-11.1-24-24.73s10.77-24.73,24-24.73a23.37,23.37,0,0,1,8.94,1.77A8,8,0,0,0,224,109.65V72a16,16,0,0,0-16-16H171.78a35.36,35.36,0,0,0,.22-4,36,36,0,0,0-72,0,35.36,35.36,0,0,0,.22,4H64A16,16,0,0,0,48,72v32.22a35.36,35.36,0,0,0-4-.22,36,36,0,0,0,0,72,35.36,35.36,0,0,0,4-.22V208a16,16,0,0,0,16,16h42.22"></path></svg>
+<p style="margin: 6px 0 0 0; font-size: 22px; font-weight: 600">No apps yet</p>
+<p style="margin: 0; max-width: 420px; font-size: 15px; line-height: 1.5; color: #98989F">Add an app from the fenixOS registry. It shows up here, and on the board once you switch it on.</p>
+<a href="PcAddApp.dc.html" style="margin-top: 8px; font-size: 15px; font-weight: 600">Browse apps</a>
+</div>
+</sc-if>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"view":{"editor":"enum","options":["apps","empty"],"default":"apps"},"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const view = this.props.view ?? 'apps';
+    const st = this.state || {};
+    const base = [
+      { id: 'deck', name: 'Stream Deck', color: '#B55400', on: st.deck ?? true,
+        d: 'M32,80a8,8,0,0,1,8-8H77.17a28,28,0,0,1,53.66,0H216a8,8,0,0,1,0,16H130.83a28,28,0,0,1-53.66,0H40A8,8,0,0,1,32,80Zm184,88H194.83a28,28,0,0,0-53.66,0H40a8,8,0,0,0,0,16H141.17a28,28,0,0,0,53.66,0H216a8,8,0,0,0,0-16Z' },
+      { id: 'app2', name: '[App name]', color: '#00707F', on: st.app2 ?? false,
+        d: 'M165.78,224H208a16,16,0,0,0,16-16V170.35A8,8,0,0,0,212.94,163a23.37,23.37,0,0,1-8.94,1.77c-13.23,0-24-11.1-24-24.73s10.77-24.73,24-24.73a23.37,23.37,0,0,1,8.94,1.77A8,8,0,0,0,224,109.65V72a16,16,0,0,0-16-16H171.78a35.36,35.36,0,0,0,.22-4,36,36,0,0,0-72,0,35.36,35.36,0,0,0,.22,4H64A16,16,0,0,0,48,72v32.22a35.36,35.36,0,0,0-4-.22,36,36,0,0,0,0,72,35.36,35.36,0,0,0,4-.22V208a16,16,0,0,0,16,16h42.22' }
+    ];
+    const tiles = base.map((t) => ({
+      ...t,
+      bg: t.on ? t.color : '#2C2C2E',
+      iconFill: t.on ? '#FFFFFF' : '#98989F',
+      subColor: t.on ? '#FFFFFF' : '#A1A1A6',
+      status: t.on ? 'On, installed on the board' : 'Off',
+      track: t.on ? 'rgba(255,255,255,0.38)' : '#48484A',
+      knob: t.on ? '22px' : '2px',
+      checked: t.on ? 'true' : 'false',
+      switchLabel: t.name + ' on the board',
+      toggle: () => this.setState({ [t.id]: !t.on })
+    }));
+    return { tiles, showApps: view === 'apps', showEmpty: view === 'empty' };
+  }
+}
+</script>
+</body>
+</html>

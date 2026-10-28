@@ -3,7 +3,7 @@
 Review canvas (private, owner only; share from the page's Share menu):
 https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji
 
-Built from the locked design system in `DESIGN.md` (Apple dark, Inter, Phosphor). Board screens are drawn at 2x (320×240 shown as 640×480). PC screens are 1280×800 with the custom dark title bar.
+Source copies of every artboard: `design/mockups/` (`*.dc.html` + `canvas.json`; they render only inside the canvas). Built from the locked design system in `DESIGN.md` (Apple dark, Inter, Phosphor). Board screens are drawn at 2x (320×240 shown as 640×480). PC screens are 1280×800 with the custom dark title bar.
 
 Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with the round 7 changes below applied. New screens come in design round 2 (`docs/PLAN.md` P2).
 
@@ -30,7 +30,11 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 10 | PcAddApp | PC: registry list, search, Add buttons |
 | 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware |
 | 12 | PcUpdate | PC: version mismatch dialog and the progress state |
-| 13 | PcSettings | PC: start with Windows, port, updates, about |
+| 13 | PcSettings | PC: start with Windows, port, updates, about (with "Show welcome again") |
+| 3c | SettingsHome | Board: Settings › Home screen, Tiles / Dock picker with previews |
+| 14 | PcTray | PC: tray menu (status, Open fenixOS, Quit) |
+| 15 | PcPermissions | PC: what an app's PC part will do, shown before Add |
+| 16 | PcLogs | PC: log sheet (filter All / Board / Apps / Problems, Copy, Open log folder), opened from the Board page |
 
 ## Review round 1 (2026-10-29)
 
@@ -39,6 +43,12 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 - Tile colours, PC tile size and switch place: approved as drawn.
 - "Run as administrator" setting dropped: elevation is per action (UAC when an app needs it). (PcSettings artboard updated.)
 
-## Still to draw (design round 2)
+## Design round 2 (2026-10-29, unattended run)
 
-Board Settings › Home screen page, PC tray menu, permissions sheet, log view, PC "Show welcome again" row. Optional: a first-run (OOTB) keyframe storyboard, as Claude's own reference for P9 (no review needed). See `docs/PLAN.md` P2.
+Drawn during the overnight run, so the review is pending: the user said to pick the recommended option for any choice. Choices made:
+- Home screen picker: two live mini previews, the selected one outlined in `accent` with a check.
+- Tray menu: status header (icon + words), Open fenixOS, Quit fenixOS. Left-click opens the window.
+- Permissions sheet: app tile, name, version and source repo, the declared permissions as rows, a plain note on how fenixOS checks apps, Add app / Cancel.
+- Logs: a sheet from the Board page ("Logs" row), filter, copy, open folder; problems in `warning`.
+- "Show welcome again": first row of PC Settings › About.
+- First-run storyboard: not drawn; the scene is designed directly in P9 (`docs/PLAN.md` §3.9).

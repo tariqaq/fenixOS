@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Host app, turned off on PC</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 640px; height: 480px; background: #000000; overflow: hidden">
+<div style="width: 320px; height: 240px; transform: scale(2); transform-origin: 0 0; display: flex; flex-direction: column">
+<div style="height: 32px; flex: 0 0 32px; position: relative; display: flex; align-items: center; padding: 0 8px">
+<button type="button" style="height: 32px; border: 0; background: transparent; color: #0A84FF; padding: 0 4px; display: flex; align-items: center; gap: 2px; font-size: 15px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#0A84FF"><path d="M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z"></path></svg>
+<span>Home</span>
+</button>
+<p style="margin: 0; position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 600; pointer-events: none">Stream Deck</p>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 0 24px 16px 24px; text-align: center">
+<svg aria-hidden="true" width="40" height="40" viewBox="0 0 256 256" fill="#98989F"><path d="M120,76V188a4,4,0,0,1-4,4H96v16h15.73a8.18,8.18,0,0,1,8.25,7.47,8,8,0,0,1-8,8.53H64.27A8.18,8.18,0,0,1,56,216.53,8,8,0,0,1,64,208H80V192H32A24,24,0,0,1,8,168V96A24,24,0,0,1,32,72h84A4,4,0,0,1,120,76ZM248,48V208a16,16,0,0,1-16,16H152a16,16,0,0,1-16-16V48a16,16,0,0,1,16-16h80A16,16,0,0,1,248,48ZM203.9,181.57a12,12,0,1,0-10.34,10.33A12,12,0,0,0,203.9,181.57ZM224,103.47A8.18,8.18,0,0,0,215.73,96H168.27a8.18,8.18,0,0,0-8.25,7.47,8,8,0,0,0,8,8.53h48A8,8,0,0,0,224,103.47Zm0-32A8.18,8.18,0,0,0,215.73,64H168.27A8.18,8.18,0,0,0,160,71.47,8,8,0,0,0,168,80h48A8,8,0,0,0,224,71.47Z"></path></svg>
+<p style="margin: 4px 0 0 0; font-size: 17px; font-weight: 600">Turned off on host PC</p>
+<p style="margin: 0; font-size: 13px; line-height: 18px; color: #98989F">Switch Stream Deck on in fenixOS on your PC to use it here.</p>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

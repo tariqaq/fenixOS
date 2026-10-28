@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings, Display</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+button{font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+input[type=range]{-webkit-appearance:none;appearance:none;height:20px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:#3A3A3C}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:9px;background:#FFFFFF;margin-top:-7px}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:#3A3A3C}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:#0A84FF}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border:0;border-radius:9px;background:#FFFFFF}
+</style>
+</helmet>
+<div style="width: 640px; height: 480px; background: #000000; overflow: hidden">
+<div style="width: 320px; height: 240px; transform: scale(2); transform-origin: 0 0; display: flex; flex-direction: column; overflow: hidden">
+<div style="height: 32px; flex: 0 0 32px; position: relative; display: flex; align-items: center; padding: 0 8px">
+<button type="button" style="height: 32px; border: 0; background: transparent; color: #0A84FF; padding: 0 4px; display: flex; align-items: center; gap: 2px; font-size: 15px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#0A84FF"><path d="M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z"></path></svg>
+<span>Settings</span>
+</button>
+<p style="margin: 0; position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 600; pointer-events: none">Display</p>
+</div>
+<div style="padding: 8px 12px 0 12px; display: flex; flex-direction: column; gap: 12px">
+<div style="background: #1C1C1E; border-radius: 12px; padding: 0 10px">
+<div style="padding: 8px 0 6px 0; display: flex; flex-direction: column; gap: 4px">
+<label for="bright" style="font-size: 13px; color: #98989F">Brightness</label>
+<div style="display: flex; align-items: center; gap: 8px">
+<svg aria-hidden="true" width="12" height="12" viewBox="0 0 256 256" fill="#98989F"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.07,64.07,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path></svg>
+<input id="bright" type="range" min="0" max="100" value="80" style="flex: 1">
+<svg aria-hidden="true" width="17" height="17" viewBox="0 0 256 256" fill="#FFFFFF"><path d="M120,40V16a8,8,0,0,1,16,0V40a8,8,0,0,1-16,0Zm8,24a64,64,0,1,0,64,64A64.07,64.07,0,0,0,128,64ZM58.34,69.66A8,8,0,0,0,69.66,58.34l-16-16A8,8,0,0,0,42.34,53.66Zm0,116.68-16,16a8,8,0,0,0,11.32,11.32l16-16a8,8,0,0,0-11.32-11.32ZM192,72a8,8,0,0,0,5.66-2.34l16-16a8,8,0,0,0-11.32-11.32l-16,16A8,8,0,0,0,192,72Zm5.66,114.34a8,8,0,0,0-11.32,11.32l16,16a8,8,0,0,0,11.32-11.32ZM48,128a8,8,0,0,0-8-8H16a8,8,0,0,0,0,16H40A8,8,0,0,0,48,128Zm80,80a8,8,0,0,0-8,8v24a8,8,0,0,0,16,0V216A8,8,0,0,0,128,208Zm112-88H216a8,8,0,0,0,0,16h24a8,8,0,0,0,0-16Z"></path></svg>
+</div>
+</div>
+<div style="height: 1px; background: #38383A"></div>
+<div style="padding: 8px 0 6px 0; display: flex; flex-direction: column; gap: 4px">
+<label for="dim" style="font-size: 13px; color: #98989F">Auto-dim level</label>
+<div style="display: flex; align-items: center; gap: 8px">
+<svg aria-hidden="true" width="12" height="12" viewBox="0 0 256 256" fill="#98989F"><path d="M235.54,150.21a104.84,104.84,0,0,1-37,52.91A104,104,0,0,1,32,120,103.09,103.09,0,0,1,52.88,57.48a104.84,104.84,0,0,1,52.91-37,8,8,0,0,1,10,10,88.08,88.08,0,0,0,109.8,109.8,8,8,0,0,1,10,10Z"></path></svg>
+<input id="dim" type="range" min="0" max="100" value="20" style="flex: 1">
+<span style="font-size: 13px; color: #98989F; width: 28px; text-align: right; font-variant-numeric: tabular-nums">20%</span>
+</div>
+</div>
+<div style="height: 1px; background: #38383A"></div>
+<div style="padding: 8px 0 10px 0; display: flex; flex-direction: column; gap: 6px">
+<p id="dimafter" style="margin: 0; font-size: 13px; color: #98989F">Dim after</p>
+<div role="group" aria-labelledby="dimafter" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; background: #2C2C2E; border-radius: 8px; padding: 2px">
+<button type="button" aria-pressed="false" style="height: 26px; border: 0; border-radius: 6px; background: transparent; color: #FFFFFF; font-size: 13px">30 s</button>
+<button type="button" aria-pressed="true" style="height: 26px; border: 0; border-radius: 6px; background: #636366; color: #FFFFFF; font-size: 13px; font-weight: 600">1 min</button>
+<button type="button" aria-pressed="false" style="height: 26px; border: 0; border-radius: 6px; background: transparent; color: #FFFFFF; font-size: 13px">5 min</button>
+<button type="button" aria-pressed="false" style="height: 26px; border: 0; border-radius: 6px; background: transparent; color: #FFFFFF; font-size: 13px">Never</button>
+</div>
+</div>
+</div>
+<div style="background: #1C1C1E; border-radius: 12px; overflow: hidden">
+<button type="button" style="width: 100%; height: 40px; border: 0; background: transparent; color: #FFFFFF; padding: 0 10px; display: flex; align-items: center; gap: 10px; text-align: left">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#0A84FF"><path d="M205.66,221.66l-24,24A8,8,0,0,1,168,240V224H80a24,24,0,0,1-24-24V104a8,8,0,0,1,16,0v96a8,8,0,0,0,8,8h88V192a8,8,0,0,1,13.66-5.66l24,24A8,8,0,0,1,205.66,221.66ZM80,72a8,8,0,0,0,8-8V48h88a8,8,0,0,1,8,8v96a8,8,0,0,0,16,0V56a24,24,0,0,0-24-24H88V16a8,8,0,0,0-13.66-5.66l-24,24a8,8,0,0,0,0,11.32l24,24A8,8,0,0,0,80,72Z"></path></svg>
+<span style="flex: 1; font-size: 15px">Rotation</span>
+<span style="font-size: 13px; color: #98989F">Landscape</span>
+<svg aria-hidden="true" width="10" height="10" viewBox="0 0 256 256" fill="#98989F"><path d="M184.49,136.49l-80,80a12,12,0,0,1-17-17L159,128,87.51,56.49a12,12,0,1,1,17-17l80,80A12,12,0,0,1,184.49,136.49Z"></path></svg>
+</button>
+<div style="height: 1px; background: #38383A; margin-left: 38px"></div>
+<button type="button" style="width: 100%; height: 40px; border: 0; background: transparent; color: #0A84FF; padding: 0 10px; display: flex; align-items: center; gap: 10px; text-align: left">
+<svg aria-hidden="true" width="18" height="18" viewBox="0 0 256 256" fill="#0A84FF"><path d="M64,64a48,48,0,0,1,96,0,8,8,0,0,1-16,0,32,32,0,0,0-64,0,8,8,0,0,1-16,0Zm143.23,56c-8.61.4-15.23,7.82-15.23,16.43v7.28a8.17,8.17,0,0,1-7.47,8.25,8,8,0,0,1-8.53-8V120.45c0-8.61-6.62-16-15.23-16.43A16,16,0,0,0,144,120v15.73a8.17,8.17,0,0,1-7.47,8.25,8,8,0,0,1-8.53-8V64.45c0-8.61-6.62-16-15.23-16.43A16,16,0,0,0,96,64V183.74a8.19,8.19,0,0,1-6.72,8.16l-.12,0a6.09,6.09,0,0,1-6-3.09l-21-36.44c-4.3-7.46-13.74-10.57-21.4-6.62A16,16,0,0,0,34.150,168L65.1,228.05A8,8,0,0,0,72,232H208a8,8,0,0,0,7.16-4.42c.36-.72,8.84-15.060,8.84-40.65V136A16,16,0,0,0,207.23,120Z"></path></svg>
+<span style="flex: 1; font-size: 15px">Calibrate touch</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

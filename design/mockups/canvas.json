@@ -1,0 +1,263 @@
+{
+  "v": 3,
+  "createdOnFiles": {
+    "v": 1,
+    "at": "2026-10-28T21:31:44Z"
+  },
+  "title": "fenixOS v0.1 mock-ups",
+  "launch": {
+    "view": "canvas"
+  },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 640,
+      "h": 480,
+      "title": "1. Boot"
+    },
+    "HomeA.dc.html": {
+      "x": 720,
+      "y": 0,
+      "w": 640,
+      "h": 480,
+      "title": "2a. Home, landscape, tiles"
+    },
+    "HomeB.dc.html": {
+      "x": 1440,
+      "y": 0,
+      "w": 640,
+      "h": 480,
+      "title": "2b. Home, landscape, icon dock"
+    },
+    "HomePortrait.dc.html": {
+      "x": 2160,
+      "y": 0,
+      "w": 480,
+      "h": 640,
+      "title": "2c. Home, portrait"
+    },
+    "HomeNoTime.dc.html": {
+      "x": 2720,
+      "y": 0,
+      "w": 640,
+      "h": 480,
+      "title": "2d. Home before time sync"
+    },
+    "Settings.dc.html": {
+      "x": 0,
+      "y": 1020,
+      "w": 640,
+      "h": 480,
+      "title": "3. Settings"
+    },
+    "SettingsDisplay.dc.html": {
+      "x": 720,
+      "y": 1020,
+      "w": 640,
+      "h": 480,
+      "title": "3a. Settings, Display"
+    },
+    "SettingsAbout.dc.html": {
+      "x": 1440,
+      "y": 1020,
+      "w": 640,
+      "h": 480,
+      "title": "3b. Settings, About"
+    },
+    "Session.dc.html": {
+      "x": 2160,
+      "y": 1020,
+      "w": 640,
+      "h": 480,
+      "title": "4. Session pop-up"
+    },
+    "StreamOff.dc.html": {
+      "x": 0,
+      "y": 1880,
+      "w": 640,
+      "h": 480,
+      "title": "5a. Stream, no PC"
+    },
+    "StreamOn.dc.html": {
+      "x": 720,
+      "y": 1880,
+      "w": 640,
+      "h": 480,
+      "title": "5b. Stream, streaming"
+    },
+    "HostWaiting.dc.html": {
+      "x": 1440,
+      "y": 1880,
+      "w": 640,
+      "h": 480,
+      "title": "6a. Host app, waiting for PC"
+    },
+    "HostOff.dc.html": {
+      "x": 2160,
+      "y": 1880,
+      "w": 640,
+      "h": 480,
+      "title": "6b. Host app, off on PC"
+    },
+    "PcConnect.dc.html": {
+      "x": 0,
+      "y": 2740,
+      "w": 1280,
+      "h": 800,
+      "title": "7. PC, finding the board",
+      "expand": "fill"
+    },
+    "PcDashboard.dc.html": {
+      "x": 1360,
+      "y": 2740,
+      "w": 1280,
+      "h": 800,
+      "title": "8. PC, apps dashboard",
+      "expand": "fill",
+      "is_interactive": true
+    },
+    "PcAppSettings.dc.html": {
+      "x": 2720,
+      "y": 2740,
+      "w": 1280,
+      "h": 800,
+      "title": "9. PC, app settings",
+      "expand": "fill"
+    },
+    "PcAddApp.dc.html": {
+      "x": 0,
+      "y": 3920,
+      "w": 1280,
+      "h": 800,
+      "title": "10. PC, add app",
+      "expand": "fill"
+    },
+    "PcBoard.dc.html": {
+      "x": 1360,
+      "y": 3920,
+      "w": 1280,
+      "h": 800,
+      "title": "11. PC, board and live stream",
+      "expand": "fill"
+    },
+    "PcUpdate.dc.html": {
+      "x": 2720,
+      "y": 3920,
+      "w": 1280,
+      "h": 800,
+      "title": "12. PC, board update",
+      "expand": "fill"
+    },
+    "PcSettings.dc.html": {
+      "x": 4080,
+      "y": 3920,
+      "w": 1280,
+      "h": 800,
+      "title": "13. PC, settings",
+      "expand": "fill"
+    },
+    "SettingsHome.dc.html": {
+      "x": 0,
+      "y": 5100,
+      "w": 640,
+      "h": 480,
+      "title": "3c. Settings, Home screen"
+    },
+    "PcTray.dc.html": {
+      "x": 720,
+      "y": 5100,
+      "w": 640,
+      "h": 400,
+      "title": "14. PC, tray menu"
+    },
+    "PcPermissions.dc.html": {
+      "x": 1440,
+      "y": 5100,
+      "w": 1280,
+      "h": 800,
+      "title": "15. PC, permissions before adding an app",
+      "expand": "fill"
+    },
+    "PcLogs.dc.html": {
+      "x": 2800,
+      "y": 5100,
+      "w": 1280,
+      "h": 800,
+      "title": "16. PC, logs",
+      "expand": "fill"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "HomeA.dc.html",
+    "HomeB.dc.html",
+    "HomePortrait.dc.html",
+    "HomeNoTime.dc.html",
+    "Settings.dc.html",
+    "SettingsDisplay.dc.html",
+    "SettingsAbout.dc.html",
+    "Session.dc.html",
+    "StreamOff.dc.html",
+    "StreamOn.dc.html",
+    "HostWaiting.dc.html",
+    "HostOff.dc.html",
+    "PcConnect.dc.html",
+    "PcDashboard.dc.html",
+    "PcAppSettings.dc.html",
+    "PcAddApp.dc.html",
+    "PcBoard.dc.html",
+    "PcUpdate.dc.html",
+    "PcSettings.dc.html",
+    "SettingsHome.dc.html",
+    "PcTray.dc.html",
+    "PcPermissions.dc.html",
+    "PcLogs.dc.html"
+  ],
+  "notes": {
+    "row1": {
+      "x": 0,
+      "y": -240,
+      "text": "Board: boot and home",
+      "kind": "title1",
+      "maxW": 3360
+    },
+    "row2": {
+      "x": 0,
+      "y": 780,
+      "text": "Board: Settings and Session",
+      "kind": "title1",
+      "maxW": 2800
+    },
+    "row3": {
+      "x": 0,
+      "y": 1640,
+      "text": "Board: Stream and host apps",
+      "kind": "title1",
+      "maxW": 2800
+    },
+    "row4": {
+      "x": 0,
+      "y": 2500,
+      "text": "PC app: connect, apps, app settings",
+      "kind": "title1",
+      "maxW": 4000
+    },
+    "row5": {
+      "x": 0,
+      "y": 3680,
+      "text": "PC app: add app, board, update, settings",
+      "kind": "title1",
+      "maxW": 5360
+    },
+    "row6": {
+      "x": 0,
+      "y": 4860,
+      "text": "Design round 2: Home screen setting, tray, permissions, logs",
+      "kind": "title1",
+      "maxW": 4080
+    }
+  },
+  "designSystems": []
+}

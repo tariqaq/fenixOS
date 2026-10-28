@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Stream, streaming</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Inter',sans-serif;font-optical-sizing:auto;color:#FFFFFF;background:#000000}
+button{font-family:inherit}
+button:focus-visible{outline:2px solid #0A84FF;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 640px; height: 480px; background: #000000; overflow: hidden">
+<div style="width: 320px; height: 240px; transform: scale(2); transform-origin: 0 0; display: flex; flex-direction: column">
+<div style="height: 32px; flex: 0 0 32px; position: relative; display: flex; align-items: center; padding: 0 8px">
+<button type="button" style="height: 32px; border: 0; background: transparent; color: #0A84FF; padding: 0 4px; display: flex; align-items: center; gap: 2px; font-size: 15px">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#0A84FF"><path d="M168.49,199.51a12,12,0,0,1-17,17l-80-80a12,12,0,0,1,0-17l80-80a12,12,0,0,1,17,17L97,128Z"></path></svg>
+<span>Home</span>
+</button>
+<p style="margin: 0; position: absolute; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: 600; pointer-events: none">Stream</p>
+</div>
+<div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 0 16px 12px 16px">
+<div style="display: flex; align-items: center; gap: 8px">
+<svg aria-hidden="true" width="28" height="28" viewBox="0 0 256 256" fill="#0A84FF"><path d="M56,208a8,8,0,0,1-8.24,8A8.28,8.28,0,0,1,40,207.76,8,8,0,0,0,32.24,200,8.28,8.28,0,0,1,24,192.24,8,8,0,0,1,32,184,24,24,0,0,1,56,208ZM32,152a8,8,0,0,0-8,8.65A8.17,8.17,0,0,0,32.24,168,40,40,0,0,1,72,207.76,8.17,8.17,0,0,0,79.36,216,8,8,0,0,0,88,208,56.06,56.06,0,0,0,32,152Zm0-32a8,8,0,0,0-8,8.6,8.22,8.22,0,0,0,8.3,7.4A72.08,72.08,0,0,1,104,207.68a8.22,8.22,0,0,0,7.4,8.3,8,8,0,0,0,8.6-8A88.1,88.1,0,0,0,32,120ZM216,40H40A16,16,0,0,0,24,56v44.08a4,4,0,0,0,4.15,4A104.11,104.11,0,0,1,135.93,211.85a4,4,0,0,0,4,4.15H216a16,16,0,0,0,16-16V56A16,16,0,0,0,216,40Z"></path></svg>
+<p style="margin: 0; font-size: 17px; font-weight: 600">Streaming to your PC</p>
+</div>
+<dl style="margin: 0; width: 100%; background: #1C1C1E; border-radius: 12px; padding: 0 10px; box-sizing: border-box">
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #38383A"><dt style="font-size: 13px">Rate</dt><dd style="margin: 0; font-size: 13px; color: #98989F; font-variant-numeric: tabular-nums">10 fps</dd></div>
+<div style="height: 30px; display: flex; align-items: center; justify-content: space-between"><dt style="font-size: 13px">Link</dt><dd style="margin: 0; font-size: 13px; color: #98989F">USB, 460800 baud</dd></div>
+</dl>
+<button type="button" style="width: 100%; height: 36px; border: 0; border-radius: 18px; background: #2C2C2E; color: #FFFFFF; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; font-weight: 600">
+<svg aria-hidden="true" width="14" height="14" viewBox="0 0 256 256" fill="#FFFFFF"><path d="M216,56V200a16,16,0,0,1-16,16H56a16,16,0,0,1-16-16V56A16,16,0,0,1,56,40H200A16,16,0,0,1,216,56Z"></path></svg>
+<span>Stop streaming</span>
+</button>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":640,"height":480}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

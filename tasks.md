@@ -57,7 +57,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 
 - [x] P0 Repo foundation (CI first run pending check) (elevated helper running: scratchpad `elev/helper.ps1`, drop `*.ps1` in `elev/queue`, output in `elev/out`): MIT licence, README, layout from PLAN §2, `VERSION`, `/firmware/` anchored in `.gitignore`, pinned versions in `docs/toolchain.md`, `tools/version`, `tools/gen-tokens`, CI skeleton
 - [~] P1 Spikes on the board (S1 done: QIO 80 MHz flash, LCD 80 MHz, 2×32-line buffers, no LVGL OS layer; `docs/board-info.md`): S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
-- [ ] P2 Design round 2 (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (optional storyboard for own reference, no review)
+- [x] P2 Design round 2 (4 artboards + welcome row published; user review pending, choices logged in `docs/mockups.md`) (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (optional storyboard for own reference, no review)
 - [ ] P3 Link protocol: `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
 - [ ] P4 Board core: fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
 - [ ] P5 Board UI + system apps (artboards 1–5 exactly, 4 rotations): boot, Home Tiles/Dock, Settings tree, Session, Stream + encoder, motion, LED, auto-dim, golden screenshots
