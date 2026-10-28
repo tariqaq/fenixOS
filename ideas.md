@@ -159,9 +159,17 @@ Details and the options offered: `docs/decisions.md`.
 - Registry (C7): **this repo is public**; the PC app reads the registry with no auth. Vendor files, flash images and the packing slip were scrubbed from history first.
 - Firmware updates (C8): **the PC app flashes the board over serial** (`espflash`), firmware bundled with each PC app release. No OTA slots.
 
+- Fonts (C6): **Inter** everywhere. Icons: **Phosphor** (fill on tiles, regular in bars and rows).
+- Motion: **iOS-like, tuned** (ease-out/spring 200–350 ms; full-screen steps held to ~30 fps).
+- PC window: **custom dark title bar** with Windows min/max/close.
+- Repo layout: `VERSION`, `board/`, `app/`, `crates/`, `proto/`, `registry/`, `design/`, `docs/`, `pics/`, `tools/`.
+- Versions: **lockstep SemVer** from one `VERSION` file; a mismatch makes the PC app offer to flash the board.
+- Settings app adds: **Display** (rotation, touch calibration) and **Storage + host status** (app space, link, last sync, MYT).
+- The old pre-scrub commits stay reachable on GitHub by hash only (accepted).
+
 ## 12. Open questions
 
 Asked round by round with the picker; each answer goes to `docs/decisions.md` and back into this file.
 
-- Design: font, icon set, motion style, PC window style.
-- Repo layout, version scheme, autostart, extra Settings items.
+- PC app: autostart, self-update, close-to-tray behaviour.
+- Board extras: RGB LED status, light sensor, sounds.
