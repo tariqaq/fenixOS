@@ -62,3 +62,12 @@ Consequences:
 | Repo layout | **`board/` + `app/` + `crates/` (Rec.)** / `os/` + `desktop/` + `shared/` / `firmware/` + `pc/` + `libs/` | **`VERSION`, `board/`** (ESP-IDF, `components/fenix_proto`, `components/LovyanGFX` submodule), **`app/`** (Tauri + Svelte), **`crates/`** (fenix-proto, fenix-link, fenix-pkg, fenix-sdk), **`proto/`** (spec + golden vectors), **`registry/`**, **`design/`** (tokens), `docs/`, `pics/`, `tools/`. Local backups stay in ignored `firmware/` |
 | Version policy | **Lockstep SemVer (Rec.)** / SemVer + protocol compat / CalVer | **Lockstep SemVer**: one `VERSION` file (0.1.0) feeds both builds; the board shows "fenixOS v0.1"; any mismatch on connect makes the PC app offer to flash its bundled firmware, and host apps stay off until matched |
 | Extra board Settings items (multi-select) | Display: rotation + touch calibration / storage + host status / developer overlay / factory reset | **Display** (rotation picker, 4-point touch calibration) and **Storage + host status** (app flash used/free, PC link status, last time sync, time zone MYT). Not in v0.1: developer overlay, factory reset |
+
+## 2026-10-29: round 6, PC behaviour and board extras
+
+| Topic | Options | Picked |
+|---|---|---|
+| Start with Windows | Setting, on by default (Rec.) / setting, off by default / no autostart | **Setting, off by default**: start minimised to tray at login when turned on |
+| PC app self-update | **Tauri updater + GitHub Releases (Rec.)** / notify only / manual | **Tauri updater + GitHub Releases** on this repo: signed updates (signing key kept secret, never in git); after updating, the app offers to flash the matching board firmware |
+| Close window | **Destroy webview (Rec.)** / hide window | **Destroy webview** (PoC-proven: tray ~29 MB, 1 process); engine, board link and sidecar apps keep running |
+| Board extras (multi-select) | RGB LED status light / auto-brightness (LDR) / UI sounds / none | **RGB LED status light** (subtle states such as host connected / waiting / error; V1.4 LED resistors unverified, so brightness needs tuning). Not in v0.1: LDR auto-brightness, sounds |

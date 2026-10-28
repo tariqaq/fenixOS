@@ -166,10 +166,9 @@ Details and the options offered: `docs/decisions.md`.
 - Versions: **lockstep SemVer** from one `VERSION` file; a mismatch makes the PC app offer to flash the board.
 - Settings app adds: **Display** (rotation, touch calibration) and **Storage + host status** (app space, link, last sync, MYT).
 - The old pre-scrub commits stay reachable on GitHub by hash only (accepted).
+- PC app: **start with Windows is a setting, off by default**; **self-update with the Tauri updater from GitHub Releases** (signed), then offer to flash the matching firmware; **closing the window destroys the webview** (tray only).
+- Board extra: **RGB LED status light**. Not in v0.1: LDR auto-brightness, sounds, developer overlay, factory reset.
 
 ## 12. Open questions
 
-Asked round by round with the picker; each answer goes to `docs/decisions.md` and back into this file.
-
-- PC app: autostart, self-update, close-to-tray behaviour.
-- Board extras: RGB LED status, light sensor, sounds.
+Settled through the mock-up review rather than the picker: home-screen layout per orientation, tile style on the board, the boot animation, app tile colours, and how the PC dashboard looks.

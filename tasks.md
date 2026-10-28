@@ -33,16 +33,16 @@ Goal: capture the user's ideas, settle every open choice (asked with the picker,
 - [x] Install hallmark 2.0.0 at project level (`.claude/skills/hallmark`), `puppeteer-core` global, edit-time hook in `.claude/settings.json`; LF fix + `.gitattributes`. `docs/tooling.md`
 - [x] Write `ideas.md`: vision, constraints C1–C10 (time, streaming, app runtime, shutdown, vsync, fonts, private registry, flash, RAM, PC plugin trust), suggested gaps
 - [x] Commit + push
-- [~] Ask decision questions round by round (picker); record each answer in `ideas.md` + `docs/decisions.md`
+- [x] Ask decision questions round by round (picker); record each answer in `ideas.md` + `docs/decisions.md`
   - [x] Round 1 board core (LVGL 9 + LovyanGFX, C++17/IDF 5.5.5, declarative app packages, orientation switchable)
   - [x] Round 2 time/stream/power/nav (PC time sync + RTC keep, compressed dirty-rect stream, deep sleep tap-wake, top nav bar)
   - [x] Round 3 PC side (Tauri 2 + Svelte 5, sidecar app processes, repo public for registry, PC app flashes firmware via serial)
   - [x] Round 4 design (Inter, Phosphor, iOS-like tuned motion; old commits left)
   - [x] Round 5 structure (custom dark title bar, board/app/crates layout, lockstep SemVer, Settings + Display + Storage/host)
-  - [ ] Round 6 PC behaviour + board extras (autostart, self-update, tray, LED/LDR/sounds)
+  - [x] Round 6 PC behaviour + board extras (autostart setting off by default, Tauri updater, destroy webview on close, RGB LED status)
 - [x] Go public (2026-10-29, verified PUBLIC, scrubbed paths 404): scrub history first (packing slip + order number, vendor package, CH340 driver, `firmware/` images; local copies kept + backed up in scratchpad bundle), force-push, set public, verify
 - [ ] Research where needed (web), cross-check sources, document findings
-- [ ] Wireframes / mock-up slides (board screens + PC app screens, per phase), published for review
+- [~] Wireframes / mock-up slides (board screens + PC app screens, per phase), published for review
 - [ ] Iterate with user
 - [ ] Detailed, scoped build plan (`docs/PLAN.md` for fenixOS; the FenixDeck plan moves to `docs/legacy/`)
 
