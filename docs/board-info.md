@@ -128,9 +128,9 @@ Scene: full-screen panel with 6 rounded tiles + labels, LVGL partial mode, two D
 
 | Setup | Fade (layer opacity) | Scrim fade (black rect over content) | Slide (whole panel) | Small 40×40 move | Full redraw |
 |---|---|---|---|---|---|
-| Flash DIO 40 MHz, LCD 55 MHz, 24 lines | 19 fps | 20 fps | 38 fps | 62 fps | 49 ms |
+| Flash DIO 40 MHz, LCD "55 MHz" (runs at 40), 24 lines | 19 fps | 20 fps | 38 fps | 62 fps | 49 ms |
 | + LVGL FreeRTOS, 2 SW draw units | 10 fps | 10 fps | 23 fps | 60 fps | 103 ms |
-| Flash **QIO 80 MHz**, LCD 55 MHz, 24 lines | 28 fps | 31 fps | 50 fps | 62 fps | 33 ms |
+| Flash **QIO 80 MHz**, LCD "55 MHz" (runs at 40), 24 lines | 28 fps | 31 fps | 50 fps | 62 fps | 33 ms |
 | Flash QIO 80 MHz, **LCD 80 MHz, 32 lines** | **36 fps** | **42 fps** | **59 fps** | **62 fps** | **19 ms** |
 
 Findings:

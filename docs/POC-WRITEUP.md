@@ -108,7 +108,7 @@ What the crystal and ULP core are for (from the design discussion): the crystal 
 | TE (tearing effect) pin | **Not wired** on the 18-pin LCM connector. No hardware vsync |
 | Backlight | **GPIO21**, through an AO3402 MOSFET, active HIGH, PWM works (we use 44.1 kHz on LEDC channel 7) |
 
-A full frame is 240 × 320 × 2 = 153,600 B, which takes about 22 ms at 55 MHz (bandwidth-limited theoretical figure).
+A full frame is 240 × 320 × 2 = 153,600 B, which takes about 22 ms at 55 MHz (bandwidth-limited theoretical figure). Corrected 2026-10-29: the ESP32 SPI clock is 80 MHz / (n + 1), so a 55 MHz request runs at 40 MHz, about 31 ms a frame.
 
 ### Touch
 
@@ -731,7 +731,7 @@ All measured on the hardware on 2026-10-28.
 | UI task stack | ~2.6 KB used of 8 KB |
 | Render time | 14–28 ms per frame with all widgets dirty; CPU page ~27 ms, Overview ~15–25 ms |
 | Frame rate | 20 fps sustained at 20 Hz data, 0 link errors. At a 1 s poll, dirty-only redraw gives ~1–2 frames/s |
-| Theoretical full-frame push | ~22 ms at 55 MHz |
+| Theoretical full-frame push | ~31 ms at 40 MHz (corrected: "55 MHz" runs at 40) |
 
 ### Link
 

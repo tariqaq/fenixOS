@@ -16,7 +16,7 @@ void display_push(int x, int y, int w, int h, const void* px);
 void display_wait();
 // Write colour bars, read them back over MISO and count wrong pixels (bus check).
 int display_selftest();
-// SPI write clock in Hz (default 80 MHz; set before display_init).
+// SPI write clock in Hz (default 40 MHz; set before display_init). A dev knob: nothing calls it.
 void display_set_spi_hz(uint32_t hz);
 
 // ---- Backlight (GPIO21, LEDC through LovyanGFX) ----

@@ -110,7 +110,7 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 - Curves: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)` for most moves; a light spring (no visible overshoot beyond 4 %) for tiles appearing.
 - Durations: 200 ms (press, toggle), 250 ms (fade, nav push), 350 ms (app open, sheet).
 - Board app open: scale 0.9 → 1 + fade from the tile's area. Nav push: slide 100 % left with the previous page moving 30 %. Sheet: slide up from the bottom over a fading scrim. Tile install/remove: fade + scale 0.8 ↔ 1.
-- Board budget: full-screen steps are held to ~30 fps (one full push is ~22 ms at 55 MHz SPI, no vsync); small regions run up to the fps cap. Every animation has a reduced-motion fallback (a plain fade) on the PC.
+- Board budget: full-screen steps are held to ~30 fps (one full push is ~31 ms at the 40 MHz LCD clock, no vsync); small regions run up to the fps cap. Every animation has a reduced-motion fallback (a plain fade) on the PC.
 
 ## Component patterns
 
