@@ -1,0 +1,10 @@
+# Release profile for every build (P12), kept out of Cargo.toml so the CI Rust cache key
+# (hashFiles('.cargo/config.toml') in the workflows) changes with the profile but not with a
+# version bump. No cross-crate LTO, parallel codegen: quick rebuilds. Measured with a 4-core cap:
+# fat LTO with one codegen unit ~10 min per rebuild (exe 8.1 MB), thin LTO 1 min 31 s (9.14 MB),
+# none 45 s (9.13 MB).
+[profile.release]
+opt-level = "s"
+lto = false
+strip = true
+panic = "abort"
