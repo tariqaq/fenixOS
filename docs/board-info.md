@@ -208,3 +208,7 @@ Two phone videos (`docs/recordedvids/`, not in git) and live tests with the user
 - **Tap-to-wake did not wake.** The touch bus pins (CS 33, CLK 25, MOSI 32) floated in deep sleep; they are now held (CS high, CLK and MOSI low) so the XPT2046 keeps PENIRQ armed. Wake then worked. **Follow-up bug:** the holds outlived the wake-up and locked touch out; `display_init` now releases them (`gpio_deep_sleep_hold_dis` + `gpio_hold_dis`).
 - **RGB LED glowed green in deep sleep** (and faintly while "off"). Likely cause: LEDC still drove the pads through the GPIO matrix, so the hold kept LEDC's output, and 8-bit duty 255 still pulls low 1/256 of the time. Fix built, **not yet verified on the board**: LEDC output inverted (duty 0 = steady off), and before sleep `ledc_stop` + the pads routed to plain GPIO output (`SIG_GPIO_OUT_IDX`), then held high. `esp_sleep_pd_config(VDDSDIO, ON)` keeps GPIO16/17's power domain up.
 - A purple flash on wake is the LED pins' reset state during boot, before `led_init`.
+
+### USB replug (2026-10-29)
+
+With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends the session with "Board disconnected (read: Access is denied. (os error 5))": Windows reports a vanished COM port to an open handle as access denied. Plugging it back in, the app finds the board on COM9 again by itself (boot reason power on). No crash. LED checks (off in sleep, connect pulse level) and the clock after a tap wake are deferred by the user.
