@@ -71,7 +71,8 @@
       case "installing":
         return `Downloading v${upd.version}, ${upd.percent}%`;
       case "failed":
-        return `v${appVersion}, could not check`;
+        // An install failure carries the version it tried; a failed check has none.
+        return upd.version ? `v${appVersion}, could not install v${upd.version}` : `v${appVersion}, could not check`;
       default:
         return `v${appVersion}`;
     }
