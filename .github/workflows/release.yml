@@ -79,3 +79,6 @@ jobs:
           releaseDraft: false
           prerelease: false
           uploadWorkflowArtifacts: true
+          # A hand-started run without the signing secret still checks the whole pipeline:
+          # it skips the updater signature (a tag build always signs).
+          args: ${{ (!startsWith(github.ref, 'refs/tags/') && secrets.TAURI_SIGNING_PRIVATE_KEY == '') && '--config {"bundle":{"createUpdaterArtifacts":false}}' || '' }}
