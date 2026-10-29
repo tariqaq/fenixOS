@@ -191,7 +191,11 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 2. Build, flash, user checks: LED dark while shut down, tap wakes, time kept. Confirmed by the user 2026-10-29: LED off while shut down, one green connect pulse after the wake, then off
   - [x] 3. Docs: board-info (corrected LED cause), decisions (Shut down), PLAN, comments
 
+- [~] P20 Release v0.1.2 (user 2026-10-29: "push it then ... i permit u at all times"): the P19 LED fix in a release. VERSION 0.1.2, tag v0.1.2, watch the run, install the release
+
 ## Decisions
+
+- 2026-10-29: **The agent may bump the version, tag and push releases at any time** (user: "i permit u at all times").
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
 - 2026-10-29: **Corrected: update the CH340 driver.** 3.3.2011.11 blue-screened the PC (bugcheck 0x48) when `fenix.exe` was force-killed with a COM9 read pending. The app now closes the port before exit (`Link::shutdown`).
