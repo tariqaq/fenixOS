@@ -1,0 +1,79 @@
+# The system screens and the sample app, as tools/capture_screens.sh drives the real board.
+# Run: python tools/sim_shots.py  (builds the simulator and build/sample.fxp, then compares).
+# Verbs: tap x y | swipe x1 y1 x2 y2 | wait ms | shot name | install file | remove id
+#        set id name=value... | host id on|off | stream on fps | stream off | connect | disconnect
+# Taps wait 1 s and swipes 1.2 s of virtual time afterwards, so animations have finished.
+# The simulator starts connected to a pretend PC, with an empty store and default settings.
+wait 3000                                 # boot screen sweep
+install build/sample.fxp                  # gives Home a fourth tile
+shot home
+# Landscape: Settings tree
+tap 58 200
+shot settings
+tap 160 60
+shot display
+swipe 314 200 314 100
+shot display_scrolled
+tap 160 155
+shot rotation
+tap 160 101                               # Portrait
+shot rotation_portrait
+tap 30 16
+tap 30 16
+tap 30 16
+shot home_portrait
+tap 177 278                               # Sample tile (grid, second row, right)
+set io.github.tariqaq.sample cpu=42 "cpu_text=42 %" mem=63 "mem_text=5.1 GB" on=true level=80
+shot app_portrait
+tap 30 16
+tap 62 206
+shot settings_portrait
+tap 120 60
+shot display_portrait
+tap 120 255                               # Rotation
+tap 120 60                                # Landscape
+tap 30 16
+tap 30 16
+tap 160 101
+shot home_style
+tap 230 100                               # Dock
+shot home_style_dock
+tap 30 16
+tap 30 16
+shot home_dock
+tap 52 185                                # Settings (dock of 4: system apps + sample)
+tap 160 101                               # Home style
+tap 90 100                                # Tiles
+tap 30 16
+swipe 314 220 314 40
+tap 160 208
+shot about                                # scrolled to the end
+tap 30 16
+tap 160 142
+shot storage
+tap 30 16
+tap 160 183
+shot host
+tap 30 16
+tap 30 16
+tap 158 200
+shot session
+tap 160 226                               # Cancel
+tap 258 200
+stream on 10                              # as while `fenix shot` captures
+shot stream
+stream off
+tap 30 16
+# Host app (landscape): scroll the tiles, open the sample, set values like its PC half would.
+swipe 314 200 40 200
+tap 254 200
+set io.github.tariqaq.sample cpu=42 "cpu_text=42 %" mem=63 "mem_text=5.1 GB" on=true level=80
+shot app
+host io.github.tariqaq.sample off
+shot app_host_off
+host io.github.tariqaq.sample on
+disconnect                                # 6a: only the simulator can show this one
+shot app_waiting
+connect
+tap 30 16
+remove io.github.tariqaq.sample

@@ -102,7 +102,7 @@ Consequences:
 
 | Topic | Options | Picked |
 |---|---|---|
-| Screenshots of board screens while nobody is at the board | SDL2 simulator first / the real board over the link | **Real board over the link** (`fenix tap` / `fenix swipe` drive it, `fenix shot` saves the stream as PNG; `tools/capture_screens.sh`). Exact pixels, no stub HAL. The PC simulator the user asked for in round 7 is **still planned**, not dropped (tracked in `tasks.md`) |
+| Screenshots of board screens while nobody is at the board | SDL2 simulator first / the real board over the link | **Real board over the link** (`fenix tap` / `fenix swipe` drive it, `fenix shot` saves the stream as PNG; `tools/capture_screens.sh`). Exact pixels, no stub HAL. The PC simulator the user asked for in round 7 was built after P9 (`board/sim`, see the simulator rows below) |
 | Driving the board from the PC | No remote input / a TOUCH message | **TOUCH (0x13, P→B)**, optional, no proto bump. Also gives the PC app's board mirror click-to-tap later |
 | Board "Stop streaming" button (StreamOn artboard) | Ask the PC to stop / stop locally | **Stop locally** and send a LOG line; the PC sees the stream go quiet. No new message in proto 1 |
 | Stream screen when the PC is connected but not streaming (no artboard) | Reuse StreamOff / new state | **New state** in the StreamOff layout: "Not streaming", "Open the board page in fenixOS on your PC to see this screen there." |
@@ -147,3 +147,7 @@ Consequences:
 | End of the welcome | Wait for a click / **auto after 3.5 s** | **Auto-open the main window after 3.5 s**, with "Open fenixOS" for the impatient. Skip opens the main window; closing the welcome window marks it done and leaves fenixOS in the tray |
 | Board model screen | Static pictures / **drawn live** | **Drawn live** on a canvas from the firmware's own layout: the boot line, the install progress line, and Home with the PC clock, so it never shows a stale time |
 | Board model colour | Real yellow PCB / **dark PCB** | **Dark PCB with gold pads**, as PLAN §3.9 says; sizes and part positions follow the real board |
+| Simulator window (`board/sim`) | SDL2 / **plain Win32** | **Win32 GDI**: one `StretchDIBits` per frame, no library to fetch or license, nothing beyond MSVC; the simulator is a Windows dev tool like the PC app |
+| Simulator time | Wall clock / **virtual** | **Virtual**: time moves only on script waits and `vTaskDelay`, and the clock reads Thursday 2026-10-29 08:35, so every run gives identical pixels and golden images can be compared exactly |
+| Simulator golden images | Reuse `docs/screens/board/` / **own set** | **Own set** in `board/sim/golden/`, compared pixel for pixel in CI; the board captures stay as the reference for the real panel (they differ by ≤ 0.6%: clock minute, antialiasing) |
+| Simulator stream screen | Not streaming / **streaming** | **Streaming** (`stream on 10` in the script): `fenix shot` streams from the board, so the real capture shows it that way |

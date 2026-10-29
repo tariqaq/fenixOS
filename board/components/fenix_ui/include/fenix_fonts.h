@@ -2,6 +2,9 @@
 #pragma once
 #include "lvgl.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 LV_FONT_DECLARE(fx_font_clock_64)
 LV_FONT_DECLARE(fx_font_clock_56)
 LV_FONT_DECLARE(fx_font_title_l)
@@ -24,6 +27,9 @@ LV_FONT_DECLARE(fx_icon_fill_28)
 LV_FONT_DECLARE(fx_icon_fill_40)
 LV_FONT_DECLARE(fx_icon_bold_10)
 LV_FONT_DECLARE(fx_icon_bold_14)
+#ifdef __cplusplus
+}
+#endif
 
 // Icon glyphs as UTF-8 strings (Phosphor private-use code points).
 #define FX_ICON_GEAR_SIX "\xEE\x89\xB2"

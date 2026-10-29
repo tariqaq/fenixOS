@@ -59,7 +59,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 - [~] P1 Spikes on the board (S1 done: QIO 80 MHz flash, LCD 80 MHz, no LVGL OS layer; bands later 80 lines (P4); S2 fonts generated; S3 done: 921600 baud; S4 done in P4: RLE16 kept, stream throttled to the PC rate, ~11× on slides, link-bound ~45 KB/s; next S5 deep sleep (needs a person to tap-wake; RTS reset works remotely), S6 LED levels (needs eyes), S7 espflash (in P8), S8 WebGL (in P9); results in `docs/board-info.md`): S1 LVGL+LovyanGFX fps/heap/rotation, S2 fonts, S3 baud, S4 stream codec, S5 deep sleep touch wake, S6 RGB LED, S7 espflash lib, S8 OOTB WebGL in WebView2
 - [x] P2 Design round 2 (4 artboards + welcome row published; user review pending, choices logged in `docs/mockups.md`) (with P1): Settings › Home screen, tray menu, permissions sheet, log view, "Show welcome again" row; OOTB is Claude's call (optional storyboard for own reference, no review)
 - [~] P3 Link protocol (done: `proto/spec.md`, fenix-proto Rust + 31 golden vectors in `proto/vectors.txt`, C++ `fenix_proto` + MSVC host test 31/31; fenix-link with pause + StreamCanvas, `fenix` CLI built; next: on-board link task in P4, then 1 h soak): `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
-- [x] P4 Board core (accepted 2026-10-29: `fenix hello`/`time` work, STATS heap ~134 KB min ~121 KB, 0 RX errors, slides 34.5 fps / 29 fps while streaming): fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
+- [x] P4 Board core (accepted 2026-10-29: `fenix hello`/`time` work, STATS heap ~134 KB min ~121 KB, 0 RX errors, slides 34.5 fps / 29 fps while streaming): fenix_hal, fenix_ui, screenshots (sim built later, see P5), fenix_sys (settings, clock, link task, LittleFS), init order
   - [x] fenix_hal: LED, deep sleep, touch calibration, time-valid flag (fixed: EN resets report POWERON, so the flag is cleared at boot by `time_boot_check`)
   - [x] fenix_sys: NVS settings, clock (MYT), link task (UART0 921600, HELLO/PING/TIME_SET/REBOOT/STATS; APP_LIST was a stub until P6), LittleFS mount, stream encoder (RLE16 bands into the 16 KB UART TX buffer, stale re-send)
   - [x] fenix_ui: LVGL glue (display, touch, auto-dim, stream hook, fps), widgets, nav stack
@@ -68,7 +68,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Remote touch message (TOUCH 0x13, P→B; spec, Rust, C++, vector 32) + `fenix tap` / `fenix swipe`
   - [x] `tools/capture_screens.sh`: erases NVS, drives every system screen, saves PNGs; golden copies in `docs/screens/board/` (landscape, portrait, Tiles, Dock; P6 added the sample app)
   - [x] Fixed on the way: non-clickable layout boxes (taps were lost), clickable scroll containers (swipes did not scroll), flex track centring (Dock sat left), screen swap double delete, "20%" label wrap, portrait navbar overlap (back label dropped)
-  - Screenshots come from the real board over the link while nobody is at it; the PC simulator the user asked for is still planned (see P5)
+  - Screenshots come from the real board over the link while nobody is at it; the PC simulator came later (see P5)
   - [x] Perf pass: stale `board/sdkconfig` fixed (13 → 25 fps), 80-line bands (34.5 fps), stream throttled to the PC rate (29 fps while streaming), wake-from-dim activity bug fixed; `fenix bench`. Numbers in `docs/board-info.md` "Rendering speed"
   - [x] Stale sweep for P4 (docs, comments, CLI help)
   - Boot-to-screen ≤ 1 s not measured with a camera; HELLO answers ~2 s after reset
@@ -78,13 +78,13 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Shut down → deep sleep: link goes silent; RTS reset wakes it (POWERON). Tap-wake: open item for the user
   - [x] Flipped rotations (2, 3): screenshots in `docs/screens/board/`
   - [x] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: done in P6
-  - [~] PC simulator (user asked in round 7): after P8, before release. Plan (PLAN §P5.2, 2026-10-29):
-    - [ ] a. `board/sim` CMake host build (MSVC): LVGL 9.5.0 (the board's managed component, else fetched), `fenix_ui`, `fenix_apps`, `fenix_pkg`, `fenix_proto`; LVGL configured from the board's own Kconfig values (`board/sim/lv_kconfig.h`, made by `tools/sim_config.py` from `board/build/config/sdkconfig.h`, `--check` in the board CI job)
-    - [ ] b. Stubs: IDF headers (esp_timer on a virtual clock, heap/chip/flash info, app version from VERSION, esp_restart), `fx::hal` (framebuffer per rotation, injected touch), `fx::sys` (settings in memory, fixed clock 2026-10-29 08:35 for stable shots, app store from a folder of .fxp, scripted link events and bind values)
-    - [ ] c. `fenix_sim run <script> --out <dir> [--store <dir>]`: headless, same verbs as `tools/capture_screens.sh` (tap, swipe, wait, shot, set, host, connect) in `board/sim/screens.txt`; writes PNGs per screen and rotation
-    - [ ] d. `fenix_sim window`: a Win32 window, mouse = touch, for trying screens by hand
-    - [ ] e. `tools/sim_shots.py`: build + run + compare against golden PNGs in `board/sim/golden/` (`--update` rewrites them); CI job on windows-latest
-    - [ ] f. Docs (toolchain, PLAN corrections: no SDL2, why), decisions, commit
+  - [x] PC simulator (user asked in round 7; built 2026-10-29 after P9, PLAN §P4.2 corrected: Win32 + headless, no SDL2). `docs/toolchain.md` "Board simulator"
+    - [x] a. `board/sim` CMake host build (MSVC + Ninja, `board/sim/build.ps1`): LVGL 9.5.0 (managed component, else fetched), `fenix_ui`, `fenix_apps`, `fenix_pkg`, `fenix_proto`; LVGL from the board's Kconfig values (`tools/sim_config.py`, `--check` in the board CI job). Fix found: `fenix_fonts.h` needed `extern "C"` for MSVC (gen_fonts.py updated, firmware still builds)
+    - [x] b. Stubs: IDF headers (virtual clock, heap/chip/flash, VERSION, esp_restart), `fx::hal` on a framebuffer, `fx::sys` (settings in memory, clock fixed at 2026-10-29 08:35 MYT, store = folder of .fxp, scripted link events and binds)
+    - [x] c. `fenix_sim run <script> --out <dir> [--store <dir>]`; `board/sim/screens.txt` = the capture_screens.sh walk + 6a "Waiting for host PC" (21 shots). vs `docs/screens/board/`: ≤ 0.6% pixels differ (clock minute, antialiasing)
+    - [x] d. `fenix_sim window`: Win32 GDI at 2×, DPI-aware, mouse = touch (quick clicks latched), `C` toggles the link; ~0.6% CPU, 13 MB
+    - [x] e. `tools/sim_shots.py` (exact compare, `--update`, `--no-build`, diff PNGs); goldens `board/sim/golden/` (148 KB); CI job `sim` on windows-latest
+    - [x] f. Docs: toolchain, PLAN corrections, decisions, packages.md (6a now covered)
 - [x] P6 App packages (accepted 2026-10-29: install 0.13 s for 1.6 KB, 0.51 s for 21 KB, ~1.6 s for the 64 KB cap; remove leaves the store at its empty 8 KB; reconcile itself is the PC engine's job in P7/P8): `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
   - [x] Format 1 spec `docs/packages.md`; `crates/fenix-pkg` compiler + reader (`fenix-pkg build`/`inspect`, limits, 2 tests); `tools/sample-app/board` builds to 1643 B, 15 elements, 6 bindings
   - [x] C++ reader `board/components/fenix_pkg` (same checks as Rust; app ids capped at 48 bytes for LittleFS names; host test passes, survives every single-byte flip)

@@ -31,6 +31,22 @@ jobs:
           cd board
           idf.py build
           idf.py size
+      # The simulator's LVGL options must match this build's Kconfig values.
+      - run: python3 tools/sim_config.py --check
+
+  # Board screens from the PC simulator (board/sim), compared with board/sim/golden.
+  sim:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: python tools/sim_shots.py
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sim-shots
+          path: board/sim/build/shots
 
   rust:
     runs-on: windows-latest

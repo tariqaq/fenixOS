@@ -8,7 +8,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 |---|---|---|
 | ESP-IDF | **v5.5.5** | Installed by EIM CLI 0.20.1 (`winget install Espressif.EIM-CLI`) at `C:\Espressif`, target esp32 only. CI uses the `espressif/idf:v5.5.5` image |
 | xtensa-esp-elf GCC | esp-14.2.0_20260121 | from IDF tools |
-| CMake / Ninja | 3.30.2 / 1.12.1 | from IDF tools (not on global PATH) |
+| CMake / Ninja | 3.30.2 / 1.12.1 | from IDF tools (not on global PATH); the board simulator uses the copies that come with VS 2022 |
 | Rust | 1.99.1 | rustup, MSVC target |
 | Node / pnpm | 24.13.1 / 12.15.0 | pnpm via `npm i -g pnpm` |
 | MSVC | VS 2022 Build Tools | C++ protocol host test, board simulator |
@@ -46,6 +46,12 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Firmware to the board: `pwsh -NoProfile -File board/idf.ps1 -p COM9 -b 460800 build flash`
 - Dev CLI (`cargo build -p fenix-cli`, then `target/debug/fenix.exe`): `ports`, `hello`, `logs [s]`, `time`, `reboot`, `tap <x> <y>`, `swipe <x1> <y1> <x2> <y2>`, `shot <png> [s]`, `bench [s] [nostream]` (slide fps, stream throughput), `list`, `install`, `remove`, `soak <min>`; `--port COMx`
 - Board screenshots: `bash tools/capture_screens.sh <dir>` erases the board's settings (NVS), installs `tools/sample-app`, taps through every system screen and the sample app, saves PNGs, and removes the sample again. Golden copies: `docs/screens/board/`
+- Board simulator (`board/sim`, no board needed): the real `fenix_ui` + `fenix_apps` + `fenix_pkg` code and LVGL 9.5.0 built for Windows with MSVC, on stub IDF headers, `fx::hal` on a framebuffer and `fx::sys` with settings in memory, a clock fixed at Thursday 2026-10-29 08:35 (plus virtual time) and an app store in a folder of `.fxp` files. LVGL gets the board's own Kconfig values from `board/sim/lv_kconfig.h` (`python tools/sim_config.py` after a firmware build; `--check` runs in the board CI job). Time is virtual: it moves only when the script waits or the code calls `vTaskDelay`, so every run gives the same pixels.
+  - Build: `pwsh board/sim/build.ps1` (vcvars64 + CMake + Ninja; output `board/sim/build/fenix_sim.exe`). LVGL comes from `board/managed_components` after a firmware build, else CMake fetches tag v9.5.0
+  - Headless: `fenix_sim run <script> --out <dir> [--store <dir>]`. Script verbs (one per line, `#` comments): `tap x y`, `swipe x1 y1 x2 y2`, `wait ms`, `shot name`, `install file.fxp`, `remove id`, `set id name=value...`, `host id on|off`, `stream on fps|off`, `connect`, `disconnect`. Taps and swipes match `fenix tap`/`swipe` timing. It starts connected, with default settings and an empty store
+  - Window: `fenix_sim window [--store <dir>] [--scale <n>]` (default 2×). The mouse is the finger; `C` toggles the PC link. The backlight level dims the picture as on the panel. Idle cost: ~0.6% CPU, 13 MB
+  - Golden screens: `python tools/sim_shots.py` builds it, runs `board/sim/screens.txt` (the same walk as `tools/capture_screens.sh`, plus 6a "Waiting for host PC") and compares every pixel with `board/sim/golden/` (21 PNGs, 148 KB); failures write `<name>.diff.png` in `board/sim/build/shots`. `--update` rewrites the goldens after an intended UI change; `--no-build` reuses the exe. CI job `sim` (windows-latest) runs it
+  - Against the real board's `docs/screens/board/` captures: at most 0.6% of pixels differ (the clock minute and antialiasing edges)
 - Sample app: `pwsh tools/sample-app/build.ps1` (board package, PC half `fenix-sample.exe`, local registry in `target/sample-registry`)
 - Registry: `python tools/registry.py` (writes `registry/index.json`), `--check` (CI), `--local <out> <manifest> --board <fxp> [--pc <exe>]` (a local registry for `FENIX_REGISTRY`); see `docs/registry.md`
 - App packages: `fenix-pkg build <dir> [-o out.fxp]`, `fenix-pkg inspect <file>`; on the board: `fenix install <file.fxp>`, `fenix list`, `fenix remove <id>`, `fenix set <file.fxp> <bind>=<value>...` (acts as the app's PC half), `fenix host <id> on|off`. `fenix tap` and `fenix swipe` print what the board sends back (EVENT, BOARD_STATE). C++ reader test: `pwsh board/components/fenix_pkg/test/run.ps1`
@@ -87,6 +93,8 @@ P9 acceptance run (the full first-run flow, the real scene): 165 fps (the displa
 
 ## Gotchas found
 
+- **MSVC mangles C++ names of global variables; GCC does not** (2026-10-29). `fenix_fonts.h` declared the C font objects without `extern "C"`, which links on the board (Itanium ABI leaves globals unmangled) but not in the MSVC simulator. `tools/gen_fonts.py` now wraps the declarations in `extern "C"`.
+- **A fast mouse click can press and release between two LVGL reads** (simulator window). The simulator holds a press until LVGL has read it once.
 - **`board/sdkconfig` does not pick up later edits to `sdkconfig.defaults`** (2026-10-29). IDF applies defaults only when `sdkconfig` is created. After changing `sdkconfig.defaults`, delete `board/sdkconfig` (it is git-ignored) and build again. A stale one cost half the UI frame rate (`docs/board-info.md`, Rendering speed).
 
 - **Tauri IPC needs `connect-src ipc: http://ipc.localhost` in a custom CSP** (2026-10-29). Without it the webview cannot reach the IPC custom protocol and Tauri silently falls back to `postMessage`: plain commands still work, but a binary `tauri::ipc::Response` arrives as a plain array instead of an `ArrayBuffer` (the board mirror stayed black). Fixed in `app/src-tauri/tauri.conf.json`.

@@ -64,7 +64,7 @@ board/                   ESP-IDF project (C++17, IDF v5.5.5)
     fenix_sys/           settings (NVS), clock, link task, app store (LittleFS), stream encoder
     fenix_pkg/           package reader (no IDF dependency, host-tested)
     fenix_apps/          boot, home, settings, session, stream, host-app runtime (app_pkg.cpp: LVGL builder, bindings; corrected 2026-10-29)
-  sim/                   SDL2 simulator of fenix_ui + fenix_apps (stub HAL)
+  sim/                   PC simulator of fenix_ui + fenix_apps (MSVC, stub HAL, Win32 window or headless; corrected 2026-10-29: no SDL2)
   partitions.csv, sdkconfig.defaults, idf.ps1
 app/                     Tauri 2 + Svelte 5 PC app (src/, src-tauri/)
 crates/
@@ -371,7 +371,7 @@ Accept: Rust and C++ agree on all vectors. `fenix soak` runs 1 h with 0 CRC erro
 ### P4. Board core
 
 1. Write `fenix_hal` (display, touch with NVS calibration, backlight fade, LED, power) and `fenix_ui` (LVGL glue, theme, fonts, widgets: top bar, tile, dock icon, list row, switch, slider, sheet, progress line).
-2. Write `board/sim`: an SDL2 build of `fenix_ui` + `fenix_apps` with a stub HAL and a fake link. Screens can then be tried on the PC without flashing. The sim saves PNG screenshots per screen and rotation.
+2. Write `board/sim`: a PC build of `fenix_ui` + `fenix_apps` with a stub HAL and a fake link. Screens can then be tried on the PC without flashing. The sim saves PNG screenshots per screen and rotation. (Corrected 2026-10-29: built after P9 as a plain Win32 window plus a headless script runner instead of SDL2, so it needs nothing beyond MSVC; screenshots in P5 came from the real board meanwhile. See `docs/toolchain.md`.)
 3. Write `fenix_sys`: settings store, clock (`TIME_SET`, RTC no-init flag, MYT), link task, `LOG` frames, `STATS`, partition table with LittleFS.
 4. Set the init order: display and boot screen first, then the rest while the boot line plays.
 
