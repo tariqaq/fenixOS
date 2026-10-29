@@ -131,7 +131,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [!] 2. BLOCKED, needs the user: the agent may not write GitHub secrets. Run `gh secret set TAURI_SIGNING_PRIVATE_KEY < %USERPROFILE%\.tauri\fenixos-updater.key` (cmd) once. Secret: `TAURI_SIGNING_PRIVATE_KEY` from `%USERPROFILE%\.tauri\fenixos-updater.key` via `gh secret set` (stdin, never echoed); the empty password is set in the workflow
   - [~] 3. Unsigned dry run passed 2026-10-29 (run 40829389825: firmware + app jobs green, `windows-x64-nsis` artifact 4.03 MB, `firmware` artifact; no release created; hand-started runs without the secret skip the updater signature). A signed dry run still waits on 2. Dry run: `workflow_dispatch` builds everything without publishing (artifact upload only), so the tag is pushed only once the pipeline is green
   - [x] 4. (Done: status v0.1.0, board screenshots, install, how apps work, build + simulator) README for v0.1.0: install, first run, how apps work, build from source (+ simulator), screenshots from `docs/screens/`
-  - [x] 5. (Done: soak 60 min, 0 disconnects, 0 RX errors / 4578 frames, max RTT 22 ms, min heap 110 KB; board walk pixel-identical to `docs/screens/board/` except the live clock; `docs/board-info.md` "Release hardware pass") Hardware pass: 1 h `fenix soak`, all screens via the simulator goldens + a board capture walk, rotations; shut down / wake stays an open item (needs a finger)
+  - [x] 5. (Corrected 2026-10-29: the screen walk compares the LVGL picture, not the panel; the user then found 80 MHz LCD corruption and mirrored touch, both fixed, see Open) (Done: soak 60 min, 0 disconnects, 0 RX errors / 4578 frames, max RTT 22 ms, min heap 110 KB; board walk pixel-identical to `docs/screens/board/` except the live clock; `docs/board-info.md` "Release hardware pass") Hardware pass: 1 h `fenix soak`, all screens via the simulator goldens + a board capture walk, rotations; shut down / wake stays an open item (needs a finger)
   - [x] 6. (Done: toolchain P10 refs, PLAN P10.3 + updater note corrected, decisions logged, CLI help checked; repeat after the tag) Sweep: docs, comments, CLI help, `tasks.md`; "in development" status lines
   - [ ] 7. Tag `v0.1.0`, release CI publishes it; check the release assets (`fenixOS_0.1.0_x64-setup.exe`, `.sig`, `latest.json`)
   - [x] 8a. Local updater test passed 2026-10-29: a 0.0.9 client (`--config` override: endpoint http://127.0.0.1:8765, `dangerousInsecureTransportProtocol`) found v0.1.0 at start, Settings > Install fetched the signed installer, verified it, installed it passively, and the installed v0.1.0 started by itself (~1 s). A tampered signature is refused ("The signature verification failed", nothing installed). Found: an install failure read "could not check"; Settings now says "could not install vX"
@@ -145,8 +145,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 
 ## Open (needs user input or flashing)
 
-- [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)
+- [x] Touch corner coverage (2026-10-29, user at the board): the default range was mirrored left to right; fixed (`y_min`/`y_max` reversed), confirmed by the user. `docs/board-info.md` "Hands-on review"
 - [ ] Physical USB replug with the PC app running (P7 reconnect was measured with a board reboot over the link)
-- [ ] Tap-to-wake from Shut down (deep sleep, ext0 on GPIO36), and the time surviving it
+- [~] Tap-to-wake from Shut down: works since the touch-bus pins are held in sleep (user confirmed); the follow-up "touch dead after wake" is fixed and flashed. Still to check: the time surviving it, and the LED staying off in sleep (fix built, not flashed while the user has the board)
 - [ ] RGB LED levels (S6): connect pulse looks right, not too bright
 - [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; LED is tested in P1 S6, LDR is not in v0.1

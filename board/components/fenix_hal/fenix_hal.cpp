@@ -3,9 +3,11 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "esp_attr.h"
+#include "esp_rom_gpio.h"
 #include "esp_sleep.h"
 #include "esp_system.h"
 #include "fenix_lgfx.hpp"
+#include "soc/gpio_sig_map.h"
 
 namespace fx::hal {
 
@@ -14,7 +16,10 @@ static LGFX lcd;
 // ---- Display ----
 
 void display_init() {
-  gpio_hold_dis(GPIO_NUM_21);  // released after a deep-sleep hold
+  // Release the deep-sleep holds (backlight, touch bus); a hold outlives the wake-up and would
+  // keep the touch controller locked out.
+  gpio_deep_sleep_hold_dis();
+  for (gpio_num_t p : {GPIO_NUM_21, GPIO_NUM_33, GPIO_NUM_25, GPIO_NUM_32}) gpio_hold_dis(p);
   lcd.init();
   lcd.setColorDepth(16);
   lcd.fillScreen(0);
@@ -98,8 +103,8 @@ void led_init() {
     c.speed_mode = LEDC_HIGH_SPEED_MODE;
     c.channel = static_cast<ledc_channel_t>(i);
     c.timer_sel = LEDC_TIMER_0;
-    c.duty = 255;  // active low: 255 = off
-    c.flags.output_invert = 0;
+    c.duty = 0;  // active-low LED: the inverted output makes duty 0 a steady high (off)
+    c.flags.output_invert = 1;
     ledc_channel_config(&c);
   }
 }
@@ -107,7 +112,7 @@ void led_init() {
 void led_set(uint8_t r, uint8_t g, uint8_t b) {
   const uint8_t v[3] = {r, g, b};
   for (int i = 0; i < 3; i++) {
-    ledc_set_duty(LEDC_HIGH_SPEED_MODE, static_cast<ledc_channel_t>(i), 255 - v[i]);
+    ledc_set_duty(LEDC_HIGH_SPEED_MODE, static_cast<ledc_channel_t>(i), v[i]);
     ledc_update_duty(LEDC_HIGH_SPEED_MODE, static_cast<ledc_channel_t>(i));
   }
 }
@@ -123,13 +128,34 @@ void deep_sleep_until_touch() {
   gpio_set_direction(GPIO_NUM_21, GPIO_MODE_OUTPUT);
   gpio_set_level(GPIO_NUM_21, 0);
   gpio_hold_en(GPIO_NUM_21);
-  for (gpio_num_t p : LED_PINS) {
+  // LEDC still owns the LED pads through the GPIO matrix after gpio_reset_pin, so the hold kept
+  // its last output (the LED glowed green in deep sleep, 2026-10-29). Stop it and route the
+  // pads to the plain GPIO output first.
+  for (int i = 0; i < 3; i++) {
+    ledc_stop(LEDC_HIGH_SPEED_MODE, static_cast<ledc_channel_t>(i), 1);
+    gpio_num_t p = LED_PINS[i];
     gpio_reset_pin(p);
+    esp_rom_gpio_connect_out_signal(p, SIG_GPIO_OUT_IDX, false, false);
     gpio_set_direction(p, GPIO_MODE_OUTPUT);
     gpio_set_level(p, 1);
     gpio_hold_en(p);
   }
+  // Touch bus: CS high, CLK and MOSI low, so a floating line cannot clock a command into the
+  // XPT2046 that turns its PENIRQ off (its last command, 0x80, leaves it armed).
+  const struct {
+    gpio_num_t pin;
+    int level;
+  } touch_pins[] = {{GPIO_NUM_33, 1}, {GPIO_NUM_25, 0}, {GPIO_NUM_32, 0}};
+  for (auto t : touch_pins) {
+    gpio_reset_pin(t.pin);
+    gpio_set_direction(t.pin, GPIO_MODE_OUTPUT);
+    gpio_set_level(t.pin, t.level);
+    gpio_hold_en(t.pin);
+  }
   gpio_deep_sleep_hold_en();
+  // GPIO16/17 (green, blue) are VDD_SDIO pads: with that domain off in deep sleep they cannot
+  // hold "off" and the active-low LED glows green (seen 2026-10-29). Keep it powered.
+  esp_sleep_pd_config(ESP_PD_DOMAIN_VDDSDIO, ESP_PD_OPTION_ON);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_36, 0);  // XPT2046 PENIRQ, low while touched
   esp_deep_sleep_start();
 }

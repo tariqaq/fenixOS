@@ -109,7 +109,7 @@ v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood ou
 - **Port open does not reset the board.** Verified: `open_port` (DTR/RTS released) gives no boot log or reset (`esp_reset_reason` = 1, power-on, with uptime growing across sessions). Note (2026-10-29): an EN-pin reset also reports reason 1 on the ESP32. After an `esptool` hard reset (RTS pulls EN), the board logged `boot reason 1, up 39 s`. So the proof is the uptime that keeps growing, not the reason code.
 - **LCD read-back works** (MISO on IO12 is wired). `fenix shot` / `rawshot` capture exact screenshots, and `docs/legacy/screens/` holds the README ones.
 - **Colours are correct** with `invert=false`, `rgb_order=false` on the ILI9341: no inversion fix needed.
-- **Touch works** with the default raw range (taps, page cycling and events verified with the stylus). Hold the screen at boot to calibrate.
+- **Touch works** with the default raw range (taps, page cycling and events verified with the stylus). Hold the screen at boot to calibrate. **Corrected 2026-10-29:** that check only cycled pages, so any tap counted. With the fenixOS landscape layout the default range was mirrored left to right; see "Hands-on review" below.
 - **Render cost:** a full CPU page (gauge, KV, 16 core bars, sparkline, header) takes ~27 ms, Overview ~15–25 ms. Dirty-only redraw keeps a 1 Hz poll at ~1–2 frames/s.
 - **UI task stack:** ~2.6 KB used of 8 KB.
 - **`link` is a POSIX function name** in ESP-IDF's newlib, so the firmware namespace is `pclink`.
@@ -133,7 +133,7 @@ Scene: full-screen panel with 6 rounded tiles + labels, LVGL partial mode, two D
 
 Findings:
 - **Rendering, not SPI, was the limit**, and most of it was code and font reads from flash: switching flash from DIO 40 MHz to **QIO 80 MHz** gave +50 %. The chip runs QIO fine (`flash io: qio`).
-- **LCD SPI at 80 MHz works**: a colour-bar write at 80 MHz read back over MISO (20 MHz) with **0 wrong pixels**, and `display_selftest()` stays in `fenix_hal` for later checks. HSPI pins 14/13/12/15 are the IOMUX pins, so 80 MHz needs no GPIO matrix.
+- **LCD SPI at 80 MHz works**: a colour-bar write at 80 MHz read back over MISO (20 MHz) with **0 wrong pixels**, and `display_selftest()` stays in `fenix_hal` for later checks. HSPI pins 14/13/12/15 are the IOMUX pins, so 80 MHz needs no GPIO matrix. **Corrected 2026-10-29:** the colour bars were a few large writes. Under LVGL's many small DMA writes, 80 MHz put bands at the wrong place on the real panel (ghost text, doubled widgets). The LCD now runs at 55 MHz, like the vendor demo and FenixDeck.
 - **LVGL's FreeRTOS OS layer with 2 draw units halves the frame rate** here (task hand-off cost outweighs the second core for these small areas). Not used; LVGL runs in one UI task.
 - `CONFIG_LV_ATTRIBUTE_FAST_MEM_USE_IRAM` overflows IRAM by ~30 KB. Not used.
 - Draw buffers: **2 × 320 × 32 lines = 40 KB** (16→24→40 lines gave 25→28→31 fps on the fade; 32 is the balance). Heap after LVGL init and buffers: ~243 KB free of ~297 KB. (Corrected in P4: the real system screens render fastest with **80-line** bands, see "Rendering speed" below.)
@@ -188,11 +188,21 @@ Measured with `fenix bench` (opens and closes Settings every second: two full-sc
 - Rounded-corner clipping (`clip_corner` on grouped lists) cost nothing measurable here; it is off anyway, and pressed rows round their own highlight.
 - **Bands:** fewer, taller bands mean fewer passes over the object tree per frame. 80 lines = 3 bands in landscape, 4 in portrait.
 - **Stream throttle:** only frames on the PC's `STREAM_START` rate are encoded. Areas drawn in between, and bands that did not fit the TX buffer, are marked stale and redrawn for the stream when the screen is idle (or after 1 s). During slides the stream is link-bound (~45 KB/s, ~3.5 screens of pixels per s, RLE ~11×).
-- **Shut down (deep sleep), 2026-10-29:** Session › Shut down fades the backlight, holds the backlight and LED pins and sleeps; the link goes silent at once. A PC-side reset through RTS (EN pin) wakes it as a normal boot (reset reason POWERON, so the time is unset again). Tap-to-wake (ext0 on GPIO36) still needs a check by hand. The PC app can offer "Wake board" through the same RTS pulse.
-- **Rotations:** all four work, including touch through `fenix tap` (LovyanGFX rotates touch with the panel). The stream sends logical coordinates, so PC screenshots are always upright.
+- **Shut down (deep sleep), 2026-10-29:** Session › Shut down fades the backlight, holds the backlight and LED pins and sleeps; the link goes silent at once. A PC-side reset through RTS (EN pin) wakes it as a normal boot (reset reason POWERON, so the time is unset again). Tap-to-wake (ext0 on GPIO36) still needs a check by hand. The PC app can offer "Wake board" through the same RTS pulse. **Update:** tap-to-wake failed at first and works since the touch-bus fix in "Hands-on review" below.
+- **Rotations:** all four work, including touch through `fenix tap` (LovyanGFX rotates touch with the panel). The stream sends logical coordinates, so PC screenshots are always upright. **Note:** `fenix tap` injects logical coordinates and skips the touch panel, so it could not catch the mirrored default range.
 
 ## Release hardware pass (P10, 2026-10-29)
 
 - **1 h link soak** (`fenix soak 60`, v0.1.0, PC app closed): 1 connect, 0 disconnects, 0 RX errors over 4578 frames, max round trip 22 ms, free heap 120016 B at the end, minimum 110052 B, 0 stream drops.
-- **Screen walk** (`tools/capture_screens.sh`, all 20 screens in landscape and portrait, with the sample app): pixel-identical to `docs/screens/board/` except the live clock on Home (Tiles, Dock, portrait) and Session, and the Host PC navbar, which the older reference caught mid-fade.
+- **Screen walk** (`tools/capture_screens.sh`, all 20 screens in landscape and portrait, with the sample app): pixel-identical to `docs/screens/board/` except the live clock on Home (Tiles, Dock, portrait) and Session, and the Host PC navbar, which the older reference caught mid-fade. **Corrected:** `fenix shot` captures what LVGL rendered, not the glass, so this walk could not see the 80 MHz panel corruption the user filmed the same day.
 - Not covered remotely: tap-to-wake after Shut down, LED brightness, touch corners, physical replug (open items in `tasks.md`).
+
+## Hands-on review (2026-10-29, user at the board)
+
+Two phone videos (`docs/recordedvids/`, not in git) and live tests with the user showed bugs that remote testing had missed.
+
+- **Touch mirrored left to right** with the default range. Corner taps in landscape (USB left), raw → mapped with the old range: top-left 3760, 3679 → 299, 10; top-right 3738, 241 → 3, 11; bottom-right 512, 184 → 0, 225; bottom-left 405, 3583 → 291, 233. Raw y runs right to left (~3630 at the left edge, ~210 at the right), so `y_min`/`y_max` are now 3900/200 (`fenix_lgfx.hpp`). LovyanGFX builds the touch affine from the four corners, so a reversed range simply mirrors that axis. Confirmed by the user; they also ran Settings › Display › Calibrate touch, so this board now uses its NVS calibration.
+- **Garbled drawing at 80 MHz LCD SPI:** text and widgets drawn twice at offsets, smeared rows. LCD write clock lowered to 55 MHz.
+- **Tap-to-wake did not wake.** The touch bus pins (CS 33, CLK 25, MOSI 32) floated in deep sleep; they are now held (CS high, CLK and MOSI low) so the XPT2046 keeps PENIRQ armed. Wake then worked. **Follow-up bug:** the holds outlived the wake-up and locked touch out; `display_init` now releases them (`gpio_deep_sleep_hold_dis` + `gpio_hold_dis`).
+- **RGB LED glowed green in deep sleep** (and faintly while "off"). Likely cause: LEDC still drove the pads through the GPIO matrix, so the hold kept LEDC's output, and 8-bit duty 255 still pulls low 1/256 of the time. Fix built, **not yet verified on the board**: LEDC output inverted (duty 0 = steady off), and before sleep `ledc_stop` + the pads routed to plain GPIO output (`SIG_GPIO_OUT_IDX`), then held high. `esp_sleep_pd_config(VDDSDIO, ON)` keeps GPIO16/17's power domain up.
+- A purple flash on wake is the LED pins' reset state during boot, before `led_init`.

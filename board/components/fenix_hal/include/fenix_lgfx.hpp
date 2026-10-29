@@ -23,7 +23,9 @@ class LGFX : public lgfx::LGFX_Device {
       auto cfg = bus_.config();
       cfg.spi_host = SPI2_HOST;
       cfg.spi_mode = 0;
-      cfg.freq_write = 80000000;  // S1: read-back check 0 bad pixels at 80 MHz (docs/board-info.md)
+      // 55 MHz as the vendor demo and FenixDeck. 80 MHz passed S1's colour-bar check but put
+      // bands at the wrong place on the real panel under LVGL's small DMA writes (2026-10-29).
+      cfg.freq_write = 55000000;
       cfg.freq_read = 20000000;
       cfg.spi_3wire = false;
       cfg.use_lock = true;
@@ -69,8 +71,10 @@ class LGFX : public lgfx::LGFX_Device {
       // (Settings > Display > Calibrate touch).
       cfg.x_min = 300;
       cfg.x_max = 3900;
-      cfg.y_min = 200;
-      cfg.y_max = 3900;
+      // Raw y runs right to left in landscape (measured 2026-10-29: ~3630 at the left edge,
+      // ~210 at the right), so the range is reversed; with 200..3900 left and right were mirrored.
+      cfg.y_min = 3900;
+      cfg.y_max = 200;
       cfg.pin_int = 36;
       cfg.bus_shared = false;
       cfg.offset_rotation = 0;
