@@ -17,6 +17,7 @@
     type AppUpdate,
     type PortItem,
   } from "../lib/api";
+  import { menu as menuMotion } from "../lib/motion";
 
   let { appVersion, boardPort }: { appVersion: string; boardPort: string | null } = $props();
 
@@ -118,7 +119,7 @@
       </button>
     </div>
     {#if menu}
-      <div class="menu" role="menu" aria-label="Connection port">
+      <div class="menu" role="menu" aria-label="Connection port" transition:menuMotion>
         <button type="button" role="menuitemradio" aria-checked={selected === null} onclick={() => pick(null)}>
           <span class="tick">{#if selected === null}<Icon name="check" size={14} color="var(--accent)" />{/if}</span>
           <span>Automatic</span>
@@ -208,6 +209,7 @@
     padding: 6px;
     box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
     z-index: 10;
+    transform-origin: top right;
     display: flex;
     flex-direction: column;
   }
@@ -226,6 +228,10 @@
   }
   .menu button:hover {
     background: var(--surface-3);
+    filter: none;
+  }
+  .menu button:active {
+    transform: none;
   }
   .tick {
     width: 16px;

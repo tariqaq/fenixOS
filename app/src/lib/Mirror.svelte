@@ -5,6 +5,7 @@
   // up to 10 fps. Clicks on the picture are sent to the board as touches.
   import { onDestroy } from "svelte";
   import { mirrorFrame, mirrorSet, mirrorTouch } from "./api";
+  import { BASE, enter, scrim } from "./motion";
 
   let { live }: { live: boolean } = $props();
   let canvas: HTMLCanvasElement;
@@ -120,8 +121,9 @@
         onpointerup={up}
         onpointercancel={up}
       ></canvas>
+      <!-- Off: the last picture stays, softly blurred and dimmed under the message. -->
       {#if !live}
-        <div class="off">
+        <div class="off" transition:scrim={{ duration: BASE }}>
           <p>Streaming is off.</p>
           <p class="fine">On the board, open Stream and tap Start streaming.</p>
         </div>
@@ -135,7 +137,7 @@
     </span>
     <p>Mirrors the board screen as it is now.</p>
     {#if live}
-      <button type="button" onclick={stop}>
+      <button type="button" onclick={stop} in:enter={{ y: 0, x: 8 }}>
         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"
           ><rect x="1" y="1" width="10" height="10" rx="2" fill="var(--danger)"></rect></svg
         >
@@ -176,6 +178,9 @@
     gap: 4px;
     text-align: center;
     pointer-events: none;
+    background: rgba(0, 0, 0, 0.45);
+    -webkit-backdrop-filter: blur(14px) saturate(0.8);
+    backdrop-filter: blur(14px) saturate(0.8);
   }
   .off p {
     font-size: 15px;

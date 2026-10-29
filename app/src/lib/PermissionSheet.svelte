@@ -1,5 +1,6 @@
 <script lang="ts">
   // Artboard 15 (PcPermissions): what an app's PC part will do, shown before Add.
+  import { FAST, scrim, sheet } from "./motion";
   import AppIcon from "./AppIcon.svelte";
   import { permissionRows, tileColor, type RegistryApp } from "./api";
 
@@ -11,8 +12,8 @@
 
 <svelte:window onkeydown={(e) => e.key === "Escape" && oncancel()} />
 
-<div class="scrim">
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="perm-title">
+<div class="scrim" in:scrim out:scrim={{ duration: FAST }}>
+  <div class="sheet" role="dialog" in:sheet out:sheet={{ duration: FAST }} aria-modal="true" aria-labelledby="perm-title">
     <div class="head">
       <div class="badge" style="background: {tileColor(app.color)}"><AppIcon name={app.icon} size={26} /></div>
       <div class="title">

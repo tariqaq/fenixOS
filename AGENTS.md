@@ -1,48 +1,68 @@
 # AGENTS.md
 
-Rules for any AI agent working in this repository. These are hard rules: no exceptions.
+Hard rules for any AI agent in this repo. No exceptions.
 
 ## Hard rules
 
 ### 1. Never add co-authoring
-- Never add `Co-Authored-By:` (or any similar attribution trailer) to commit messages.
-- Never add "Generated with ..." or other AI attribution to commits, PRs, or files.
+- No `Co-Authored-By:` or similar trailer in commits.
+- No "Generated with ..." or other AI attribution in commits, PRs or files.
 - If a commit with co-authoring is found, rewrite history to remove it and force-push.
 
-### 2. Commit, push, sync frequently on the default branch
-- Work directly on the default branch (`main`). Do not create feature branches.
-- Commit small, logical units of work often.
-- After every commit: `git pull --rebase` then `git push`, so local and `origin/main` stay in sync.
+### 2. Commit, push, sync often on `main`
+- Work on `main`. No feature branches.
+- Commit small, logical units often.
+- After every commit: `git pull --rebase` then `git push`, so local and `origin/main` match.
 
-### 3. Plan first, track progress in `tasks.md`
-- Before working on anything, write a well-scoped, detailed plan.
-- Put the plan in `tasks.md` as a checklist before starting execution.
-- Update `tasks.md` immediately after every step: mark it done, in progress, or blocked, with notes.
-- Keep `tasks.md` accurate at all times, so a cut-off session can resume from it without guessing.
-- Commit and push `tasks.md` updates along with the work (rule 2).
+### 3. Plan first, track in `tasks.md`
+- Before any work, write a scoped, detailed plan as a checklist in `tasks.md`.
+- After every step, mark it done, in progress or blocked, with notes.
+- Keep it accurate so a cut-off session can resume without guessing.
+- Commit and push it with the work (rule 2).
 
-### 4. Balance own knowledge, web search, and browser
-- Use your own knowledge first when it is enough and you are confident.
-- Use web search freely when facts are niche, recent, uncertain, or need checking.
-- Verify web info: cross-check against more than one reliable source before relying on it.
-- Use Claude in Chrome browser control freely when a page needs to be viewed or interacted with.
-- Balance them: do not search for everything, and do not rely only on memory.
+### 4. Balance own knowledge, web search, browser
+- Own knowledge first when it is enough and you are sure.
+- Web search when facts are niche, recent or uncertain; cross-check with more than one reliable source.
+- Claude in Chrome when a page must be viewed or used.
+- Do not search for everything; do not rely only on memory.
 
-### 5. Always document important findings
-- Write down every important finding as soon as it is found: hardware facts, pin maps, versions, errors and their fixes, gotchas, corrections to earlier claims.
-- Put findings in the matching doc (for example `docs/board-info.md`, `pics/ANALYSIS.md`, `docs/vendor/README.md`), or create a new doc under `docs/`.
-- When a finding corrects an earlier one, update the old text and note the correction. Do not leave wrong info in place.
-- Commit and push the docs with the work (rule 2).
+### 5. Document every important finding
+- Write it down when found: hardware facts, pin maps, versions, errors and fixes, gotchas, corrections.
+- Put it in the matching doc (`docs/board-info.md`, `pics/ANALYSIS.md`, `docs/vendor/README.md`, ...) or a new one under `docs/`.
+- When a finding corrects an older one, fix the old text and note it ("Corrected: ..."). Never leave wrong info.
+- Commit and push docs with the work (rule 2).
 
-### 6. Regularly clean up stale content
-- After every change, update every doc and code comment the change affects, in the same commit.
-- At the end of each task or phase, sweep for stale content: docs (`*.md`), code comments, CLI/help text, `tasks.md`, screenshots referenced by docs.
-- Stale means: describes old behaviour, wrong numbers or versions, removed features, resolved open questions, or "TODO/pending" items that are done.
-- Fix it in place: correct or delete it. Where a correction matters for history, note it ("Corrected: ...").
-- Remove dead code and unused debug leftovers found during the sweep.
+### 6. Clean up stale content
+- Every change updates every doc and code comment it affects, in the same commit.
+- At the end of each task or phase, sweep `*.md`, code comments, CLI/help text, `tasks.md`, screenshots used by docs.
+- Stale: old behaviour, wrong numbers or versions, removed features, resolved questions, done TODOs.
+- Fix in place; note "Corrected: ..." where history matters. Remove dead code and debug leftovers found.
+
+### 7. Docs and code disagree: code wins
+- Follow the code for conventions: naming, structure, idioms, numbers.
+- List each mismatch found in your final reply, and fix the stale doc in the same changes.
+- Two exceptions, where the doc wins: these hard rules (never loosened to match code), and sections marked planned (ahead of the code on purpose).
+
+### 8. Read first, edit, test once
+- Before changing anything, list every file the change needs and read them in one pass.
+- Then make all the edits. Then run the tests once (see Testing).
+- No read, edit, read, edit loop.
+
+### 9. Searches stay inside this repo
+- Never grep, find or list from `C:\`, `%USERPROFILE%` or any other drive-wide root.
+- If a search outside the repo is needed, ask the user first.
+
+## Testing
+
+What CI runs; run the parts your change touches:
+- `python tools/version.py --check`, `tools/gen_tokens.py --check`, `tools/registry.py --check`, `tools/licenses.py --check`
+- `cargo test --workspace`
+- `pnpm -C app exec svelte-check`, `pnpm -C app build`
+- Firmware: `pwsh -NoProfile -File board/idf.ps1 build`; simulator screens: `board/sim/build.ps1`, then `python tools/sim_shots.py`
+- On this laptop, wrap builds in `pwsh -NoProfile -File tools/capped.ps1 <command>` (4-core cap), one build at a time.
 
 ## Resuming a session
 1. Read `tasks.md`.
-2. Find the first item that is not done.
-3. Check `git log` and `git status` to confirm the real state.
+2. Find the first item not done.
+3. Check `git log` and `git status` for the real state.
 4. Continue from there.

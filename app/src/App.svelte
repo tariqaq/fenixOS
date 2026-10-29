@@ -14,6 +14,7 @@
   import Board from "./pages/Board.svelte";
   import Settings from "./pages/Settings.svelte";
   import { getState, onState, type Page, type State } from "./lib/api";
+  import { enter } from "./lib/motion";
 
   let snap = $state<State | null>(null);
   let page = $state<Page>("apps");
@@ -69,19 +70,24 @@
     <div class="body">
       <Sidebar bind:page board={snap.board} />
       <main>
-        {#if page === "apps"}
-          <Apps apps={snap.apps} />
-        {:else if page === "board"}
-          <Board
-            board={snap.board}
-            appVersion={snap.app_version}
-            streaming={snap.streaming}
-            onlogs={() => (logs = true)}
-            onreinstall={() => (reinstall = true)}
-          />
-        {:else}
-          <Settings appVersion={snap.app_version} boardPort={snap.board?.port ?? null} />
-        {/if}
+        <!-- A new page fades in rising 8 px; the old one leaves at once, so the two never stack. -->
+        {#key page}
+          <div in:enter>
+            {#if page === "apps"}
+              <Apps apps={snap.apps} />
+            {:else if page === "board"}
+              <Board
+                board={snap.board}
+                appVersion={snap.app_version}
+                streaming={snap.streaming}
+                onlogs={() => (logs = true)}
+                onreinstall={() => (reinstall = true)}
+              />
+            {:else}
+              <Settings appVersion={snap.app_version} boardPort={snap.board?.port ?? null} />
+            {/if}
+          </div>
+        {/key}
       </main>
     </div>
   {/if}

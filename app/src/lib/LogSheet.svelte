@@ -1,5 +1,6 @@
 <script lang="ts">
   // Artboard 16 (PcLogs): filter, copy, open the log folder. Follows new lines while open.
+  import { FAST, scrim, sheet } from "./motion";
   import { onDestroy, tick } from "svelte";
   import Icon from "./Icon.svelte";
   import { getLogs, onLog, openLogFolder, type LogLine } from "./api";
@@ -49,8 +50,8 @@
 
 <svelte:window onkeydown={key} />
 
-<div class="scrim">
-  <div class="sheet" role="dialog" aria-labelledby="logs-title" aria-modal="true">
+<div class="scrim" in:scrim out:scrim={{ duration: FAST }}>
+  <div class="sheet" role="dialog" in:sheet out:sheet={{ duration: FAST }} aria-labelledby="logs-title" aria-modal="true">
     <div class="head">
       <h2 id="logs-title">Logs</h2>
       <div class="seg" role="group" aria-label="Show">

@@ -14,6 +14,7 @@
     type AppView,
     type Setting,
   } from "../lib/api";
+  import { FAST, enter } from "../lib/motion";
 
   let { app, onback }: { app: AppView; onback: () => void } = $props();
 
@@ -50,7 +51,7 @@
     </div>
   </div>
   {#if app.enabled && app.status !== "on"}
-    <p class="state" class:problem={app.status === "error"}>{app.detail}</p>
+    <p class="state" class:problem={app.status === "error"} in:enter={{ y: -4, duration: FAST }}>{app.detail}</p>
   {/if}
 
   {#if app.settings.length}
@@ -138,7 +139,7 @@
   </section>
 
   {#if confirming}
-    <div class="confirm">
+    <div class="confirm" in:enter={{ y: -6 }}>
       <p>Remove {app.name} from this PC and the board? Its settings are deleted too.</p>
       <div class="buttons">
         <button type="button" class="remove" onclick={() => removeApp(app.id)}>Remove</button>

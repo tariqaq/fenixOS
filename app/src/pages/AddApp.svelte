@@ -5,6 +5,7 @@
   import AppIcon from "../lib/AppIcon.svelte";
   import PermissionSheet from "../lib/PermissionSheet.svelte";
   import { addApp, listRegistry, tileColor, type RegistryApp } from "../lib/api";
+  import { enter } from "../lib/motion";
 
   let { onback }: { onback: () => void } = $props();
 
@@ -65,7 +66,7 @@
   {:else if shown.length === 0}
     <p class="msg">{query ? "No apps match your search." : "The registry has no apps yet."}</p>
   {:else}
-    <div class="group">
+    <div class="group" in:enter={{ y: 6 }}>
       {#each shown as a (a.id)}
         <div class="item">
           <div class="badge" style="background: {tileColor(a.color)}"><AppIcon name={a.icon} size={22} /></div>

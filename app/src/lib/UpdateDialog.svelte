@@ -1,6 +1,7 @@
 <script lang="ts">
   // Artboard 12 (PcUpdate): version mismatch on connect, Reinstall firmware from the Board page,
   // and the progress of either. The engine does the work; this only shows `State.update`.
+  import { FAST, scrim, sheet } from "./motion";
   import Icon from "./Icon.svelte";
   import { clearUpdate, updateBoard, type State } from "./api";
 
@@ -39,8 +40,8 @@
   }
 </script>
 
-<div class="scrim">
-  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="upd-title">
+<div class="scrim" in:scrim out:scrim={{ duration: FAST }}>
+  <div class="dialog" role="dialog" in:sheet out:sheet={{ duration: FAST }} aria-modal="true" aria-labelledby="upd-title">
     {#if u && (u.stage === "erasing" || u.stage === "writing" || u.stage === "restarting")}
       <Icon name="cpu" size={44} color="var(--accent)" />
       <h2 id="upd-title">Updating the board</h2>
@@ -151,6 +152,7 @@
     height: 6px;
     border-radius: 3px;
     background: var(--accent);
+    transition: width var(--dur-base) var(--ease);
   }
   .status {
     margin-top: 4px;

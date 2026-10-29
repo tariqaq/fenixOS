@@ -176,6 +176,16 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 3. Board Stream app text no longer mentions the PC Board page; sim golden screen
   - [x] 4. Docs (spec, decisions, mockups), build, flash, test over CDP: off state has no button and says "On the board, open Stream and tap Start streaming."; board Start gives Live; PC Stop gives Off; board Stop gives Off. The installed app is not restarted (P16)
 
+- [x] P17 PC app motion and polish per DESIGN.md Motion (user 2026-10-29: "so abrupt in animation and transitions"; "always try to polish ui like this"). Spec: ease `cubic-bezier(0.2, 0.8, 0.2, 1)`; 200 ms press and toggle, 250 ms fade and nav push, 350 ms sheet; light spring for tiles; reduced motion = plain fade. Plan:
+  - [x] 1. Read every PC UI file in one pass (AGENTS rule 8). Before: only the switch, tile colour and connect-screen fade moved; pages, sub-pages, sheets, dialogs, menus, presses, hovers and the mirror overlay changed at once
+  - [x] 2. Mirror off state: soft blur and dim over the paused picture, fading in and out
+  - [x] 3. Page changes (Apps / Board / Settings) fade with a short slide; sub-pages (Add app, app settings) push and pop; sidebar selection glides
+  - [x] 4. Buttons, rows, tiles: hover and press feedback (200 ms); tiles appear with a light spring; sheets and dialogs slide up over a fading scrim (350 ms) if they do not yet
+  - [x] 5. Reduced motion: every move becomes a plain fade
+  - [x] 6. svelte-check 0 errors, build; over CDP: sidebar highlight glides (CSS transition), page enter animation runs, Logs sheet mid-open at scale 0.995 / scrim 0.77, sub-page push and port menu animate, mirror blur seen in a screenshot. One run saw the board's Stop fire 2 s after a scripted Start ("stream stopped on the board"); a clean repeat stayed on, so likely a stray or physical touch. Docs: DESIGN.md (PC motion, PC blur), decisions
+- [ ] P18 Release v0.1.1 (user 2026-10-29: "bump the version and u push the tag urself"): VERSION 0.1.1 via `tools/version.py`, push tag `v0.1.1`, CI builds; install the release's setup.exe directly (not via the v0.1.0 updater: v0.1.0 has the read pattern that crashes the CH340 driver, P16)
+- [x] AGENTS.md: rules 7 (docs vs code: code wins, except hard rules and planned sections), 8 (read first, edit, test once), 9 (searches stay inside the repo), Testing section (user 2026-10-29)
+
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").

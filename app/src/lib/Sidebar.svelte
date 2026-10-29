@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Sidebar (PcDashboard and siblings): Apps, Board, Settings, and the board status card.
+  // Sidebar (PcDashboard and siblings): Apps, Board, Settings, and the board status card. The
+  // selection is one highlight that glides to the chosen item (250 ms).
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
   import type { Board, Page } from "./api";
@@ -11,9 +12,11 @@
     { id: "board", label: "Board", icon: "cpu" },
     { id: "settings", label: "Settings", icon: "gear-six" },
   ];
+  const index = $derived(Math.max(0, items.findIndex((it) => it.id === page)));
 </script>
 
 <nav aria-label="fenixOS">
+  <span class="pill" aria-hidden="true" style="transform: translateY({index * 40}px)"></span>
   {#each items as it (it.id)}
     <button
       type="button"
@@ -41,6 +44,7 @@
 
 <style>
   nav {
+    position: relative;
     flex: 1 1 220px;
     max-width: 260px;
     background: var(--surface-1);
@@ -62,8 +66,24 @@
     font-size: 15px;
     text-align: left;
   }
-  button.current {
+  /* Buttons are 36 px with 4 px gaps: item i sits 40 px x i below the first. */
+  .pill {
+    position: absolute;
+    top: 16px;
+    left: 12px;
+    right: 12px;
+    height: 36px;
+    border-radius: 8px;
     background: var(--surface-2);
+    transition: transform var(--dur-base) var(--ease);
+  }
+  button {
+    position: relative;
+  }
+  button:not(.current):hover {
+    background: rgba(255, 255, 255, 0.04);
+  }
+  button.current {
     font-weight: 600;
   }
   .status {

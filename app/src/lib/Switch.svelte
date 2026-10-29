@@ -40,7 +40,9 @@
     padding: 2px;
     display: flex;
     align-items: center;
-    transition: background var(--dur-fast) var(--ease);
+    transition:
+      background var(--dur-fast) var(--ease),
+      transform var(--dur-fast) var(--ease);
   }
   button.on {
     background: var(--success);

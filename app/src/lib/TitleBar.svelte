@@ -51,6 +51,10 @@
   }
   button:hover {
     background: var(--surface-2);
+    filter: none;
+  }
+  button:active {
+    transform: none;
   }
   .close:hover {
     background: var(--danger-fill);

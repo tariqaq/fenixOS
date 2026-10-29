@@ -103,13 +103,14 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 - Corner radii: board tiles 14 px, list groups 12 px, buttons fully rounded (capsule); PC tiles 20 px, cards 14 px, buttons 10 px.
 - Touch targets: at least 44 px on the PC and 40 px on the board (stylus; 40 px = 6.7 mm on this 2.8" panel).
 - No shadows on the board; on the PC, only for floating sheets and menus.
-- No gradients, no glass blur on the board (no RAM for it). The PC title bar may use a translucent fill.
+- No gradients, no glass blur on the board (no RAM for it). The PC title bar may use a translucent fill; a PC overlay on live content (the Board page mirror when its stream is off) blurs and dims what is under it.
 
 ## Motion
 
 - Curves: ease-out `cubic-bezier(0.2, 0.8, 0.2, 1)` for most moves; a light spring (no visible overshoot beyond 4 %) for tiles appearing.
 - Durations: 200 ms (press, toggle), 250 ms (fade, nav push), 350 ms (app open, sheet).
 - Board app open: scale 0.9 → 1 + fade from the tile's area. Nav push: slide 100 % left with the previous page moving 30 %. Sheet: slide up from the bottom over a fading scrim. Tile install/remove: fade + scale 0.8 ↔ 1.
+- PC (P17, `app/src/lib/motion.ts`): a page change fades in rising 8 px (250 ms; the old page leaves at once); a sub-page pushes in 24 px from the right and pops back from the left (250 ms); sheets and dialogs rise 16 px and grow from 98 % over a fading scrim (350 ms in, 200 ms out); menus grow from 96 % at their anchor (200 ms); the sidebar selection glides (250 ms); buttons brighten on hover and press to 97 % (200 ms), list rows highlight instead; app tiles appear and leave on the spring (scale 0.8 to 1, about 2 % overshoot) and slide into new places.
 - Board budget: full-screen steps are held to ~30 fps (one full push is ~31 ms at the 40 MHz LCD clock, no vsync); small regions run up to the fps cap. Every animation has a reduced-motion fallback (a plain fade) on the PC.
 
 ## Component patterns

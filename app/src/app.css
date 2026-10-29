@@ -38,6 +38,23 @@ button {
   cursor: default;
 }
 
+/* Press and hover feedback for every button (DESIGN.md Motion: 200 ms). :where() keeps the
+   specificity at zero, so a component's own button styles win. */
+:where(button) {
+  transition:
+    background-color var(--dur-fast) var(--ease),
+    color var(--dur-fast) var(--ease),
+    filter var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+:where(button:not(:disabled)):hover {
+  filter: brightness(1.12);
+}
+:where(button:not(.row, :disabled)):active {
+  transform: scale(0.97);
+}
+
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--accent);
@@ -101,6 +118,21 @@ button.row:last-child {
   border-bottom: 0;
 }
 
+/* List rows highlight instead of shrinking. */
+button.row,
+a.row {
+  transition: background-color var(--dur-fast) var(--ease);
+}
+button.row:not(:disabled):hover,
+a.row:hover {
+  background: rgba(255, 255, 255, 0.04);
+  filter: none;
+}
+button.row:not(:disabled):active,
+a.row:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .note {
   margin: 0 16px 16px 16px;
   font-size: 13px;
@@ -131,9 +163,12 @@ button.row:last-child {
   background: transparent;
 }
 
+/* Reduced motion: colours and fades stay, nothing moves or scales (lib/motion.ts fades too). */
 @media (prefers-reduced-motion: reduce) {
   * {
-    transition: none !important;
-    animation: none !important;
+    transition-property: opacity, background-color, color, filter !important;
+  }
+  :where(button):active {
+    transform: none !important;
   }
 }

@@ -1,16 +1,27 @@
 <script lang="ts">
   // Artboard 8 (PcDashboard): app tiles with switches, "Add app", empty state. A tile opens the
-  // app's settings (artboard 9); "Add app" opens the registry list (artboard 10).
+  // app's settings (artboard 9); "Add app" opens the registry list (artboard 10). Sub-pages push
+  // in from the right and pop back from the left; tiles appear and leave on a light spring.
   import Icon from "../lib/Icon.svelte";
   import AppIcon from "../lib/AppIcon.svelte";
   import Switch from "../lib/Switch.svelte";
   import AppSettings from "./AppSettings.svelte";
   import AddApp from "./AddApp.svelte";
   import { setAppEnabled, tileColor, type AppView } from "../lib/api";
+  import { flip } from "svelte/animate";
+  import { BASE, ease, enter, pop } from "../lib/motion";
 
   let { apps }: { apps: AppView[] } = $props();
 
-  let view = $state<{ kind: "list" } | { kind: "settings"; id: string } | { kind: "add" }>({ kind: "list" });
+  type View = { kind: "list" } | { kind: "settings"; id: string } | { kind: "add" };
+  let view = $state<View>({ kind: "list" });
+  // 1: pushed (comes in from the right), -1: popped back (from the left).
+  let dir = $state(1);
+  const go = (v: View) => {
+    dir = v.kind === "list" ? -1 : 1;
+    view = v;
+  };
+  const key = $derived(view.kind === "settings" ? `s:${view.id}` : view.kind);
   const open = $derived.by(() => {
     const v = view;
     return v.kind === "settings" ? apps.find((a) => a.id === v.id) : undefined;
@@ -18,19 +29,21 @@
 
   // A removed app leaves its settings page.
   $effect(() => {
-    if (view.kind === "settings" && !open) view = { kind: "list" };
+    if (view.kind === "settings" && !open) go({ kind: "list" });
   });
 </script>
 
+{#key key}
+<div in:enter={{ x: 24 * dir, y: 0 }}>
 {#if view.kind === "settings" && open}
-  <AppSettings app={open} onback={() => (view = { kind: "list" })} />
+  <AppSettings app={open} onback={() => go({ kind: "list" })} />
 {:else if view.kind === "add"}
-  <AddApp onback={() => (view = { kind: "list" })} />
+  <AddApp onback={() => go({ kind: "list" })} />
 {:else}
   <div class="wrap">
     <div class="head">
       <h1>Apps</h1>
-      <button type="button" class="add" onclick={() => (view = { kind: "add" })}>
+      <button type="button" class="add" onclick={() => go({ kind: "add" })}>
         <Icon name="plus" size={14} color="#FFFFFF" />
         <span>Add app</span>
       </button>
@@ -39,8 +52,15 @@
       <p class="intro">Switch an app on to install it on the board. Click a tile for its settings.</p>
       <div class="grid">
         {#each apps as a (a.id)}
-          <div class="tile" class:on={a.enabled} style="--c: {tileColor(a.color)}">
-            <button type="button" class="open" onclick={() => (view = { kind: "settings", id: a.id })}>
+          <div
+            class="tile"
+            class:on={a.enabled}
+            style="--c: {tileColor(a.color)}"
+            in:pop
+            out:pop={{ duration: BASE }}
+            animate:flip={{ duration: BASE, easing: ease }}
+          >
+            <button type="button" class="open" onclick={() => go({ kind: "settings", id: a.id })}>
               <AppIcon name={a.icon} size={28} color={a.enabled ? "#FFFFFF" : "var(--label-2)"} />
               <span class="text">
                 <span class="name">{a.name}</span>
@@ -58,11 +78,13 @@
         <Icon name="puzzle-piece" size={40} color="var(--label-2)" />
         <p class="title">No apps yet</p>
         <p class="text-empty">Add an app from the fenixOS registry. It shows up here, and on the board once you switch it on.</p>
-        <button type="button" class="link" onclick={() => (view = { kind: "add" })}>Browse apps</button>
+        <button type="button" class="link" onclick={() => go({ kind: "add" })}>Browse apps</button>
       </div>
     {/if}
   </div>
 {/if}
+</div>
+{/key}
 
 <style>
   .wrap {
@@ -106,7 +128,23 @@
     border-radius: var(--radius-pc-tile);
     background: var(--surface-2);
     position: relative;
-    transition: background var(--dur-fast) var(--ease);
+    transition:
+      background var(--dur-fast) var(--ease),
+      filter var(--dur-fast) var(--ease),
+      transform var(--dur-fast) var(--ease);
+  }
+  .tile:hover {
+    filter: brightness(1.08);
+  }
+  /* The whole tile gives on press, not just its inner button. */
+  .tile:has(.open:active) {
+    transform: scale(0.98);
+  }
+  .open:active {
+    transform: none;
+  }
+  .open:hover {
+    filter: none;
   }
   .tile.on {
     background: var(--c);
