@@ -63,7 +63,11 @@ jobs:
           path: board/build
       - run: python tools/bundle_firmware.py
       - uses: dtolnay/rust-toolchain@stable
+      # The cache key skips Cargo.toml's [profile] section, and a full key match is never saved
+      # again: hash the root Cargo.toml so a profile change starts a new cache (P12).
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ hashFiles('Cargo.toml') }}
       - uses: pnpm/action-setup@v5
         with:
           version: 12.15.0
