@@ -96,7 +96,7 @@
 <div class="wrap">
   <div class="head">
     <h1>Task manager</h1>
-    <p class="sub">{board.port} · live, every second</p>
+    <p class="sub">{board.port}{unsupported ? "" : " · live, every second"}</p>
   </div>
 
   {#if unsupported}

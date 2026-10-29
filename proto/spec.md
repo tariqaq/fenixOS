@@ -4,7 +4,7 @@ Version: **proto 1** (fenixOS v0.1). Source of truth for both sides:
 - Rust: `crates/fenix-proto` (also generates the golden vectors)
 - C++: `board/components/fenix_proto`
 
-Golden vectors: `proto/vectors.txt`. Both implementations decode every vector and encode it byte for byte. Regenerate only after an intended change and a `PROTO_VERSION` bump: `FENIX_REGEN=1 cargo test -p fenix-proto`.
+Golden vectors: `proto/vectors.txt`. Both implementations decode every vector and encode it byte for byte. Regenerate only after an intended change: a `PROTO_VERSION` bump, or a new optional message (TOUCH, SYSINFO), which adds vectors and changes none: `FENIX_REGEN=1 cargo test -p fenix-proto --test vectors`.
 
 The framing is kept from the FenixDeck PoC (`docs/legacy/protocol.md`), where it ran without errors.
 
