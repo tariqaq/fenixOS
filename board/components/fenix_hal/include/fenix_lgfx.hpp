@@ -23,9 +23,10 @@ class LGFX : public lgfx::LGFX_Device {
       auto cfg = bus_.config();
       cfg.spi_host = SPI2_HOST;
       cfg.spi_mode = 0;
-      // 55 MHz as the vendor demo and FenixDeck. 80 MHz passed S1's colour-bar check but put
-      // bands at the wrong place on the real panel under LVGL's small DMA writes (2026-10-29).
-      cfg.freq_write = 55000000;
+      // 40 MHz. 80 MHz passed S1's colour-bar check but put bands at the wrong place on the real
+      // panel under LVGL's small DMA writes (2026-10-29). The SPI clock is 80 MHz / (n + 1), so
+      // the vendor demo's and FenixDeck's "55 MHz" was 40 MHz too.
+      cfg.freq_write = 40000000;
       cfg.freq_read = 20000000;
       cfg.spi_3wire = false;
       cfg.use_lock = true;

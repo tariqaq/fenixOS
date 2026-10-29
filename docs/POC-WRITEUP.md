@@ -102,7 +102,7 @@ What the crystal and ULP core are for (from the design discussion): the crystal 
 | Panel | 2.8" TFT, **240 × 320** native (portrait), 65K colours (RGB565), viewable area 43.2 × 57.6 mm, viewing angle > 60° |
 | Controller | **ILI9341V** (panel spec `JC2432A028N.pdf`). The "maybe ST7789" worry from community posts does not apply to this panel |
 | Bus | SPI2 / HSPI: SCK **14**, MOSI **13**, MISO **12**, CS **15**, DC **2**, RST **-1** (tied to EN) |
-| Write clock | **55 MHz** works (vendor default and our setting) |
+| Write clock | **55 MHz** works (vendor default and our setting). Corrected 2026-10-29: the ESP32 SPI clock is 80 MHz / (n + 1), so 55 MHz really ran at 40 MHz |
 | Read-back | **Works** (MISO wired). Read clock 20 MHz, `dummy_read_pixel = 8`, `dummy_read_bits = 1`, `readable = true` |
 | Colour settings | `invert = false`, `rgb_order = false` give correct colours and orientation (verified) |
 | TE (tearing effect) pin | **Not wired** on the 18-pin LCM connector. No hardware vsync |
