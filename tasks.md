@@ -201,6 +201,11 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [~] 5. Sim (protection off there: the shift would move the goldens), goldens, firmware build, flash, check on the board. Done: sim taps moved (Rotation and About sit higher after the scroll), goldens display_scrolled and settings_portrait updated, new settings_debug (23 goldens); firmware built and flashed. Waiting: the user checks the shift, the rest and the lock on the board
   - [x] 6. Docs: board-info (retention finding), decisions, PLAN, DESIGN if needed
 
+- [~] P22 Release v0.1.3 (user 2026-10-30): P21 burn-in protection. VERSION 0.1.3, tag, GitHub builds; meanwhile a local build on all cores (user: "only for now"), installed on the PC and flashed to the board
+  - [x] 1. VERSION 0.1.3, commit, tag v0.1.3, push
+  - [ ] 2. Local firmware build (all cores), bundle, tauri build with the updater key, install the setup from PowerShell, flash the board
+  - [ ] 3. Watch the release run (app job warm with the `app` cache saved by v0.1.2?)
+
 ## Decisions
 
 - 2026-10-29: **The agent may bump the version, tag and push releases at any time** (user: "i permit u at all times").
@@ -216,4 +221,3 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 - [x] Clock after a tap wake: good (user, 2026-10-29). LED off in sleep: confirmed after P19. Was: only the LED-off-in-sleep check is left, deferred by the user ("keep it for later"). Tap-to-wake from Shut down: works since the touch-bus pins are held in sleep (user confirmed); the follow-up "touch dead after wake" is fixed and flashed. LED-off-in-sleep fix flashed 15:23; the board then woke from sleep by a tap (app log 15:56: boot reason "wake from sleep"). Remote test 16:05: Session > Shut down logs "shutting down (deep sleep, tap to wake)" and the link goes silent (no HELLO_ACK). Board left asleep with no PC app running. Still to check by eye: the LED is off in sleep, a tap wakes it, and the clock is still right
 - [x] Deferred by the user (2026-10-29, "keep it for later"): RGB LED levels (S6): connect pulse looks right, not too bright. Seen by the user after P19 ("okay nice")
 - [x] Actions on Node 24 (2026-10-29): the v0.1.0 release run warned that `checkout@v4` / `upload-artifact@v4` target the deprecated Node 20. Bumped to the first Node 24 majors (checkout v5, upload-artifact v6, download-artifact v7, setup-node v5; their notes list only the runtime change; download-artifact v8 would add digest-mismatch errors, not needed). CI and a hand-started release dry run (40842777557) green. Their annotations then named `pnpm/action-setup@v4` and `setup-python@v5`: bumped to pnpm/action-setup v5 and setup-python v6 (node24, checked in each `action.yml`). CI 40844049594 and release dry run 40844057849 green with no Node 20 warnings
-- [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; LED is tested in P1 S6, LDR is not in v0.1

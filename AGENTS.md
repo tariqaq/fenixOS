@@ -59,7 +59,7 @@ What CI runs; run the parts your change touches:
 - `cargo test --workspace`
 - `pnpm -C app exec svelte-check`, `pnpm -C app build`
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build`; simulator screens: `board/sim/build.ps1`, then `python tools/sim_shots.py`
-- On this laptop, wrap builds in `pwsh -NoProfile -File tools/capped.ps1 <command>` (4-core cap), one build at a time.
+- On this laptop, wrap builds in `pwsh -NoProfile -File tools/capped.ps1 <command>` (4-core cap, normal priority), one build at a time. All cores only when the user asks, for that build only.
 
 ## Resuming a session
 1. Read `tasks.md`.
