@@ -109,6 +109,7 @@ name = "fenix-cli"
 version = "0.1.0"
 dependencies = [
  "fenix-link",
+ "fenix-pkg",
  "fenix-proto",
  "png",
  "sha2",
