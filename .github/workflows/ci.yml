@@ -37,4 +37,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      # tauri-build needs the built UI (app/dist) before the app crate compiles.
+      - name: ui
+        working-directory: app
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm exec svelte-check
+          pnpm build
       - run: cargo test --workspace
