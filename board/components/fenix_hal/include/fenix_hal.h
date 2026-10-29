@@ -35,15 +35,14 @@ void led_init();
 void led_set(uint8_t r, uint8_t g, uint8_t b);  // 0..255 each
 
 // ---- Power ----
-// Backlight off, LED off, hold pins, then deep sleep until the touch IRQ (GPIO36) goes low.
-[[noreturn]] void deep_sleep_until_touch();
-// Reset reason of this boot (esp_reset_reason_t as uint8).
+// Backlight off, LED off, hold pins, light sleep until the touch IRQ (GPIO36) goes low, then
+// restart (fenix_hal.cpp explains why not deep sleep).
+[[noreturn]] void sleep_until_touch();
+// Reset reason of this boot (esp_reset_reason_t as uint8); ESP_RST_DEEPSLEEP after a sleep wake.
 uint8_t reset_reason();
-// True when this boot follows a deep-sleep wake.
-bool woke_from_sleep();
 
-// ---- Time kept across soft reset and deep sleep ----
-// The system clock survives esp_restart and deep sleep, but not a power cut.
+// ---- Time kept across soft reset and sleep ----
+// The system clock survives esp_restart and sleep, but not a power cut.
 // A magic word in RTC no-init memory says whether it was ever set since power-on.
 bool time_valid();
 void time_mark_valid();

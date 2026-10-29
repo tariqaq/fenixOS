@@ -104,12 +104,11 @@ void touch_calibrate(uint16_t cal[8], uint16_t, uint16_t) {
 void led_init() {}
 void led_set(uint8_t, uint8_t, uint8_t) {}
 
-[[noreturn]] void deep_sleep_until_touch() {
+[[noreturn]] void sleep_until_touch() {
   printf("board shut down (Session > Shut down); the simulator stops here\n");
   exit(0);
 }
 uint8_t reset_reason() { return 1; }
-bool woke_from_sleep() { return false; }
 bool time_valid() { return true; }
 void time_mark_valid() {}
 void time_boot_check() {}

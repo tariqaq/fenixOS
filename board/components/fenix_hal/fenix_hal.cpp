@@ -16,8 +16,8 @@ static LGFX lcd;
 // ---- Display ----
 
 void display_init() {
-  // Release the deep-sleep holds (backlight, touch bus); a hold outlives the wake-up and would
-  // keep the touch controller locked out.
+  // Release the sleep holds (backlight, touch bus); a hold outlives the wake-up and the restart
+  // and would keep the touch controller locked out.
   gpio_deep_sleep_hold_dis();
   for (gpio_num_t p : {GPIO_NUM_21, GPIO_NUM_33, GPIO_NUM_25, GPIO_NUM_32}) gpio_hold_dis(p);
   lcd.init();
@@ -119,18 +119,21 @@ void led_set(uint8_t r, uint8_t g, uint8_t b) {
 
 // ---- Power ----
 
-void deep_sleep_until_touch() {
+// Set just before the restart that follows a sleep (RTC memory survives esp_restart).
+static RTC_NOINIT_ATTR uint32_t s_woke;
+static constexpr uint32_t WOKE_MAGIC = 0x51EE9A4E;
+
+void sleep_until_touch() {
   lcd.waitDMA();
   lcd.setBrightness(0);
   lcd.sleep();
-  // Backlight and LED pins: drive "off" and hold through deep sleep.
+  // Backlight and LED pins: drive "off" and hold through the sleep.
   gpio_reset_pin(GPIO_NUM_21);
   gpio_set_direction(GPIO_NUM_21, GPIO_MODE_OUTPUT);
   gpio_set_level(GPIO_NUM_21, 0);
   gpio_hold_en(GPIO_NUM_21);
   // LEDC still owns the LED pads through the GPIO matrix after gpio_reset_pin, so the hold kept
-  // its last output (the LED glowed green in deep sleep, 2026-10-29). Stop it and route the
-  // pads to the plain GPIO output first.
+  // its last output. Stop it and route the pads to the plain GPIO output first.
   for (int i = 0; i < 3; i++) {
     ledc_stop(LEDC_HIGH_SPEED_MODE, static_cast<ledc_channel_t>(i), 1);
     gpio_num_t p = LED_PINS[i];
@@ -152,17 +155,24 @@ void deep_sleep_until_touch() {
     gpio_set_level(t.pin, t.level);
     gpio_hold_en(t.pin);
   }
-  gpio_deep_sleep_hold_en();
-  // GPIO16/17 (green, blue) are VDD_SDIO pads: with that domain off in deep sleep they cannot
-  // hold "off" and the active-low LED glows green (seen 2026-10-29). Keep it powered.
+  // Light sleep, not deep sleep: GPIO16/17 (green, blue) are VDD_SDIO pads, and ESP-IDF's deep
+  // sleep always powers VDD_SDIO down on the ESP32 (RTC_SLEEP_PD_VDDSDIO is in its forced
+  // flags). The LED current then flows through GPIO16's protection diode into the dead rail and
+  // the LED glows green (2026-10-29). Light sleep keeps the domain up when asked, so the pins
+  // hold "off". The wake is then made a normal boot with "wake from sleep" as its reason.
   esp_sleep_pd_config(ESP_PD_DOMAIN_VDDSDIO, ESP_PD_OPTION_ON);
   esp_sleep_enable_ext0_wakeup(GPIO_NUM_36, 0);  // XPT2046 PENIRQ, low while touched
-  esp_deep_sleep_start();
+  esp_light_sleep_start();
+  s_woke = WOKE_MAGIC;
+  esp_restart();
 }
 
-uint8_t reset_reason() { return static_cast<uint8_t>(esp_reset_reason()); }
-
-bool woke_from_sleep() { return esp_sleep_get_wakeup_cause() != ESP_SLEEP_WAKEUP_UNDEFINED; }
+uint8_t reset_reason() {
+  // The restart after a sleep reports as a wake, as a deep-sleep wake did (the PC log says so).
+  static const bool woke = s_woke == WOKE_MAGIC;
+  s_woke = 0;
+  return static_cast<uint8_t>(woke ? ESP_RST_DEEPSLEEP : esp_reset_reason());
+}
 
 // ---- Time flag ----
 

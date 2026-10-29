@@ -1,4 +1,4 @@
-// Session sheet: Shut down (deep sleep, tap to wake) or Reboot. Artboard Session.
+// Session sheet: Shut down (sleep, tap to wake) or Reboot. Artboard Session.
 #include "esp_system.h"
 #include "fenix_hal.h"
 #include "shell.h"
@@ -8,11 +8,11 @@ namespace fx::apps {
 using namespace fx::ui;
 
 static void shutdown_cb(lv_event_t*) {
-  sys::link_log(3, "shutting down (deep sleep, tap to wake)");
+  sys::link_log(3, "shutting down (sleep, tap to wake)");
   sheet_close();
   backlight_fade_out();
   hal::led_set(0, 0, 0);
-  hal::deep_sleep_until_touch();
+  hal::sleep_until_touch();
 }
 
 static void reboot_cb(lv_event_t*) {

@@ -19,7 +19,7 @@ Board firmware (fenixOS v0.1.0):
 - Home: time and date (MYT, UTC+8), `--:--` until the first PC time sync. Two styles, **Tiles** and **Dock**, chosen in Settings › Home screen. Works in all 4 rotations.
 - System apps:
   - **Settings:** Display (rotation, brightness, auto-dim level, dim after, touch calibration), Home screen (Tiles / Dock), Storage, Host PC, About.
-  - **Session:** pop-up with Shut down (deep sleep, tap to wake) and Restart.
+  - **Session:** pop-up with Shut down (sleep, tap to wake) and Restart.
   - **Stream:** link status; streams the screen to the PC at ~10 fps.
 - Installed host apps: declarative packages on LittleFS; tiles fade in and out on install and remove. Host states: working, waiting for PC, turned off on PC.
 - Link to the PC over USB serial, time sync, RGB LED status light, backlight dimming.
@@ -116,7 +116,7 @@ docs/, pics/
   - LEDC PWM on GPIO21.
   - After the dim delay with no touch, it fades to the dim level.
   - The first touch while dimmed only wakes the screen.
-- **Power:** Shut down fades out, turns the backlight off, sets ext0 wake on GPIO36 (touch IRQ, low) and enters deep sleep. Wake is a normal boot.
+- **Power:** Shut down fades out, turns the backlight off, sets ext0 wake on GPIO36 (touch IRQ, low) and enters light sleep (corrected, P19: deep sleep powers down the green LED pin's rail, so the LED glowed). Wake restarts the board, so it is a normal boot.
 - **RGB LED:**
   - Pins IO4/16/17, active low, LEDC.
   - States: host connected (short green pulse, then off), installing or flashing (dim blue), error (dim red), otherwise off.
