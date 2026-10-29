@@ -206,6 +206,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 2. Local firmware build (all cores, 23 s), bundle, tauri build with the updater key (all cores, 29 s incremental, 3.97 MiB setup), flashed the board, installed the setup from PowerShell (`/S`, exit 0, fenixos.exe 0.1.3), app started
   - [ ] 3. Watch the release run (app job warm with the `app` cache saved by v0.1.2?)
 
+- [ ] P23 CH340 crash path while flashing (found 2026-10-30, user asked whether crash safety is complete): espflash and esptool still set read timeouts (`docs/board-info.md`). Proposed: patch serialport (`[patch.crates-io]`, vendored copy) so Windows `set_timeout` sets `MAXDWORD, 0, 0` and `read` polls up to the timeout itself; flash from Rust (a `fenix flash` command) instead of `idf.py flash`. Waiting for the user's go
+
 ## Decisions
 
 - 2026-10-29: **The agent may bump the version, tag and push releases at any time** (user: "i permit u at all times").
