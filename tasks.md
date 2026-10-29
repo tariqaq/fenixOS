@@ -78,7 +78,13 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Shut down → deep sleep: link goes silent; RTS reset wakes it (POWERON). Tap-wake: open item for the user
   - [x] Flipped rotations (2, 3): screenshots in `docs/screens/board/`
   - [x] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: done in P6
-  - [ ] PC simulator (user asked in round 7): after P8, before release
+  - [~] PC simulator (user asked in round 7): after P8, before release. Plan (PLAN §P5.2, 2026-10-29):
+    - [ ] a. `board/sim` CMake host build (MSVC): LVGL 9.5.0 (the board's managed component, else fetched), `fenix_ui`, `fenix_apps`, `fenix_pkg`, `fenix_proto`; LVGL configured from the board's own Kconfig values (`board/sim/lv_kconfig.h`, made by `tools/sim_config.py` from `board/build/config/sdkconfig.h`, `--check` in the board CI job)
+    - [ ] b. Stubs: IDF headers (esp_timer on a virtual clock, heap/chip/flash info, app version from VERSION, esp_restart), `fx::hal` (framebuffer per rotation, injected touch), `fx::sys` (settings in memory, fixed clock 2026-10-29 08:35 for stable shots, app store from a folder of .fxp, scripted link events and bind values)
+    - [ ] c. `fenix_sim run <script> --out <dir> [--store <dir>]`: headless, same verbs as `tools/capture_screens.sh` (tap, swipe, wait, shot, set, host, connect) in `board/sim/screens.txt`; writes PNGs per screen and rotation
+    - [ ] d. `fenix_sim window`: a Win32 window, mouse = touch, for trying screens by hand
+    - [ ] e. `tools/sim_shots.py`: build + run + compare against golden PNGs in `board/sim/golden/` (`--update` rewrites them); CI job on windows-latest
+    - [ ] f. Docs (toolchain, PLAN corrections: no SDL2, why), decisions, commit
 - [x] P6 App packages (accepted 2026-10-29: install 0.13 s for 1.6 KB, 0.51 s for 21 KB, ~1.6 s for the 64 KB cap; remove leaves the store at its empty 8 KB; reconcile itself is the PC engine's job in P7/P8): `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
   - [x] Format 1 spec `docs/packages.md`; `crates/fenix-pkg` compiler + reader (`fenix-pkg build`/`inspect`, limits, 2 tests); `tools/sample-app/board` builds to 1643 B, 15 elements, 6 bindings
   - [x] C++ reader `board/components/fenix_pkg` (same checks as Rust; app ids capped at 48 bytes for LittleFS names; host test passes, survives every single-byte flip)
