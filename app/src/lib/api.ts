@@ -87,7 +87,7 @@ export interface State {
   streaming: boolean;
 }
 
-export type Page = "apps" | "board" | "settings";
+export type Page = "apps" | "board" | "tasks" | "settings";
 
 export interface LogLine {
   time: string;
@@ -119,6 +119,47 @@ export const mirrorSet = (on: boolean) => invoke("mirror_set", { on });
 export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirror_touch", { x, y, down });
 /** Raw frame from the engine (see `mirror_frame` in main.rs). */
 export const mirrorFrame = (since: number) => invoke<ArrayBuffer>("mirror_frame", { since });
+/** One FreeRTOS task in a SYSINFO answer (proto/spec.md). */
+export interface TaskInfo {
+  id: number;
+  /** 255 = either core. */
+  core: number;
+  priority: number;
+  /** 0 running, 1 ready, 2 blocked, 3 suspended, 4 deleted. */
+  state: number;
+  /** µs on the `time_us` clock, wraps at 2^32. */
+  runtime: number;
+  stack_free: number;
+  name: string;
+}
+/** The board's SYSINFO answer: raw counters that wrap at 2^32; rates come from two answers. */
+export interface Sysinfo {
+  time_us: number;
+  cpu_mhz: number;
+  heap_total: number;
+  heap_free: number;
+  heap_min: number;
+  heap_largest: number;
+  dma_free: number;
+  flash_size: number;
+  app_size: number;
+  app_slot: number;
+  apps_used: number;
+  apps_total: number;
+  nvs_used: number;
+  nvs_total: number;
+  rx_bytes: number;
+  tx_bytes: number;
+  rx_frames: number;
+  rx_errors: number;
+  fps_x10: number;
+  backlight: number;
+  /** 1 dimmed, 2 panel resting, 4 burn-in protection, 8 streaming, 16 Wi-Fi, 32 Bluetooth. */
+  flags: number;
+  tasks: TaskInfo[];
+}
+/** Asks the board for a new SYSINFO and returns the latest (Task manager, every second). */
+export const getSysinfo = () => invoke<{ sample: Sysinfo | null; unsupported: boolean }>("sysinfo");
 export const updateBoard = () => invoke("update_board");
 export type Probe = { chip: string; flash: string; mac: string };
 export const probeBoard = () => invoke<Probe>("probe_board");

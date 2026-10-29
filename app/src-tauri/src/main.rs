@@ -20,8 +20,8 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewWindowBuilder};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use apps::Cmd;
-use fenix_flash as flash;
 use engine::{Engine, State};
+use fenix_flash as flash;
 use logs::Source;
 use serde::Serialize;
 
@@ -79,7 +79,8 @@ fn cap_cpu() {
             return;
         }
         let mut info: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION = std::mem::zeroed();
-        info.ControlFlags = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
+        info.ControlFlags =
+            JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
         // In 1/100 of a percent of all processors.
         info.Anonymous.CpuRate = CPU_CORES * 10_000 / all;
         SetInformationJobObject(
@@ -269,6 +270,12 @@ fn mirror_set(app: AppHandle, engine: tauri::State<Arc<Engine>>, on: bool) {
     engine.mirror_set(&app, on);
 }
 
+/// The Task manager's sample (P27): asks the board for a new one, returns the latest.
+#[tauri::command]
+fn sysinfo(engine: tauri::State<Arc<Engine>>) -> engine::SysinfoView {
+    engine.sysinfo()
+}
+
 /// A click on the mirror, in board screen coordinates.
 #[tauri::command]
 fn mirror_touch(engine: tauri::State<Arc<Engine>>, x: u16, y: u16, down: bool) {
@@ -432,6 +439,7 @@ fn main() {
             mirror_frame,
             mirror_set,
             mirror_touch,
+            sysinfo,
             update_board,
             clear_update,
             list_ports,

@@ -177,6 +177,8 @@ void burn_guard(bool on) {
 }
 
 bool dimmed() { return s_dimmed || s_rest; }
+bool resting() { return s_rest; }
+uint8_t backlight_now() { return s_bl_now < 0 ? 0 : s_bl_now; }
 
 void backlight_fade_out() {
   bl_fade(0, FX_MOTION_SLOW_MS);

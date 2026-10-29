@@ -15,6 +15,8 @@ pub mod ty {
     pub const REBOOT: u8 = 0x11;
     pub const BOARD_STATE: u8 = 0x12;
     pub const TOUCH: u8 = 0x13;
+    pub const SYSINFO_REQ: u8 = 0x14;
+    pub const SYSINFO: u8 = 0x15;
     pub const APP_LIST_REQ: u8 = 0x20;
     pub const APP_LIST: u8 = 0x21;
     pub const APP_INSTALL_BEGIN: u8 = 0x22;
@@ -107,6 +109,65 @@ pub struct Stats {
     pub stream_dropped: u32,
 }
 
+/// `SYSINFO` flag bits.
+pub mod sysflag {
+    pub const DIMMED: u8 = 1;
+    pub const RESTING: u8 = 2;
+    pub const BURN_GUARD: u8 = 4;
+    pub const STREAMING: u8 = 8;
+    pub const WIFI: u8 = 16;
+    pub const BLUETOOTH: u8 = 32;
+}
+
+/// Board load for the PC's Task manager. Counters are raw and cumulative (they wrap at 2^32):
+/// the PC works out rates from two samples.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct Sysinfo {
+    /// The FreeRTOS run-time clock, µs; task run times count in the same unit.
+    pub time_us: u32,
+    pub cpu_mhz: u16,
+    pub heap_total: u32,
+    pub heap_free: u32,
+    pub heap_min: u32,
+    pub heap_largest: u32,
+    pub dma_free: u32,
+    pub flash_size: u32,
+    pub app_size: u32,
+    pub app_slot: u32,
+    pub apps_used: u32,
+    pub apps_total: u32,
+    pub nvs_used: u16,
+    pub nvs_total: u16,
+    pub rx_bytes: u32,
+    pub tx_bytes: u32,
+    pub rx_frames: u32,
+    pub rx_errors: u32,
+    pub fps_x10: u16,
+    pub backlight: u8,
+    /// `sysflag` bits.
+    pub flags: u8,
+    pub tasks: Vec<TaskInfo>,
+}
+
+/// One FreeRTOS task in `SYSINFO`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct TaskInfo {
+    /// FreeRTOS task number, unique for the board's uptime.
+    pub id: u16,
+    /// Core it is pinned to; 255 = either.
+    pub core: u8,
+    pub priority: u8,
+    /// 0 running, 1 ready, 2 blocked, 3 suspended, 4 deleted.
+    pub state: u8,
+    /// Run time, µs on the `time_us` clock.
+    pub runtime: u32,
+    /// Least free stack since it started, bytes.
+    pub stack_free: u16,
+    pub name: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AppEntry {
     pub id: String,
@@ -151,6 +212,8 @@ pub enum Msg {
         text: String,
     },
     Stats(Stats),
+    SysinfoReq,
+    Sysinfo(Sysinfo),
     TimeSet(u32),
     Reboot,
     /// Remote touch from the PC (mirror clicks, tests), in current screen coordinates.
@@ -320,6 +383,8 @@ impl Msg {
             Log { .. } => ty::LOG,
             Error { .. } => ty::ERROR,
             Stats(_) => ty::STATS,
+            SysinfoReq => ty::SYSINFO_REQ,
+            Sysinfo(_) => ty::SYSINFO,
             TimeSet(_) => ty::TIME_SET,
             Reboot => ty::REBOOT,
             Touch { .. } => ty::TOUCH,
@@ -390,7 +455,40 @@ impl Msg {
             TimeSet(t) => {
                 w.u32(*t);
             }
-            Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync => {}
+            Sysinfo(s) => {
+                w.u32(s.time_us)
+                    .u16(s.cpu_mhz)
+                    .u32(s.heap_total)
+                    .u32(s.heap_free)
+                    .u32(s.heap_min)
+                    .u32(s.heap_largest)
+                    .u32(s.dma_free)
+                    .u32(s.flash_size)
+                    .u32(s.app_size)
+                    .u32(s.app_slot)
+                    .u32(s.apps_used)
+                    .u32(s.apps_total)
+                    .u16(s.nvs_used)
+                    .u16(s.nvs_total)
+                    .u32(s.rx_bytes)
+                    .u32(s.tx_bytes)
+                    .u32(s.rx_frames)
+                    .u32(s.rx_errors)
+                    .u16(s.fps_x10)
+                    .u8(s.backlight)
+                    .u8(s.flags)
+                    .u8(s.tasks.len().min(255) as u8);
+                for t in s.tasks.iter().take(255) {
+                    w.u16(t.id)
+                        .u8(t.core)
+                        .u8(t.priority)
+                        .u8(t.state)
+                        .u32(t.runtime)
+                        .u16(t.stack_free)
+                        .str(&t.name);
+                }
+            }
+            Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq => {}
             Touch { x, y, down } => {
                 w.u16(*x).u16(*y).u8(*down as u8);
             }
@@ -526,6 +624,45 @@ impl Msg {
                 rx_errors: r.u32()?,
                 stream_dropped: r.u32()?,
             }),
+            ty::SYSINFO_REQ => Msg::SysinfoReq,
+            ty::SYSINFO => {
+                let mut s = Sysinfo {
+                    time_us: r.u32()?,
+                    cpu_mhz: r.u16()?,
+                    heap_total: r.u32()?,
+                    heap_free: r.u32()?,
+                    heap_min: r.u32()?,
+                    heap_largest: r.u32()?,
+                    dma_free: r.u32()?,
+                    flash_size: r.u32()?,
+                    app_size: r.u32()?,
+                    app_slot: r.u32()?,
+                    apps_used: r.u32()?,
+                    apps_total: r.u32()?,
+                    nvs_used: r.u16()?,
+                    nvs_total: r.u16()?,
+                    rx_bytes: r.u32()?,
+                    tx_bytes: r.u32()?,
+                    rx_frames: r.u32()?,
+                    rx_errors: r.u32()?,
+                    fps_x10: r.u16()?,
+                    backlight: r.u8()?,
+                    flags: r.u8()?,
+                    tasks: Vec::new(),
+                };
+                for _ in 0..r.u8()? {
+                    s.tasks.push(TaskInfo {
+                        id: r.u16()?,
+                        core: r.u8()?,
+                        priority: r.u8()?,
+                        state: r.u8()?,
+                        runtime: r.u32()?,
+                        stack_free: r.u16()?,
+                        name: r.str()?,
+                    });
+                }
+                Msg::Sysinfo(s)
+            }
             ty::TIME_SET => Msg::TimeSet(r.u32()?),
             ty::REBOOT => Msg::Reboot,
             ty::TOUCH => Msg::Touch {

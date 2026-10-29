@@ -23,11 +23,13 @@ uint16_t fps_x10();
 // Backlight: brightness level 16..255; auto-dim after `dim_after_s` (0 = never) to `dim_pct`.
 void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s);
 bool dimmed();
+uint8_t backlight_now();  // the level right now, fades included
 // Fade the backlight to 0 (blocking, ~FX_MOTION_SLOW_MS).
 void backlight_fade_out();
 // Burn-in protection (P21): the picture moves 1 px every minute within +-2 px, and the panel
 // sleeps after 10 minutes without a touch (dimmed() is then true; a tap wakes it).
 void burn_guard(bool on);
+bool resting();  // the panel sleeps (burn-in protection)
 
 // Stream hook: when on, frames are sent to the PC at up to `fps` (the PC's STREAM_START rate).
 void stream_enable(bool on, uint8_t fps);

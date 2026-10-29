@@ -16,6 +16,9 @@ import listBullets from "@phosphor-icons/core/assets/regular/list-bullets.svg?ra
 import caretLeft from "@phosphor-icons/core/assets/bold/caret-left-bold.svg?raw";
 import magnifyingGlass from "@phosphor-icons/core/assets/bold/magnifying-glass-bold.svg?raw";
 import check from "@phosphor-icons/core/assets/bold/check-bold.svg?raw";
+import pulse from "@phosphor-icons/core/assets/fill/pulse-fill.svg?raw";
+import wifiSlash from "@phosphor-icons/core/assets/fill/wifi-slash-fill.svg?raw";
+import bluetoothSlash from "@phosphor-icons/core/assets/fill/bluetooth-slash-fill.svg?raw";
 
 export const icons = {
   "squares-four": squaresFour,
@@ -34,6 +37,9 @@ export const icons = {
   "caret-left": caretLeft,
   "magnifying-glass": magnifyingGlass,
   check,
+  pulse,
+  "wifi-slash": wifiSlash,
+  "bluetooth-slash": bluetoothSlash,
 } as const;
 
 export type IconName = keyof typeof icons;

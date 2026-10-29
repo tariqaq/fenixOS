@@ -12,6 +12,7 @@
   import Connect from "./pages/Connect.svelte";
   import Apps from "./pages/Apps.svelte";
   import Board from "./pages/Board.svelte";
+  import TaskManager from "./pages/TaskManager.svelte";
   import Settings from "./pages/Settings.svelte";
   import { getState, onState, type Page, type State } from "./lib/api";
   import { enter } from "./lib/motion";
@@ -83,6 +84,8 @@
                 onlogs={() => (logs = true)}
                 onreinstall={() => (reinstall = true)}
               />
+            {:else if page === "tasks"}
+              <TaskManager board={snap.board} onreinstall={() => (reinstall = true)} />
             {:else}
               <Settings appVersion={snap.app_version} boardPort={snap.board?.port ?? null} />
             {/if}

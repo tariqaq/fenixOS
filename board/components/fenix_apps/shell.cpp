@@ -165,6 +165,8 @@ void tick() {
   b.dimmed = dimmed();
   b.fps_x10 = fps_x10();
   strlcpy(b.app_id, open_app_id(), sizeof b.app_id);
+  b.backlight = backlight_now();
+  b.resting = resting();
   sys::board_info_set(b);
 }
 

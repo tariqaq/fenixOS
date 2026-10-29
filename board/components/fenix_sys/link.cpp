@@ -31,6 +31,7 @@ static QueueHandle_t s_events;
 static QueueHandle_t s_binds;
 static uint8_t s_seq;
 static volatile bool s_connected;
+static volatile uint32_t s_rx_bytes, s_tx_bytes;  // for SYSINFO; wrap at 2^32
 static fnx::FrameDecoder s_dec;
 static uint8_t s_wire[fnx::MAX_WIRE];
 
@@ -45,6 +46,7 @@ static void send_with(uint8_t type, F fn) {
   xSemaphoreTake(s_tx_lock, portMAX_DELAY);
   size_t n = fnx::build_frame(type, s_seq++, s_wire, sizeof s_wire, fn);
   if (n) uart_write_bytes(UART, s_wire, n);
+  s_tx_bytes += n;
   xSemaphoreGive(s_tx_lock);
 }
 
@@ -73,7 +75,10 @@ size_t link_tx_free() {
   return f;
 }
 
-void link_write_locked(const uint8_t* wire, size_t n) { uart_write_bytes(UART, wire, n); }
+void link_write_locked(const uint8_t* wire, size_t n) {
+  uart_write_bytes(UART, wire, n);
+  s_tx_bytes += n;
+}
 void link_lock() { xSemaphoreTake(s_tx_lock, portMAX_DELAY); }
 void link_unlock() { xSemaphoreGive(s_tx_lock); }
 uint8_t link_next_seq() { return s_seq++; }
@@ -129,6 +134,9 @@ bool remote_touch(int16_t* x, int16_t* y) {
 }
 uint32_t link_rx_frames() { return s_dec.frames; }
 uint32_t link_rx_errors() { return s_dec.errors; }
+uint32_t link_rx_bytes() { return s_rx_bytes; }
+uint32_t link_tx_bytes() { return s_tx_bytes; }
+void sysinfo_write(fnx::Writer& w);  // sysinfo.cpp
 
 // ---- RX dispatch ----
 
@@ -230,6 +238,9 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
       s_remote = ((uint32_t)(x & 0xFFF) << 13) | ((uint32_t)(y & 0xFFF) << 1) | (down ? 1 : 0);
       return;
     }
+    case fnx::ty::SYSINFO_REQ:
+      send_with(fnx::ty::SYSINFO, [](fnx::Writer& w) { sysinfo_write(w); });
+      return;
     case fnx::ty::APP_LIST_REQ: {
       AppMeta apps[MAX_APPS];
       int n = store_list(apps, MAX_APPS);
@@ -328,7 +339,10 @@ static void link_task(void*) {
   int64_t next_stats = esp_timer_get_time() + STATS_PERIOD_US;
   for (;;) {
     int n = uart_read_bytes(UART, buf, sizeof buf, pdMS_TO_TICKS(20));
-    if (n > 0) s_dec.push(buf, n, on_frame, nullptr);
+    if (n > 0) {
+      s_rx_bytes += n;
+      s_dec.push(buf, n, on_frame, nullptr);
+    }
     int64_t now = esp_timer_get_time();
     if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) {
       s_connected = false;

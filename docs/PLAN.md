@@ -33,6 +33,7 @@ PC app (fenixOS v0.1.0, Windows):
   - App settings.
   - Add app, with a permissions sheet.
   - Board page (live mirror, facts, reboot, reinstall firmware).
+  - Task manager (P27, no artboard): the board's load every second (SYSINFO): CPU per core, memory, storage, USB link, display, radios, threads.
   - Update dialog with progress.
   - Settings.
 - Logs: a rolling log file plus a log view.
@@ -89,9 +90,9 @@ docs/, pics/
 ### 3.1 Board runtime
 
 - **Tasks:**
-  - **UI task** on core 1: LVGL timer handler, touch read, flush.
+  - **UI task:** LVGL timer handler, touch read, flush. Corrected (P27, from the board's task list): it is ESP-IDF's `main` task, pinned to core 0 (`CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0`), not core 1; core 1 runs only its idle and IPC tasks.
   - **Link task** on core 0: UART RX/TX, frame decode, dispatch through queues to the UI task. LVGL is touched only by the UI task.
-  - **Background worker** on core 0: LittleFS writes during installs, so the UI never blocks.
+  - Corrected (P27): there is no background worker. Installs write LittleFS in the link task (`store_chunk`), while the UI keeps running in `main`.
 - **Console:** UART0 console logs off (PoC finding). Logs go out as `LOG` frames.
 - **Display:**
   - LovyanGFX drives the ILI9341 (HSPI, DMA) and the XPT2046 (VSPI, `bus_shared = false`, raw range 300–3900 / 200–3900 until calibrated).
@@ -218,7 +219,7 @@ docs/, pics/
 - **Design:**
   - CSS variables are generated from `design/tokens.json`.
   - Inter and Phosphor are bundled locally (no CDN).
-  - The custom title bar and the sidebar (Apps, Board, Settings) follow the canvas pixel for pixel.
+  - The custom title bar and the sidebar (Apps, Board, Settings) follow the canvas pixel for pixel. Task manager (P27) was added to the sidebar after Board, in the same style, without an artboard.
 - **App settings page:** rendered by fenixOS from the manifest's settings schema (toggle, slider, choice, text, button). Every app's settings therefore follow the fenixOS design, and values go to the sidecar.
 - **WebView2:** lean `additionalBrowserArgs` (PoC). No UI updates while hidden. The OOTB window's GPU needs are settled in S8. Corrected (P11, 2026-10-29): the main window now runs with the GPU on as well (`--force_high_performance_gpu`, the NVIDIA GPU here), because its board screen draws the same 3D scene; the whole app is capped at 4 cores' worth of CPU.
 - **hallmark:** its edit-time lint hook stays on for all UI work. `DESIGN.md` stays locked and overrides hallmark's own themes.

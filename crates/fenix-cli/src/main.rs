@@ -5,6 +5,8 @@
 //! fenix logs [secs]                print LOG / STATS / BOARD_STATE (default 30 s)
 //! fenix time                       send TIME_SET (now, UTC)
 //! fenix reboot                     ask the board to restart
+//! fenix sysinfo                    the Task manager's numbers: two SYSINFO 1 s apart, per-core
+//!                                  load, heap, flash, tasks with CPU % and stack free
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
@@ -29,7 +31,7 @@ use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
-use fenix_proto::{app, BindValue, Msg, Stats};
+use fenix_proto::{app, BindValue, Msg, Stats, Sysinfo};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -61,6 +63,7 @@ fn main() {
         }
         "time" => one_shot(opts, Msg::TimeSet(now_s())),
         "reboot" => one_shot(opts, Msg::Reboot),
+        "sysinfo" => sysinfo(opts),
         "swipe" => {
             let v: Vec<u16> = args[1..].iter().filter_map(|a| a.parse().ok()).collect();
             if v.len() == 4 {
@@ -126,7 +129,10 @@ fn main() {
             (Some(off), Some(size), Some(f)) => read_flash(opts, off, size, Path::new(f)),
             _ => usage(),
         },
-        "erase" => match (args.get(1).and_then(|v| num(v)), args.get(2).and_then(|v| num(v))) {
+        "erase" => match (
+            args.get(1).and_then(|v| num(v)),
+            args.get(2).and_then(|v| num(v)),
+        ) {
             (Some(off), Some(size)) => erase(opts, off, size),
             _ => usage(),
         },
@@ -136,7 +142,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size> [--port COMx]");
     2
 }
 
@@ -144,10 +150,10 @@ fn usage() -> i32 {
 /// `idf.ps1 flash`, whose esptool sets read timeouts on the CH340.
 fn flash(opts: LinkOptions, args: &[String]) -> i32 {
     let erase = args.iter().any(|a| a == "--erase");
-    let dir = args
-        .iter()
-        .find(|a| !a.starts_with("--"))
-        .map_or_else(|| Path::new("app/src-tauri/resources/firmware").to_path_buf(), Into::into);
+    let dir = args.iter().find(|a| !a.starts_with("--")).map_or_else(
+        || Path::new("app/src-tauri/resources/firmware").to_path_buf(),
+        Into::into,
+    );
     let loaded = if dir.join("flasher_args.json").exists() {
         fenix_flash::load_build(&dir)
     } else {
@@ -185,7 +191,11 @@ fn write_image(opts: LinkOptions, img: &fenix_flash::Image, erase: bool) -> i32 
         eprintln!("no board found (use --port COMx)");
         return 1;
     };
-    println!("flashing v{} to {port}{}", img.version, if erase { " (erase first)" } else { "" });
+    println!(
+        "flashing v{} to {port}{}",
+        img.version,
+        if erase { " (erase first)" } else { "" }
+    );
     let mut last = -1;
     let r = fenix_flash::flash(&port, img, erase, &mut |f| {
         let pct = (f * 100.0) as i32;
@@ -323,6 +333,90 @@ fn one_shot(opts: LinkOptions, m: Msg) -> i32 {
     }
     link.send(m);
     std::thread::sleep(Duration::from_millis(300));
+    0
+}
+
+fn ask_sysinfo(link: &Link) -> Option<Sysinfo> {
+    link.send(Msg::SysinfoReq);
+    let end = Instant::now() + Duration::from_secs(2);
+    while Instant::now() < end {
+        match link.recv_event(Duration::from_millis(50)) {
+            Some(Event::Msg(Msg::Sysinfo(s))) => return Some(s),
+            Some(Event::Msg(Msg::Error { code, text })) => {
+                eprintln!("board error {code}: {text} (firmware without SYSINFO?)");
+                return None;
+            }
+            _ => {}
+        }
+    }
+    eprintln!("no SYSINFO answer");
+    None
+}
+
+/// Two SYSINFO answers 1 s apart; load and CPU % come from the difference (as the app does).
+fn sysinfo(opts: LinkOptions) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        eprintln!("no board");
+        return 1;
+    }
+    let Some(a) = ask_sysinfo(&link) else {
+        return 1;
+    };
+    std::thread::sleep(Duration::from_secs(1));
+    let Some(b) = ask_sysinfo(&link) else {
+        return 1;
+    };
+    let dt = b.time_us.wrapping_sub(a.time_us).max(1) as f64;
+    let was = |id: u16| a.tasks.iter().find(|t| t.id == id).map(|t| t.runtime);
+    for core in 0..2u8 {
+        if let Some(idle) = b
+            .tasks
+            .iter()
+            .find(|t| t.name.starts_with("IDLE") && t.core == core)
+        {
+            if let Some(r) = was(idle.id) {
+                let load = 100.0 * (1.0 - idle.runtime.wrapping_sub(r) as f64 / dt);
+                println!("core {core}: {:.1}% busy", load.clamp(0.0, 100.0));
+            }
+        }
+    }
+    println!(
+        "{} MHz; heap {} free of {} (min {}, largest block {}, DMA {}); firmware {} of {}; flash {}; apps {} of {}; nvs {} of {} entries",
+        b.cpu_mhz, b.heap_free, b.heap_total, b.heap_min, b.heap_largest, b.dma_free,
+        b.app_size, b.app_slot, b.flash_size, b.apps_used, b.apps_total, b.nvs_used, b.nvs_total
+    );
+    println!(
+        "link: rx {} B tx {} B, {} frames, {} errors; fps {:.1}; backlight {}; flags {:#04x}",
+        b.rx_bytes,
+        b.tx_bytes,
+        b.rx_frames,
+        b.rx_errors,
+        b.fps_x10 as f64 / 10.0,
+        b.backlight,
+        b.flags
+    );
+    println!(
+        "{:<16} {:>4} {:>4} {:>5} {:>7} {:>6}",
+        "task", "core", "prio", "state", "cpu%", "stack"
+    );
+    for t in &b.tasks {
+        let cpu = was(t.id).map_or("-".into(), |r| {
+            format!(
+                "{:.1}",
+                100.0 * t.runtime.wrapping_sub(r) as f64 / (dt * 2.0)
+            )
+        });
+        let core = if t.core == 255 {
+            "any".into()
+        } else {
+            t.core.to_string()
+        };
+        println!(
+            "{:<16} {:>4} {:>4} {:>5} {:>7} {:>6}",
+            t.name, core, t.priority, t.state, cpu, t.stack_free
+        );
+    }
     0
 }
 

@@ -17,7 +17,7 @@ constexpr size_t ID_LEN = 64;  // app ids and versions are cut to 63 bytes + NUL
 
 namespace ty {
 constexpr uint8_t HELLO = 0x01, HELLO_ACK = 0x02, PING = 0x03, PONG = 0x04, LOG = 0x05, ERROR = 0x06, STATS = 0x07;
-constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12, TOUCH = 0x13;
+constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12, TOUCH = 0x13, SYSINFO_REQ = 0x14, SYSINFO = 0x15;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
 constexpr uint8_t HOST_STATE = 0x2A;
@@ -127,6 +127,32 @@ struct Stats {
 };
 bool read_stats(Reader& r, Stats& s);
 void write_stats(Writer& w, const Stats& s);
+
+// SYSINFO: the fixed part, then a task count (u8) and that many TaskInfo.
+namespace sysflag {
+constexpr uint8_t DIMMED = 1, RESTING = 2, BURN_GUARD = 4, STREAMING = 8, WIFI = 16, BLUETOOTH = 32;
+}
+struct Sysinfo {
+  uint32_t time_us;
+  uint16_t cpu_mhz;
+  uint32_t heap_total, heap_free, heap_min, heap_largest, dma_free;
+  uint32_t flash_size, app_size, app_slot, apps_used, apps_total;
+  uint16_t nvs_used, nvs_total;
+  uint32_t rx_bytes, tx_bytes, rx_frames, rx_errors;
+  uint16_t fps_x10;
+  uint8_t backlight, flags;
+};
+bool read_sysinfo(Reader& r, Sysinfo& s);  // the fixed part only
+void write_sysinfo(Writer& w, const Sysinfo& s);
+struct TaskInfo {
+  uint16_t id;
+  uint8_t core, priority, state;  // core 255 = either
+  uint32_t runtime;
+  uint16_t stack_free;
+  char name[24];
+};
+bool read_task_info(Reader& r, TaskInfo& t);
+void write_task_info(Writer& w, const TaskInfo& t);
 
 struct BoardState {
   uint8_t screen, dimmed, rotation;

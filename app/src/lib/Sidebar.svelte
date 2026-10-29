@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Sidebar (PcDashboard and siblings): Apps, Board, Settings, and the board status card. The
-  // selection is one highlight that glides to the chosen item (250 ms).
+  // Sidebar (PcDashboard and siblings): Apps, Board, Task manager (P27, no artboard), Settings,
+  // and the board status card. The selection is one highlight that glides to the chosen item
+  // (250 ms).
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
   import type { Board, Page } from "./api";
@@ -10,6 +11,7 @@
   const items: { id: Page; label: string; icon: IconName }[] = [
     { id: "apps", label: "Apps", icon: "squares-four" },
     { id: "board", label: "Board", icon: "cpu" },
+    { id: "tasks", label: "Task manager", icon: "pulse" },
     { id: "settings", label: "Settings", icon: "gear-six" },
   ];
   const index = $derived(Math.max(0, items.findIndex((it) => it.id === page)));

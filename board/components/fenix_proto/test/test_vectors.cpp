@@ -71,6 +71,21 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       write_stats(w, s);
       break;
     }
+    case ty::SYSINFO: {
+      Sysinfo s;
+      if (!read_sysinfo(r, s)) return false;
+      write_sysinfo(w, s);
+      uint8_t cnt = r.u8();
+      w.u8(cnt);
+      for (int i = 0; i < cnt; i++) {
+        TaskInfo t;
+        if (!read_task_info(r, t)) return false;
+        write_task_info(w, t);
+      }
+      if (!r.done()) return false;
+      break;
+    }
+    case ty::SYSINFO_REQ:
     case ty::REBOOT:
     case ty::APP_LIST_REQ:
     case ty::APP_INSTALL_END:

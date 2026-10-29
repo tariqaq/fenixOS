@@ -175,7 +175,7 @@ Findings:
 ## fenixOS board core (P4, 2026-10-29)
 
 - **Image:** ~826 KB app (`fenixos.bin`, 60% of the 2 MB factory slot free, P6 app store and runtime included). Free heap with Home shown and one app installed: ~121 KB (was ~134 KB before P6: +4 KB UART RX buffer, +2 KB link stack, ~5 KB bind queue, tile icons), minimum ~117 KB (the gate is ≥ 60 KB). An open app adds its package (a few KB) and its LVGL objects.
-- **Link task:** UART0 at 921600 with a 4 KB RX and a 16 KB TX buffer. The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
+- **Link task:** UART0 at 921600 with an 8 KB RX (corrected: 4 KB until P6, `RX_BUF` in `link.cpp`) and a 16 KB TX buffer. The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
 - **Stream:** each flushed area is cut into bands of ≤ 3 KB raw and sent RLE16 (raw when RLE is not smaller). A static Home screen streams at ~3–4 KB/s.
 - **Reset reason:** a reset through the EN pin (the PC's RTS line, esptool, `serial_read.py --reset`) reports `ESP_RST_POWERON`, the same as a cold power-on, and the RTC clock restarts. So the "time valid" flag is cleared at boot on POWERON (`hal::time_boot_check`); it survives `esp_restart` and deep sleep. (Corrected: the first version also required reset reason ≠ POWERON when reading the flag, so the time never became valid after a PC-triggered reset.)
 - **LVGL input gotchas:**
@@ -230,6 +230,17 @@ With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends t
 - **No battery circuit on the board.** Power is 5 V (USB or the 5 V connector) into an AMS1117-3.3. A LiPo needs a charger plus a 5 V boost (or a one-chip "power bank" module) feeding that 5 V input; 3.7 V straight into 5 V leaves the AMS1117 below 3.3 V.
 - **Draw (estimates, not measured here):** ~115 mA at 5 V with the backlight full, about 40 % less dimmed (secondary spec pages); Wi-Fi adds ~80–120 mA on average with TX peaks near 240 mA (ESP32 datasheet), BLE ~30–50 mA. At the cell, with a ~85 % boost, multiply the 5 V current by ~1.6: UI only ~185 mA, BLE ~240 mA, Wi-Fi ~350 mA. Shut down (light sleep since P19) plus regulator and boost quiescent current is a few mA, so a hard power switch is worth having. Measure with the real firmware before choosing.
 - **SD card:** ESP-IDF v5.5.5's FatFs has exFAT compiled out (`FF_FS_EXFAT 0` in `components/fatfs/src/ffconf.h`, no Kconfig option), so cards must be FAT32 (FAT12/16 also work). FAT32 itself is not limited to 32 GB: larger SDXC cards work once reformatted to FAT32 (Windows' own format tool refuses FAT32 above 32 GB; use another formatter). Files are limited to 4 GB.
+
+## Task manager numbers (P27, 2026-10-30)
+
+From `fenix sysinfo` (two SYSINFO answers 1 s apart), v0.1.4 firmware with run-time stats on, Home shown, PC app closed:
+
+- **Tasks:** 6 in all: `main` (the UI, core 0, priority 1, 3.6 KB stack free), `link` (core 0, priority 6, 2.2 KB free), `IDLE0`, `IDLE1` (~950 B free), `ipc0`, `ipc1` (priority 24, ~500 B free). No `esp_timer` or `Tmr Svc` task is listed. Corrected: `docs/PLAN.md` put the UI task on core 1; `main` is pinned to core 0, so both busy tasks share core 0 and core 1 stays idle.
+- **CPU:** core 0 about 2% busy, core 1 about 0.1% (idle Home). Per-core load = 1 − (idle task run time ÷ elapsed time); run times count in esp_timer µs (`CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER`, 32-bit counters that wrap after ~71 minutes, so the PC subtracts with wrap-around).
+- **Memory:** 8-bit heap 302,848 B in all, 117,720 B free, minimum 113,904 B, largest block 94,208 B; all of it DMA-capable.
+- **Flash:** 4 MB chip; firmware image 837,584 B in the 2 MB app slot; apps 8 KB of 1984 KB; NVS 4 of 756 entries.
+- **Cost of the stats:** `CONFIG_FREERTOS_USE_TRACE_FACILITY` and `CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS` add a few hundred bytes of code (image 837,584 B vs ~830 KB before) and one counter update per context switch.
+- **Link while the page is open:** ~16 B/s to the board, ~200 to 600 B/s from it (one SYSINFO a second, ~230 B with 6 tasks).
 
 ## Image retention ("burn-in"), 2026-10-29
 

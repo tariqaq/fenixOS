@@ -63,6 +63,8 @@ payload = type:u8 ‖ seq:u8 ‖ body
 | 0x11 | REBOOT | P→B | (empty). The board answers nothing and restarts within 100 ms |
 | 0x12 | BOARD_STATE | B→P | screen:u8 (0 boot, 1 home, 2 settings, 3 session, 4 stream, 5 app) ‖ dimmed:u8 ‖ rotation:u8 ‖ app_id:str (empty unless screen 5) |
 | 0x13 | TOUCH | P→B | x:u16 ‖ y:u16 (current screen coordinates) ‖ down:u8. Remote touch from the PC mirror and from tests (`fenix tap`, `fenix swipe`). The board treats it like the panel: a press lasts until `down = 0` or the link drops. Optional, so added in v0.1 without a proto bump |
+| 0x14 | SYSINFO_REQ | P→B | empty. The PC's Task manager asks every second while it is open. Optional (P27, no proto bump): firmware before v0.1.5 answers ERROR unknown type |
+| 0x15 | SYSINFO | B→P | time_us:u32 (FreeRTOS run-time clock) ‖ cpu_mhz:u16 ‖ heap_total:u32 ‖ heap_free:u32 ‖ heap_min:u32 ‖ heap_largest:u32 ‖ dma_free:u32 ‖ flash_size:u32 ‖ app_size:u32 (firmware image) ‖ app_slot:u32 ‖ apps_used:u32 ‖ apps_total:u32 (bytes) ‖ nvs_used:u16 ‖ nvs_total:u16 (entries) ‖ rx_bytes:u32 ‖ tx_bytes:u32 ‖ rx_frames:u32 ‖ rx_errors:u32 ‖ fps_x10:u16 ‖ backlight:u8 ‖ flags:u8 (1 dimmed, 2 panel resting, 4 burn-in protection, 8 streaming, 16 Wi-Fi built in, 32 Bluetooth built in) ‖ n:u8 ‖ n × (id:u16 ‖ core:u8 (255 either) ‖ priority:u8 ‖ state:u8 (0 running, 1 ready, 2 blocked, 3 suspended, 4 deleted) ‖ runtime:u32 (µs on the time_us clock) ‖ stack_free:u16 (least free stack, bytes) ‖ name:str). Counters are cumulative and wrap at 2^32: the PC works out CPU load and rates from two answers |
 
 ### Apps (0x2_)
 

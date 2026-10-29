@@ -78,6 +78,16 @@ pub struct State {
     pub streaming: bool,
 }
 
+/// The Task manager's view (P27): the board's latest SYSINFO answer.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct SysinfoView {
+    pub sample: Option<fenix_proto::Sysinfo>,
+    /// The board answered SYSINFO_REQ with ERROR unknown type (firmware before v0.1.5).
+    pub unsupported: bool,
+    #[serde(skip)]
+    asked: Option<Instant>,
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Update {
     /// `erasing` (first install only), `writing`, `restarting`, `done` or `failed`.
@@ -96,6 +106,7 @@ pub struct Engine {
     /// The registry as last read by Add app.
     pub registry: Mutex<Vec<Manifest>>,
     pub mirror: Mutex<Mirror>,
+    sysinfo: Mutex<SysinfoView>,
     fw_dir: Option<std::path::PathBuf>,
     update_started: Mutex<Option<Instant>>,
 }
@@ -138,6 +149,7 @@ impl Engine {
                 canvas: StreamCanvas::default(),
                 version: 0,
             }),
+            sysinfo: Mutex::new(SysinfoView::default()),
             fw_dir,
             update_started: Mutex::new(None),
         });
@@ -166,6 +178,18 @@ impl Engine {
     /// Start or stop the board's stream from the PC (the Board page only stops it: the board's
     /// Stream app starts it, P15). The board reports the change back (P14); the state flips now
     /// so the page does not wait for it (and for v0.1.0 boards, which do not report).
+    /// Ask the board for a new SYSINFO (the Task manager calls this every second) and return the
+    /// latest one. Nothing is asked while no board is connected or the board does not know it.
+    pub fn sysinfo(&self) -> SysinfoView {
+        let connected = self.state.lock().unwrap().status == Status::Connected;
+        let mut si = self.sysinfo.lock().unwrap();
+        if connected && !si.unsupported {
+            si.asked = Some(Instant::now());
+            self.link.send(Msg::SysinfoReq);
+        }
+        si.clone()
+    }
+
     pub fn mirror_set(&self, app: &AppHandle, on: bool) {
         if self.state.lock().unwrap().status != Status::Connected {
             return;
@@ -497,6 +521,7 @@ impl Engine {
                         info.uptime_s
                     ),
                 );
+                *self.sysinfo.lock().unwrap() = SysinfoView::default();
                 self.sync_time(app);
                 self.finish_update(app, &fw);
                 self.apps.lock().unwrap().board_connected(firmware_ok);
@@ -509,6 +534,7 @@ impl Engine {
             Event::Disconnected { reason } => {
                 self.apps.lock().unwrap().board_disconnected();
                 self.state.lock().unwrap().streaming = false;
+                *self.sysinfo.lock().unwrap() = SysinfoView::default();
                 let was = {
                     let mut s = self.state.lock().unwrap();
                     let was = s.status == Status::Connected;
@@ -579,7 +605,22 @@ impl Engine {
                 self.log(app, Source::Board, level <= 2, text);
                 false
             }
+            Event::Msg(Msg::Sysinfo(s)) => {
+                self.sysinfo.lock().unwrap().sample = Some(s);
+                false
+            }
             Event::Msg(Msg::Error { code, text }) => {
+                // Firmware before v0.1.5 does not know SYSINFO_REQ: stop asking, once.
+                {
+                    let mut si = self.sysinfo.lock().unwrap();
+                    let just_asked = si
+                        .asked
+                        .is_some_and(|t| t.elapsed() < Duration::from_secs(2));
+                    if code == fenix_proto::err::UNKNOWN_TYPE && just_asked && si.sample.is_none() {
+                        si.unsupported = true;
+                        return false;
+                    }
+                }
                 self.log(app, Source::Board, true, format!("Error {code}: {text}"));
                 false
             }

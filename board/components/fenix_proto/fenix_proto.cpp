@@ -238,6 +238,74 @@ void write_stats(Writer& w, const Stats& s) {
   w.u32(s.stream_dropped);
 }
 
+bool read_sysinfo(Reader& r, Sysinfo& s) {
+  s.time_us = r.u32();
+  s.cpu_mhz = r.u16();
+  s.heap_total = r.u32();
+  s.heap_free = r.u32();
+  s.heap_min = r.u32();
+  s.heap_largest = r.u32();
+  s.dma_free = r.u32();
+  s.flash_size = r.u32();
+  s.app_size = r.u32();
+  s.app_slot = r.u32();
+  s.apps_used = r.u32();
+  s.apps_total = r.u32();
+  s.nvs_used = r.u16();
+  s.nvs_total = r.u16();
+  s.rx_bytes = r.u32();
+  s.tx_bytes = r.u32();
+  s.rx_frames = r.u32();
+  s.rx_errors = r.u32();
+  s.fps_x10 = r.u16();
+  s.backlight = r.u8();
+  s.flags = r.u8();
+  return r.ok();
+}
+void write_sysinfo(Writer& w, const Sysinfo& s) {
+  w.u32(s.time_us);
+  w.u16(s.cpu_mhz);
+  w.u32(s.heap_total);
+  w.u32(s.heap_free);
+  w.u32(s.heap_min);
+  w.u32(s.heap_largest);
+  w.u32(s.dma_free);
+  w.u32(s.flash_size);
+  w.u32(s.app_size);
+  w.u32(s.app_slot);
+  w.u32(s.apps_used);
+  w.u32(s.apps_total);
+  w.u16(s.nvs_used);
+  w.u16(s.nvs_total);
+  w.u32(s.rx_bytes);
+  w.u32(s.tx_bytes);
+  w.u32(s.rx_frames);
+  w.u32(s.rx_errors);
+  w.u16(s.fps_x10);
+  w.u8(s.backlight);
+  w.u8(s.flags);
+}
+
+bool read_task_info(Reader& r, TaskInfo& t) {
+  t.id = r.u16();
+  t.core = r.u8();
+  t.priority = r.u8();
+  t.state = r.u8();
+  t.runtime = r.u32();
+  t.stack_free = r.u16();
+  r.str(t.name, sizeof t.name);
+  return r.ok();
+}
+void write_task_info(Writer& w, const TaskInfo& t) {
+  w.u16(t.id);
+  w.u8(t.core);
+  w.u8(t.priority);
+  w.u8(t.state);
+  w.u32(t.runtime);
+  w.u16(t.stack_free);
+  w.str(t.name);
+}
+
 bool read_board_state(Reader& r, BoardState& s) {
   s.screen = r.u8();
   s.dimmed = r.u8();

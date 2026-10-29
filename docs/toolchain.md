@@ -40,6 +40,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `monitor`, `size`; not `flash`, see below). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
 - C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)
+- Board load: `fenix sysinfo` (quit the PC app first) prints what the Task manager shows: per-core load, heap, flash, tasks.
 - Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build build`, then `fenix flash board/spikes/<name>/build` (reads its `flasher_args.json`), then `python tools/serial_read.py 30 --reset` (reads without a timeout since P23). Corrected (P26): spikes were flashed with `idf.ps1 flash` (esptool)
 - Board fonts: `python tools/gen_fonts.py` (Inter + Phosphor via `lv_font_conv`)
 - Version check / sync: `python tools/version.py --check` / `python tools/version.py`

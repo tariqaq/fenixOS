@@ -60,6 +60,8 @@ struct BoardInfo {
   uint8_t dimmed;
   uint16_t fps_x10;
   char app_id[64];
+  uint8_t backlight;  // level now, 0..255 (SYSINFO)
+  uint8_t resting;    // burn-in protection put the panel to sleep
 };
 void board_info_set(const BoardInfo& b);  // sends BOARD_STATE when screen/dimmed/rotation/app change
 BoardInfo board_info();
