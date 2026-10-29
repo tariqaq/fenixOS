@@ -2,7 +2,8 @@
 
 Version: **package format 1** (fenixOS v0.1). Plan: `docs/PLAN.md` §3.4. Sources of truth:
 - Compiler and reader (Rust): `crates/fenix-pkg` (`fenix-pkg build <dir>`, `fenix-pkg inspect <file>`)
-- Board reader and builder (C++): `board/components/fenix_apps/app_pkg.cpp`, store in `board/components/fenix_sys/store.cpp`
+- Board reader (C++): `board/components/fenix_pkg` (same checks as the Rust reader; host test `test/run.ps1` parses the sample and survives every single-byte flip)
+- Board builder: `board/components/fenix_apps/app_pkg.cpp`; store: `board/components/fenix_sys/store.cpp`
 - Test fixture: `tools/sample-app`
 
 A host app has two halves. The **board half** is this package: a declarative screen (no code runs on the board). The **PC half** is a sidecar process (P8) that sets bound values and gets events.
@@ -14,7 +15,7 @@ A folder with:
 - `app.toml`:
 
   ```toml
-  id = "io.github.tariqaq.sample"   # reverse-DNS, ≤ 63 bytes
+  id = "io.github.tariqaq.sample"   # reverse-DNS; letters, digits, . - _; ≤ 48 bytes (it names files on the board)
   name = "Sample"                   # tile label, ≤ 24 bytes
   version = "0.1.0"
   min_fenixos = "0.1.0"
@@ -52,7 +53,7 @@ Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`), `grow`, `
 
 ## Limits
 
-Checked by the compiler and again by the board before it commits an install.
+Checked by the compiler and again by the board before it commits an install. Both readers also check that every index (strings, bindings, assets, icons, fonts) is in range, that each asset's size matches `w × h × bytes per pixel`, and that the tree depth is ≤ 8.
 
 | What | Limit |
 |---|---|

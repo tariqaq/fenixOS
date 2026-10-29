@@ -81,6 +81,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [ ] PC simulator (user asked in round 7): after P8, before release
 - [~] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
   - [x] Format 1 spec `docs/packages.md`; `crates/fenix-pkg` compiler + reader (`fenix-pkg build`/`inspect`, limits, 2 tests); `tools/sample-app/board` builds to 1643 B, 15 elements, 6 bindings
+  - [x] C++ reader `board/components/fenix_pkg` (same checks as Rust; app ids capped at 48 bytes for LittleFS names; host test passes, survives every single-byte flip)
   - [ ] Board store + install in the link task: APP_INSTALL_BEGIN/CHUNK/END (sha256 via mbedtls, `.tmp` then rename, `.sha`), real APP_LIST, APP_REMOVE, delete `*.tmp` at mount
   - [ ] Board reader + LVGL builder `app_pkg.cpp`: bindings (BIND_SET), events (EVENT), APP_OPENED/APP_CLOSED, app tiles with fade in/out, HostWaiting/HostOff
   - [ ] CLI: `fenix install <file.fxp>` (rewind on stalled acks), `fenix remove <id>`, `fenix apps`, `fenix set <bind> <value>`

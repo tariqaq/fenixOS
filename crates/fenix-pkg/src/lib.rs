@@ -20,6 +20,13 @@ pub const MAX_IMAGE_BYTES: usize = 24 * 1024;
 pub const MAX_RAM: usize = 40 * 1024;
 pub const RAM_PER_ELEM: usize = 160;
 pub const MAX_DEPTH: usize = 8;
+/// App ids name files on the board (`/apps/<id>.fxp`); LittleFS names are ≤ 63 bytes.
+pub const MAX_ID: usize = 48;
+
+/// Letters, digits, `.`, `-`, `_`; 1 to `MAX_ID` bytes.
+pub fn valid_id(id: &str) -> bool {
+    !id.is_empty() && id.len() <= MAX_ID && id.bytes().all(|c| c.is_ascii_alphanumeric() || b".-_".contains(&c))
+}
 
 pub const ICON_SMALL: u32 = 20;
 pub const ICON_LARGE: u32 = 26;
@@ -217,6 +224,50 @@ impl Package {
         b
     }
 
+    /// Every index points at something, assets have the right size, the tree is ≤ `MAX_DEPTH` deep.
+    pub fn check_refs(&self) -> Result<(), String> {
+        let (ns, nb, na) = (self.strings.len(), self.binds.len(), self.assets.len());
+        for (i, a) in self.assets.iter().enumerate() {
+            let bpp = match a.format {
+                asset_format::A8 => 1,
+                asset_format::RGB565 => 2,
+                f => return Err(format!("asset {i}: unknown format {f}")),
+            };
+            if a.data.len() != a.w as usize * a.h as usize * bpp {
+                return Err(format!("asset {i}: size does not match {}x{}", a.w, a.h));
+            }
+        }
+        for ix in [self.icon_small, self.icon_large] {
+            if ix != NONE && ix as usize >= na {
+                return Err("icon asset out of range".into());
+            }
+        }
+        let mut depth = vec![0usize; self.elems.len()];
+        for (i, e) in self.elems.iter().enumerate() {
+            if e.kind < kind::BOX || e.kind > kind::ICON {
+                return Err(format!("element {i}: unknown kind {}", e.kind));
+            }
+            depth[i] = if e.parent == NONE { 1 } else { depth[e.parent as usize] + 1 };
+            if depth[i] > MAX_DEPTH {
+                return Err(format!("tree deeper than {MAX_DEPTH}"));
+            }
+            for &(k, v) in &e.props {
+                let limit = match k & !key::PORTRAIT {
+                    key::TEXT | key::EVENT => ns,
+                    key::BIND => nb,
+                    key::SRC => na,
+                    key::ICON => ICONS.len(),
+                    key::FONT => FONTS.len(),
+                    _ => continue,
+                };
+                if v < 0 || v as usize >= limit {
+                    return Err(format!("element {i}: prop {k} value {v} out of range"));
+                }
+            }
+        }
+        Ok(())
+    }
+
     /// Check the limits of `docs/packages.md` (the board checks the same).
     pub fn check_limits(&self, size: usize) -> Result<(), String> {
         let strings: usize = self.strings.iter().map(|s| s.len()).sum();
@@ -329,6 +380,10 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
             return Err("string index out of range".into());
         }
     }
+    if !valid_id(p.id()) {
+        return Err("bad app id".into());
+    }
+    p.check_refs()?;
     p.check_limits(bytes.len())?;
     Ok(p)
 }
@@ -608,8 +663,8 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
     let read = |f: &str| std::fs::read_to_string(dir.join(f)).map_err(|e| format!("{f}: {e}"));
     let m: Manifest = toml::from_str(&read("app.toml")?).map_err(|e| format!("app.toml: {e}"))?;
     let layout: Value = serde_json::from_str(&read("layout.json")?).map_err(|e| format!("layout.json: {e}"))?;
-    if m.id.is_empty() || m.id.len() > 63 || !m.id.chars().all(|c| c.is_ascii_alphanumeric() || ".-_".contains(c)) {
-        return Err(format!("bad app id {:?} (letters, digits, . - _; ≤ 63 bytes)", m.id));
+    if !valid_id(&m.id) {
+        return Err(format!("bad app id {:?} (letters, digits, . - _; ≤ {MAX_ID} bytes)", m.id));
     }
     if m.name.is_empty() || m.name.len() > 24 {
         return Err("name must be 1–24 bytes".into());
