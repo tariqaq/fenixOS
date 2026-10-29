@@ -78,6 +78,8 @@ def main():
     if "--check" in sys.argv:
         old = OUT.read_text(encoding="utf-8") if OUT.exists() else ""
         if old != text:
+            import difflib
+            sys.stdout.writelines(difflib.unified_diff(old.splitlines(True), text.splitlines(True), "committed", "now", n=1))
             sys.exit(f"{OUT.relative_to(ROOT)} is out of date: run python tools/licenses.py")
         print("licenses ok")
         return
