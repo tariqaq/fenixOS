@@ -14,9 +14,10 @@ fenix-link = { path = "crates/fenix-link" }
 fenix-pkg = { path = "crates/fenix-pkg" }
 fenix-sdk = { path = "crates/fenix-sdk" }
 
+# Thin LTO and parallel codegen keep rebuilds quick (P12); a tag build in release.yml switches to
+# fat LTO with one codegen unit for the smallest shipped binary.
 [profile.release]
 opt-level = "s"
-lto = true
-codegen-units = 1
+lto = "thin"
 strip = true
 panic = "abort"

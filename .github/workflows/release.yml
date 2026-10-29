@@ -23,12 +23,24 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: test "v$(cat VERSION | tr -d '[:space:]')" = "${GITHUB_REF_NAME}"
+      # ccache keeps compiled objects between runs (LVGL and LovyanGFX are most of the build). The
+      # key changes every run so the cache is saved each time; the newest one is restored.
+      - uses: actions/cache@v5
+        with:
+          path: .ccache
+          key: ccache-idf-v5.5.5-${{ github.run_id }}
+          restore-keys: ccache-idf-v5.5.5-
       - name: build
         shell: bash
+        env:
+          IDF_CCACHE_ENABLE: 1
+          CCACHE_MAXSIZE: 500M
         run: |
+          export CCACHE_DIR=$GITHUB_WORKSPACE/.ccache CCACHE_BASEDIR=$GITHUB_WORKSPACE
           . $IDF_PATH/export.sh
           cd board
           idf.py build
+          ccache -s
       - uses: actions/upload-artifact@v6
         with:
           name: firmware
@@ -65,6 +77,10 @@ jobs:
       - uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A tag (shipped) build links with fat LTO and one codegen unit: smallest binary, slow
+          # link. Hand-started runs keep Cargo.toml's quick thin LTO.
+          CARGO_PROFILE_RELEASE_LTO: ${{ startsWith(github.ref, 'refs/tags/') && 'fat' || 'thin' }}
+          CARGO_PROFILE_RELEASE_CODEGEN_UNITS: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '16' }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         with:
