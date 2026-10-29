@@ -93,6 +93,7 @@ P9 acceptance run (the full first-run flow, the real scene): 165 fps (the displa
 
 ## Gotchas found
 
+- **`cargo tree` colours its output when `CARGO_TERM_COLOR=always`** (2026-10-29; set on GitHub runners by the Rust toolchain action), even into a pipe. ANSI codes reached the generated `licenses.json` and failed CI's `--check`. `tools/licenses.py` passes `--color never`.
 - **MSVC mangles C++ names of global variables; GCC does not** (2026-10-29). `fenix_fonts.h` declared the C font objects without `extern "C"`, which links on the board (Itanium ABI leaves globals unmangled) but not in the MSVC simulator. `tools/gen_fonts.py` now wraps the declarations in `extern "C"`.
 - **A fast mouse click can press and release between two LVGL reads** (simulator window). The simulator holds a press until LVGL has read it once.
 - **`board/sdkconfig` does not pick up later edits to `sdkconfig.defaults`** (2026-10-29). IDF applies defaults only when `sdkconfig` is created. After changing `sdkconfig.defaults`, delete `board/sdkconfig` (it is git-ignored) and build again. A stale one cost half the UI frame rate (`docs/board-info.md`, Rendering speed).

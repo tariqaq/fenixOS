@@ -21,7 +21,7 @@ OUT = ROOT / "app" / "src" / "lib" / "licenses.json"
 
 def rust():
     out = subprocess.run(
-        ["cargo", "tree", "-p", "fenixos", "-e", "normal", "--prefix", "none",
+        ["cargo", "tree", "--color", "never", "-p", "fenixos", "-e", "normal", "--prefix", "none",
          "--format", "{p}|{l}", "--target", "x86_64-pc-windows-msvc"],
         cwd=ROOT, check=True, capture_output=True, text=True).stdout
     seen = {}
