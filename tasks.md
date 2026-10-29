@@ -147,6 +147,12 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [ ] 5. Test: Reboot board from the app (disconnect, then reconnect) drives the whole flow; screenshots
   - [ ] 6. Docs (PLAN artboard 7, decisions, toolchain if needed), sweep, commit
 
+- [~] P12 Build time (user request 2026-10-29: "obscenely long on github actions and on my laptop"). Measured on CI runs 40844049594 / 40844057849: firmware `build` 164–219 s (no compiler cache), IDF container start 72–94 s, app `tauri-action` 183 s (release profile `lto = true`, `codegen-units = 1`: the final link re-optimises every crate on one core), sim 101 s. Plan:
+  - [ ] 1. Release profile: thin LTO and default codegen units for every build; a tag build keeps fat LTO + 1 unit (smallest binary) via `CARGO_PROFILE_RELEASE_*` env in `release.yml`. Measure exe size and rebuild time both ways
+  - [ ] 2. CI firmware: ccache (`IDF_CCACHE_ENABLE=1`, `CCACHE_DIR` in the workspace, `actions/cache`) in the ci `board` job and the release `firmware` job
+  - [ ] 3. Local builds capped at 4 cores' worth of CPU, normal priority (user request): `tools/capped.ps1` wraps any build command; the app caps itself the same way (`cap_cpu` in `main.rs`)
+  - [ ] 4. Verify: CI runs twice (cold, then warm cache) and compare step times; docs (toolchain, decisions)
+
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
