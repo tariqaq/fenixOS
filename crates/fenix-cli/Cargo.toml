@@ -13,5 +13,6 @@ path = "src/main.rs"
 fenix-proto.workspace = true
 fenix-link.workspace = true
 fenix-pkg.workspace = true
+fenix-flash.workspace = true
 sha2 = "0.10"
 png = "0.17"

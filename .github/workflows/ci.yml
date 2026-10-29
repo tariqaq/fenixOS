@@ -73,8 +73,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       # The cache key skips the release profile, and a full key match is never saved again: hash
       # .cargo/config.toml (the profile) so a profile change starts a new cache, a version bump not.
+      # Shared key "app": release.yml's app job restores this main-branch cache (a tag's own cache
+      # is readable only by that tag).
       - uses: Swatinem/rust-cache@v2
         with:
+          shared-key: app
           key: ${{ hashFiles('.cargo/config.toml') }}
       - uses: pnpm/action-setup@v5
         with:
@@ -93,3 +96,7 @@ jobs:
           pnpm build
       - run: python tools/licenses.py --check
       - run: cargo test --workspace
+      # The release build the release workflow makes (tauri build, release profile), so the cache
+      # above holds its crates and a release tag builds warm. Main only: PR caches stay in the PR.
+      - if: github.ref == 'refs/heads/main'
+        run: pnpm -C app tauri build --no-bundle

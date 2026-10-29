@@ -11,6 +11,8 @@
 //! fenix remove <id>                remove an app
 //! fenix open <id> | close          (debug) ask nothing; apps open on the board
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
+//! fenix flash [dir] [--erase]      write the bundled firmware (default app/src-tauri/resources/
+//!                                  firmware, from tools/bundle_firmware.py); quit the app first
 //! Common option: --port COMx (default: auto-detect).
 
 use std::path::Path;
@@ -95,14 +97,58 @@ fn main() {
             _ => usage(),
         },
         "soak" => soak(opts, arg_u64(&args, 1, 60)),
+        "flash" => flash(opts, &args[1..]),
         _ => usage(),
     };
     std::process::exit(code);
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase] [--port COMx]");
     2
+}
+
+/// Write the bundled firmware with the app's flasher (crash-safe reads, P23); replaces
+/// `idf.ps1 flash`, whose esptool sets read timeouts on the CH340.
+fn flash(opts: LinkOptions, args: &[String]) -> i32 {
+    let erase = args.iter().any(|a| a == "--erase");
+    let dir = args
+        .iter()
+        .find(|a| !a.starts_with("--"))
+        .map_or_else(|| Path::new("app/src-tauri/resources/firmware").to_path_buf(), Into::into);
+    let Some(port) = opts
+        .port
+        .or_else(|| fenix_link::find_board_ports().into_iter().next())
+    else {
+        eprintln!("no board found (use --port COMx)");
+        return 1;
+    };
+    let img = match fenix_flash::load(&dir) {
+        Ok(i) => i,
+        Err(e) => {
+            eprintln!("{}: {e}", dir.display());
+            return 1;
+        }
+    };
+    println!("flashing v{} to {port}{}", img.version, if erase { " (erase first)" } else { "" });
+    let mut last = -1;
+    let r = fenix_flash::flash(&port, &img, erase, &mut |f| {
+        let pct = (f * 100.0) as i32;
+        if pct / 10 != last / 10 {
+            println!("{pct:3} %");
+        }
+        last = pct;
+    });
+    match r {
+        Ok(()) => {
+            println!("done; the board restarts");
+            0
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            1
+        }
+    }
 }
 
 fn arg_u64(args: &[String], i: usize, def: u64) -> u64 {

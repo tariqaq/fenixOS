@@ -99,11 +99,11 @@ pub fn find_board_ports() -> Vec<String> {
 }
 
 /// Opens a port without resetting the ESP32: DTR/RTS both released. Reads never wait: they
-/// return what the driver has, or `TimedOut` at once (see `no_wait_reads`). Never call
-/// `set_timeout` on the result; it would bring back the read timeout.
+/// return what the driver has, or `TimedOut` at once (timeout 0 in the patched serialport, and
+/// `no_wait_reads` as a second guard should the patch ever be dropped).
 pub fn open_port(name: &str, baud: u32) -> serialport::Result<Box<dyn SerialPort>> {
     let mut p = serialport::new(name, baud)
-        .timeout(Duration::from_millis(20))
+        .timeout(Duration::ZERO)
         .dtr_on_open(false)
         .open_native()?;
     p.write_data_terminal_ready(false)?;

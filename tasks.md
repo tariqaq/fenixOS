@@ -201,12 +201,18 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [~] 5. Sim (protection off there: the shift would move the goldens), goldens, firmware build, flash, check on the board. Done: sim taps moved (Rotation and About sit higher after the scroll), goldens display_scrolled and settings_portrait updated, new settings_debug (23 goldens); firmware built and flashed. Waiting: the user checks the shift, the rest and the lock on the board
   - [x] 6. Docs: board-info (retention finding), decisions, PLAN, DESIGN if needed
 
-- [~] P22 Release v0.1.3 (user 2026-10-30): P21 burn-in protection. VERSION 0.1.3, tag, GitHub builds; meanwhile a local build on all cores (user: "only for now"), installed on the PC and flashed to the board
+- [x] P22 Release v0.1.3 (user 2026-10-30): P21 burn-in protection. VERSION 0.1.3, tag, GitHub builds; meanwhile a local build on all cores (user: "only for now"), installed on the PC and flashed to the board
   - [x] 1. VERSION 0.1.3, commit, tag v0.1.3, push
   - [x] 2. Local firmware build (all cores, 23 s), bundle, tauri build with the updater key (all cores, 29 s incremental, 3.97 MiB setup), flashed the board, installed the setup from PowerShell (`/S`, exit 0, fenixos.exe 0.1.3), app started
-  - [ ] 3. Watch the release run (app job warm with the `app` cache saved by v0.1.2?)
+  - [x] 3. Release run 40947651451 green (firmware 133 s, app 480 s). Still cold: "No cache found" for a key that existed, because a tag run's cache is readable only by that tag. Fixed in P23 (shared main-branch cache)
 
-- [ ] P23 CH340 crash path while flashing (found 2026-10-30, user asked whether crash safety is complete): espflash and esptool still set read timeouts (`docs/board-info.md`). Proposed: patch serialport (`[patch.crates-io]`, vendored copy) so Windows `set_timeout` sets `MAXDWORD, 0, 0` and `read` polls up to the timeout itself; flash from Rust (a `fenix flash` command) instead of `idf.py flash`. Waiting for the user's go
+- [x] P23 CH340 crash path while flashing (found 2026-10-30; user: "please fix it all"): espflash and esptool still set read timeouts (`docs/board-info.md`). Plan:
+  - [x] 1. Vendor serialport 4.10.1 to `third_party/serialport` (`[patch.crates-io]`): Windows `set_timeout` sets `MAXDWORD, 0, 0` (writes no timeout), `read` polls every 1 ms up to the timeout itself. Covers espflash (app update, probe) and everything Rust
+  - [x] 2. fenix-link: open with timeout 0 (one ReadFile per read, as now); `no_wait_reads` stays as a second guard
+  - [x] 3. Move the flasher into crate `fenix-flash` (app and CLI share it); `fenix flash [dir] [--erase]` replaces `idf.ps1 flash` for this board
+  - [x] 4. Tests: cargo test ok, licenses check (tools/licenses.py keeps patched third_party crates), `fenix flash`: unchanged image 8 s (all regions skipped), two forced full writes 22 s each, board booted v0.1.3 both times. App built with the patch (4-core cap, 32 s) and installed (`/S` from PowerShell, exit 0); its Reinstall firmware runs the same `fenix-flash` code, not clicked through in the app
+  - [x] 5. Docs: board-info, toolchain (flash command, cache), README, PLAN, decisions, licenses list. Also CI: release cache shared from main (`shared-key: app`)
+- [ ] P24 Full docs sweep (user 2026-10-30): every `*.md`, code comments, CLI help, references checked against the code; fix stale text
 
 ## Decisions
 

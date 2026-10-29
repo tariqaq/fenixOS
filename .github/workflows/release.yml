@@ -63,11 +63,14 @@ jobs:
           path: board/build
       - run: python tools/bundle_firmware.py
       - uses: dtolnay/rust-toolchain@stable
-      # The cache key skips the release profile, and a full key match is never saved again: hash
-      # .cargo/config.toml (the profile) so a profile change starts a new cache, a version bump not.
+      # A cache saved by a tag run is readable only by that tag, so releases restore the cache that
+      # ci.yml's rust job saves on main (shared key "app", with this same release build in it) and
+      # save nothing themselves. The key hashes .cargo/config.toml (the release profile).
       - uses: Swatinem/rust-cache@v2
         with:
+          shared-key: app
           key: ${{ hashFiles('.cargo/config.toml') }}
+          save-if: false
       - uses: pnpm/action-setup@v5
         with:
           version: 12.15.0

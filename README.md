@@ -36,7 +36,7 @@ Apps come from the registry (`registry/`, rules in `docs/registry.md`). Switchin
 Versions and every command are in `docs/toolchain.md`. In short:
 
 - Clone with submodules: `git clone --recursive https://github.com/tariqaq/fenixOS`.
-- Firmware (ESP-IDF v5.5.5): `pwsh -NoProfile -File board/idf.ps1 -p COM9 -b 460800 build flash`.
+- Firmware (ESP-IDF v5.5.5): `pwsh -NoProfile -File board/idf.ps1 build`, `python tools/bundle_firmware.py`, then `cargo run -q -p fenix-cli --release -- flash` with the PC app closed (not `idf.ps1 flash`: see the CH340 note below).
 - PC app (Rust, Node 24, pnpm): `python tools/bundle_firmware.py`, then `cd app; pnpm install; pnpm tauri dev`.
 - Board simulator (no board needed, MSVC): `pwsh board/sim/build.ps1`, then `board/sim/build/fenix_sim.exe window`. `python tools/sim_shots.py` checks every board screen against `board/sim/golden/`.
 - Tests: `cargo test --workspace`; CI runs these plus the firmware build, the simulator screens and the generator checks.

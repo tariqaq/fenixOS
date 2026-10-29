@@ -1,5 +1,7 @@
-//! Board firmware flasher (PLAN §3.5): writes the bundled image (`resources/firmware`, made by
-//! `tools/bundle_firmware.py`) with the espflash library. espflash resets the board into its
+//! Board firmware flasher (PLAN §3.5), shared by the PC app and `fenix flash`: writes a bundled
+//! image (`app/src-tauri/resources/firmware`, made by `tools/bundle_firmware.py`) with the
+//! espflash library. espflash reads through the patched serialport (`third_party/serialport`),
+//! whose reads never arm the CH340 driver's read timeout (P23). espflash resets the board into its
 //! bootloader through DTR/RTS, writes only the regions that changed, verifies them, and resets
 //! the board again. The app store and settings partitions are not part of the image.
 
@@ -57,7 +59,7 @@ pub fn load(dir: &Path) -> Result<Image, String> {
     let mut parts = Vec::new();
     for p in meta.files {
         let data = std::fs::read(dir.join(&p.file)).map_err(|e| format!("{}: {e}", p.file))?;
-        let sha = crate::registry::hex(&Sha256::digest(&data));
+        let sha = hex(&Sha256::digest(&data));
         if data.len() != p.size || sha != p.sha256 {
             return Err(format!("{}: does not match firmware.json", p.file));
         }
@@ -214,6 +216,10 @@ pub fn flash(
         .connection()
         .reset_after(true, Chip::Esp32)
         .map_err(|e| format!("reset failed: {e}"))
+}
+
+fn hex(b: &[u8]) -> String {
+    b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
 // espflash wants segment lengths in whole 4-byte words.

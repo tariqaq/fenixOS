@@ -13,5 +13,11 @@ fenix-proto = { path = "crates/fenix-proto" }
 fenix-link = { path = "crates/fenix-link" }
 fenix-pkg = { path = "crates/fenix-pkg" }
 fenix-sdk = { path = "crates/fenix-sdk" }
+fenix-flash = { path = "crates/fenix-flash" }
+
+# serialport with reads that never wait in the driver: the CH340 driver crashes Windows in its
+# read-timeout code (third_party/serialport/PATCH.md, docs/board-info.md).
+[patch.crates-io]
+serialport = { path = "third_party/serialport" }
 
 # The release profile lives in .cargo/config.toml, so the CI Rust cache can be keyed on it alone.

@@ -72,7 +72,9 @@ crates/
   fenix-link/            port discovery, handshake, reconnect, single-thread serial I/O
   fenix-pkg/             package format, compiler library + `fenix-pkg` CLI
   fenix-sdk/             sidecar SDK (pipe API) for app authors
-  fenix-cli/             `fenix` dev CLI: handshake, logs, stream to PNG, install, soak
+  fenix-cli/             `fenix` dev CLI: handshake, logs, stream to PNG, install, soak, flash
+  fenix-flash/           board firmware flasher (espflash), shared by the app and the CLI (P23)
+third_party/serialport/  serialport 4.10.1 patched: reads never arm the CH340 driver's timeout (P23)
 proto/                   link protocol spec (spec.md) + vectors copy used by C++ tests
 registry/                app manifests (apps/<id>.json) + generated index.json
 design/                  tokens.json, fonts (Inter OFL), icon subset list (Phosphor MIT)

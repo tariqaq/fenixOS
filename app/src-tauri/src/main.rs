@@ -6,7 +6,6 @@
 mod apps;
 mod config;
 mod engine;
-mod flash;
 mod logs;
 mod registry;
 mod sidecar;
@@ -21,6 +20,7 @@ use tauri::{AppHandle, Manager, RunEvent, WebviewWindowBuilder};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 use apps::Cmd;
+use fenix_flash as flash;
 use engine::{Engine, State};
 use logs::Source;
 use serde::Serialize;

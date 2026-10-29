@@ -5,7 +5,7 @@
   python tools/licenses.py --check   fail if it is out of date (CI)
 
 Collects what ships: the Rust crates the PC app links (cargo tree, Windows target, normal
-dependencies, our own path crates left out), the UI's runtime npm packages plus the
+dependencies, our own path crates left out; patched crates in third_party/ kept), the UI's runtime npm packages plus the
 Svelte runtime (from app/node_modules, so run `pnpm install` first), and the board firmware's libraries (versions
 from board/dependencies.lock and LovyanGFX's library.json).
 """
@@ -29,8 +29,9 @@ def rust():
         # cargo tree marks a crate it already printed with a trailing " (*)".
         p, _, lic = line.removesuffix(" (*)").partition("|")
         p = p.strip()
-        if "(" in p:  # a path crate: part of fenixOS itself
+        if "(" in p and "third_party" not in p:  # a path crate: part of fenixOS itself
             continue
+        p = p.split(" (")[0]  # a patched third-party crate (third_party/) still ships
         name, ver = p.rsplit(" ", 1)
         seen[(name, ver)] = lic.strip() or "see crate"
     return [{"name": n, "version": v.lstrip("v"), "license": l} for (n, v), l in sorted(seen.items())]

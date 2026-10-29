@@ -1216,10 +1216,22 @@ dependencies = [
 name = "fenix-cli"
 version = "0.1.3"
 dependencies = [
+ "fenix-flash",
  "fenix-link",
  "fenix-pkg",
  "fenix-proto",
  "png 0.17.16",
+ "sha2 0.10.9",
+]
+
+[[package]]
+name = "fenix-flash"
+version = "0.1.3"
+dependencies = [
+ "espflash",
+ "serde",
+ "serde_json",
+ "serialport",
  "sha2 0.10.9",
 ]
 
@@ -1266,14 +1278,13 @@ dependencies = [
 name = "fenixos"
 version = "0.1.3"
 dependencies = [
- "espflash",
+ "fenix-flash",
  "fenix-link",
  "fenix-pkg",
  "fenix-proto",
  "fenix-sdk",
  "serde",
  "serde_json",
- "serialport",
  "sha2 0.10.9",
  "tauri",
  "tauri-build",
@@ -3847,8 +3858,6 @@ dependencies = [
 [[package]]
 name = "serialport"
 version = "4.10.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ba5f8f29aa20853c4e3e85a33ec580eb66be1f057142e77a333834a318bacf2"
 dependencies = [
  "bitflags 2.13.2",
  "cfg-if",
