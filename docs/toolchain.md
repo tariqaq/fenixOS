@@ -12,7 +12,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 | Rust | 1.99.1 | rustup, MSVC target |
 | Node / pnpm | 24.13.1 / 12.15.0 | pnpm via `npm i -g pnpm` |
 | MSVC | VS 2022 Build Tools | C++ protocol host test, board simulator |
-| esptool | 5.6.0 | pip (system Python 3.14), for reads/backups only: its read timeouts take the CH340 driver's crash path (P23); flash and erase with `fenix flash` / `fenix erase` |
+| esptool | 5.6.0 | pip (system Python 3.14). Not used on the board any more: its read timeouts take the CH340 driver's crash path (P23). `fenix flash` / `write` / `read-flash` / `erase` replace it |
 | Python | 3.14 | `tools/*.py` |
 
 ## Pinned libraries
@@ -40,7 +40,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `monitor`, `size`; not `flash`, see below). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
 - C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)
-- Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build -p COM9 -b 460800 build flash`, then `python tools/serial_read.py 30 --reset` (reads without a timeout since P23). Spike flashing still runs esptool, the CH340 crash path: only when a spike is really needed
+- Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build build`, then `fenix flash board/spikes/<name>/build` (reads its `flasher_args.json`), then `python tools/serial_read.py 30 --reset` (reads without a timeout since P23). Corrected (P26): spikes were flashed with `idf.ps1 flash` (esptool)
 - Board fonts: `python tools/gen_fonts.py` (Inter + Phosphor via `lv_font_conv`)
 - Version check / sync: `python tools/version.py --check` / `python tools/version.py`
 - Design tokens: `python tools/gen_tokens.py` (writes `board/components/fenix_ui/include/fenix_tokens.h` and `app/src/lib/tokens.css`; `--check` in CI)

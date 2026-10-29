@@ -23,8 +23,8 @@ The global git setting `core.autocrlf=true` made the installer write CRLF files.
 
 ## Board access
 
-- `esptool` 5.6.0 (system Python 3.14), board on `COM9`.
-- **460800 baud failed once on a full 4 MB read** (`Corrupt data, expected 0x1000 bytes but received 0xe49 bytes`, 2026-10-29, right after `erase-flash`). A retry at 230400 worked (190 s). Earlier reads at 460800 worked, and 921600 failed on 2026-10-28. For long reads, retry at 230400 if 460800 fails.
+- Board on `COM9`. Flash reads, writes and erases: `fenix read-flash` / `write` / `flash` / `erase` (corrected 2026-10-30: was `esptool` 5.6.0, whose read timeouts take the CH340 driver's crash path; `docs/board-info.md`).
+- **460800 baud failed once on a full 4 MB read** (`Corrupt data, expected 0x1000 bytes but received 0xe49 bytes`, 2026-10-29, right after `erase-flash`). A retry at 230400 worked (190 s). Earlier reads at 460800 worked, and 921600 failed on 2026-10-28. For long reads, retry at 230400 if 460800 fails (esptool; `fenix read-flash` reads at 460800).
 
 ## Gotchas found during the build (2026-10-29)
 

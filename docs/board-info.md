@@ -2,7 +2,9 @@
 
 Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
 
-**Current state (2026-10-29): flash fully erased** (`esptool erase-flash`). A full 4 MB read-back was all `0xFF` (0 non-blank bytes). The board has no firmware now: the ROM bootloader runs and finds no valid image. Both earlier images are backed up and can be restored (below).
+**Current state (2026-10-30): fenixOS** (v0.1.3 and later, flashed with `fenix flash`). Corrected: the board was fully erased on 2026-10-29 (`esptool erase-flash`, a 4 MB read-back all `0xFF`) before fenixOS went on it. Both earlier images are backed up and can be restored (below).
+
+Since P23, every flash read, write and erase goes through `fenix` (`flash`, `write`, `read-flash`, `erase`), not esptool: esptool's read timeouts take the CH340 driver's crash path (below). The esptool commands further down are a record of what was run before that.
 
 **Backups are local only** (`firmware/` is in `.gitignore`): the repo is public, and both images contain vendor code (the stock LVGL demo; the FenixDeck dump still holds 172 blocks of it). Keep `firmware/` safe outside git (for example, a private cloud folder). The SHA-256 values below identify the files.
 
@@ -49,7 +51,7 @@ Backup: `firmware/stock/stock_flash_4MB.bin` (full 4 MB dump, offset 0x0).
 Do not run this unless you intend to restore. It overwrites the whole flash.
 
 ```
-python -m esptool --port COM9 -b 460800 write-flash 0 firmware/stock/stock_flash_4MB.bin
+fenix write 0 firmware/stock/stock_flash_4MB.bin
 ```
 
 ## FenixDeck firmware (on the board until the 2026-10-29 wipe)
@@ -75,8 +77,10 @@ Backup: `firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin` (full 4 MB dump, off
 Restore it (overwrites the whole flash):
 
 ```
-python -m esptool --port COM9 -b 460800 write-flash 0 firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin
+fenix write 0 firmware/fenixdeck/fenixdeck_v0.1.0_flash_4MB.bin
 ```
+
+(Corrected 2026-10-30: these restores used esptool `write-flash`; `fenix write` does the same at 460800 baud without the CH340 crash path. Quit the PC app first. A new backup: `fenix read-flash 0 0x400000 <file>`.)
 
 ### Version status (checked 2026-10-29)
 
@@ -100,7 +104,7 @@ Corrected (2026-10-29, second crash): **the driver update was not the fix.** Dri
 - Another path (the data-arrival or timer DPC) can complete the request and clear that pointer in between, so the check reads through NULL. Crash 1 (`0x48`, a cancel on a completed request) is the same family: requests that wait with timers and a cancel routine.
 - Our link used serialport's timeouts: interval and multiplier `MAXDWORD`, constant 15 ms ("return at once if bytes are there, else wait for the first byte"). That takes this path on every read, about 66 times a second.
 
-**Fix (fenix-link, P16):** COMMTIMEOUTS `MAXDWORD, 0, 0` set with `SetCommTimeouts` (`no_wait_reads`). In that mode the driver completes every read at once (`+0x486d` to `IofCompleteRequest`), with no timer, no cancel routine and no request left pending. The link sleeps 2 ms (bytes flowing) or 10 ms (idle) itself when a read finds nothing. Measured: stream bench 39.9–43.6 KB/s (41.8 with no sleep at all, so the stream is limited by the board), CLI 1.2 % of one core while streaming, app 0.5 %. **Until a release with this fix is installed, do not run fenixOS v0.1.0 with the board plugged in.** espflash (app install / probe) still opens the port with its own timeouts, only while flashing. Corrected (2026-10-30, P23): that left two gaps. espflash 4.6.0 takes serialport's `COMPort` type directly and calls `set_timeout` (interval and multiplier `MAXDWORD` plus a constant, the crash-2 pattern) around every command, so the app's firmware update and probe used the risky path while flashing; and esptool (`idf.py flash`, pyserial) sets a plain total timeout (`0, 0, constant`), which also arms the driver's timers. **Fix (P23):** serialport is patched (`third_party/serialport`, `[patch.crates-io]`): on Windows `set_timeout` always sets `MAXDWORD, 0, 0` and no write timeout, and `read` polls every 1 ms up to the timeout itself. Every Rust user gets it (fenix-link, espflash). The flasher moved to crate `fenix-flash`, shared by the app and `fenix flash`, which replaces `idf.ps1 flash` for this board. Tested: two full 832 KB writes with `fenix flash`, 22 s each at 460800 baud, board booted both times. Still outside our control: other serial tools (monitors, terminals, esptool) on this board.
+**Fix (fenix-link, P16):** COMMTIMEOUTS `MAXDWORD, 0, 0` set with `SetCommTimeouts` (`no_wait_reads`). In that mode the driver completes every read at once (`+0x486d` to `IofCompleteRequest`), with no timer, no cancel routine and no request left pending. The link sleeps 2 ms (bytes flowing) or 10 ms (idle) itself when a read finds nothing. Measured: stream bench 39.9–43.6 KB/s (41.8 with no sleep at all, so the stream is limited by the board), CLI 1.2 % of one core while streaming, app 0.5 %. **Until a release with this fix is installed, do not run fenixOS v0.1.0 with the board plugged in.** espflash (app install / probe) still opens the port with its own timeouts, only while flashing. Corrected (2026-10-30, P23): that left two gaps. espflash 4.6.0 takes serialport's `COMPort` type directly and calls `set_timeout` (interval and multiplier `MAXDWORD` plus a constant, the crash-2 pattern) around every command, so the app's firmware update and probe used the risky path while flashing; and esptool (`idf.py flash`, pyserial) sets a plain total timeout (`0, 0, constant`), which also arms the driver's timers. **Fix (P23):** serialport is patched (`third_party/serialport`, `[patch.crates-io]`): on Windows `set_timeout` always sets `MAXDWORD, 0, 0` and no write timeout, and `read` polls every 1 ms up to the timeout itself. Every Rust user gets it (fenix-link, espflash). The flasher moved to crate `fenix-flash`, shared by the app and `fenix flash`, which replaces `idf.ps1 flash` for this board. Tested: two full 832 KB writes with `fenix flash`, 22 s each at 460800 baud, board booted both times. Then (P26) `fenix flash <build dir>` flashes any ESP-IDF build from its `flasher_args.json` (spikes), `fenix write` writes a raw file such as a backup, and `fenix read-flash` reads flash (checked: the partition table and the first 256 KB of the app read back identical to the build). `tools/serial_read.py` reads without a timeout. Still outside our control: other serial programs (terminals, monitors, esptool) on this board, because the bug is in the driver; avoid them.
 
 ## Design-relevant findings (2026-10-28)
 

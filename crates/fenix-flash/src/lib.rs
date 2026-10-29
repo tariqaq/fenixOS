@@ -71,6 +71,42 @@ pub fn load(dir: &Path) -> Result<Image, String> {
     })
 }
 
+/// An ESP-IDF build folder as `idf.py flash` would write it: the files and offsets in its
+/// `flasher_args.json` (spikes, or the board build without bundling). The version is the
+/// project's (`project_description.json`), or "build" when that is missing.
+pub fn load_build(dir: &Path) -> Result<Image, String> {
+    let args: serde_json::Value = std::fs::read(dir.join("flasher_args.json"))
+        .map_err(|e| format!("no flasher_args.json ({e})"))
+        .and_then(|b| serde_json::from_slice(&b).map_err(|e| format!("flasher_args.json: {e}")))?;
+    let files = args["flash_files"]
+        .as_object()
+        .ok_or("flasher_args.json: no flash_files")?;
+    let mut parts = Vec::new();
+    for (off, rel) in files {
+        let offset = u32::from_str_radix(off.trim_start_matches("0x"), 16)
+            .map_err(|_| format!("flasher_args.json: bad offset {off}"))?;
+        let rel = rel.as_str().ok_or("flasher_args.json: bad file")?;
+        let data = std::fs::read(dir.join(rel)).map_err(|e| format!("{rel}: {e}"))?;
+        parts.push((offset, data));
+    }
+    parts.sort_by_key(|(o, _)| *o);
+    let version = std::fs::read(dir.join("project_description.json"))
+        .ok()
+        .and_then(|b| serde_json::from_slice::<serde_json::Value>(&b).ok())
+        .and_then(|v| v["project_version"].as_str().map(str::to_string))
+        .unwrap_or_else(|| "build".into());
+    Ok(Image { version, parts })
+}
+
+/// One raw file written at `offset` (a full 4 MB backup goes at 0).
+pub fn load_raw(offset: u32, file: &Path) -> Result<Image, String> {
+    let data = std::fs::read(file).map_err(|e| format!("{}: {e}", file.display()))?;
+    Ok(Image {
+        version: "raw".into(),
+        parts: vec![(offset, data)],
+    })
+}
+
 /// Turns espflash's per-segment chunk counts into one 0..=1 fraction over the whole image.
 /// espflash writes the segments in order and calls `finish` once per segment, also for one it
 /// skips as unchanged (without `init`), so the segment index advances in `finish`.
@@ -228,6 +264,20 @@ pub fn erase(port: &str, offset: u32, size: u32) -> Result<(), String> {
     flasher
         .erase_region(offset, size)
         .map_err(|e| format!("erasing failed: {e}"))?;
+    flasher
+        .connection()
+        .reset_after(true, Chip::Esp32)
+        .map_err(|e| format!("reset failed: {e}"))
+}
+
+/// Read `size` bytes at `offset` into `out` (a backup: 0, 0x400000 for the whole 4 MB), then
+/// reset the board.
+pub fn read(port: &str, offset: u32, size: u32, out: &Path) -> Result<(), String> {
+    let mut flasher = connect(port)?;
+    // espflash's defaults: 4 KB blocks, 64 in flight.
+    flasher
+        .read_flash(offset, size, 0x1000, 64, out.to_path_buf())
+        .map_err(|e| format!("reading failed: {e}"))?;
     flasher
         .connection()
         .reset_after(true, Chip::Esp32)

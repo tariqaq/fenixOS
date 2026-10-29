@@ -220,6 +220,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - `docs/screens/board/display_scrolled.png` (no burn-in row) and `about.png` (old version) recaptured from the board with `fenix tap`/`shot` (not the capture script: it erases settings and calibration)
   - Checked, no change: `docs/packages.md` (element kinds, icon sizes), `docs/sidecars.md` (messages), `proto/spec.md`, DESIGN.md, `docs/legacy/` and `docs/POC-WRITEUP.md` (historical, kept as written)
 
+- [x] P26 Spikes and backups off esptool (user 2026-10-30: "yea sure"): `fenix flash <build dir>` (ESP-IDF `flasher_args.json`), `fenix write <offset> <file>`, `fenix read-flash <offset> <size> <file>` in fenix-flash / fenix-cli. Tested: partition table and the first 256 KB of the app read back identical to `board/build` (8 s, 13 s), `fenix flash board/build` (8 s, unchanged regions skipped), board back on v0.1.3. Docs: board-info (current state corrected: it said "flash fully erased"; restores use `fenix write`), toolchain, tooling. Left outside our control: third-party serial programs (driver bug)
 - [ ] P25 Release v0.1.4: P23 crash-safe flashing in the app. Wait for CI on main (its rust job saves the shared `app` cache for the first time), then VERSION 0.1.4 and tag, so the release run shows whether it now builds warm
 
 ## Decisions

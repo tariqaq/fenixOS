@@ -15,9 +15,14 @@
 //! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
 //! fenix host <id> on|off           tell the board an app's PC half runs or stopped
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
-//! fenix flash [dir] [--erase]      write the bundled firmware (default app/src-tauri/resources/
-//!                                  firmware, from tools/bundle_firmware.py); quit the app first
-//! fenix erase <offset> <size>      erase a flash region (0x9000 0x6000: settings); quit the app
+//! fenix flash [dir] [--erase]      write firmware: a bundle (default app/src-tauri/resources/
+//!                                  firmware, from tools/bundle_firmware.py) or an ESP-IDF build
+//!                                  folder (flasher_args.json, e.g. a spike); quit the app first
+//! fenix write <offset> <file>      write one raw file (a 4 MB backup goes at 0)
+//! fenix read-flash <offset> <size> <file>   read flash to a file (backup: 0 0x400000)
+//! fenix erase <offset> <size>      erase a flash region (0x9000 0x6000: settings)
+//! The flash commands replace esptool and `idf.py flash`, whose read timeouts take the CH340
+//! driver's crash path (P23).
 //! Common option: --port COMx (default: auto-detect).
 
 use std::path::Path;
@@ -103,6 +108,24 @@ fn main() {
         },
         "soak" => soak(opts, arg_u64(&args, 1, 60)),
         "flash" => flash(opts, &args[1..]),
+        "write" => match (args.get(1).and_then(|v| num(v)), args.get(2)) {
+            (Some(off), Some(f)) => match fenix_flash::load_raw(off, Path::new(f)) {
+                Ok(img) => write_image(opts, &img, false),
+                Err(e) => {
+                    eprintln!("{e}");
+                    1
+                }
+            },
+            _ => usage(),
+        },
+        "read-flash" => match (
+            args.get(1).and_then(|v| num(v)),
+            args.get(2).and_then(|v| num(v)),
+            args.get(3),
+        ) {
+            (Some(off), Some(size), Some(f)) => read_flash(opts, off, size, Path::new(f)),
+            _ => usage(),
+        },
         "erase" => match (args.get(1).and_then(|v| num(v)), args.get(2).and_then(|v| num(v))) {
             (Some(off), Some(size)) => erase(opts, off, size),
             _ => usage(),
@@ -113,7 +136,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|erase <offset> <size> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size> [--port COMx]");
     2
 }
 
@@ -125,20 +148,46 @@ fn flash(opts: LinkOptions, args: &[String]) -> i32 {
         .iter()
         .find(|a| !a.starts_with("--"))
         .map_or_else(|| Path::new("app/src-tauri/resources/firmware").to_path_buf(), Into::into);
+    let loaded = if dir.join("flasher_args.json").exists() {
+        fenix_flash::load_build(&dir)
+    } else {
+        fenix_flash::load(&dir)
+    };
+    match loaded {
+        Ok(img) => write_image(opts, &img, erase),
+        Err(e) => {
+            eprintln!("{}: {e}", dir.display());
+            1
+        }
+    }
+}
+
+fn read_flash(opts: LinkOptions, offset: u32, size: u32, out: &Path) -> i32 {
     let Some(port) = board_port(&opts) else {
         eprintln!("no board found (use --port COMx)");
         return 1;
     };
-    let img = match fenix_flash::load(&dir) {
-        Ok(i) => i,
-        Err(e) => {
-            eprintln!("{}: {e}", dir.display());
-            return 1;
+    println!("reading {size:#x} bytes at {offset:#x} from {port}");
+    match fenix_flash::read(&port, offset, size, out) {
+        Ok(()) => {
+            println!("saved {}; the board restarts", out.display());
+            0
         }
+        Err(e) => {
+            eprintln!("{e}");
+            1
+        }
+    }
+}
+
+fn write_image(opts: LinkOptions, img: &fenix_flash::Image, erase: bool) -> i32 {
+    let Some(port) = board_port(&opts) else {
+        eprintln!("no board found (use --port COMx)");
+        return 1;
     };
     println!("flashing v{} to {port}{}", img.version, if erase { " (erase first)" } else { "" });
     let mut last = -1;
-    let r = fenix_flash::flash(&port, &img, erase, &mut |f| {
+    let r = fenix_flash::flash(&port, img, erase, &mut |f| {
         let pct = (f * 100.0) as i32;
         if pct / 10 != last / 10 {
             println!("{pct:3} %");
