@@ -1,0 +1,81 @@
+name: release
+
+# A tag v<VERSION> builds the firmware, bundles it into the PC app, and publishes the signed
+# installer with the updater's latest.json as a GitHub release. Run by hand (workflow_dispatch)
+# it builds the same things and keeps them as workflow artifacts, without a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: tag matches VERSION
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: test "v$(cat VERSION | tr -d '[:space:]')" = "${GITHUB_REF_NAME}"
+      - name: build
+        shell: bash
+        run: |
+          . $IDF_PATH/export.sh
+          cd board
+          idf.py build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: |
+            board/build/fenixos.bin
+            board/build/bootloader/bootloader.bin
+            board/build/partition_table/partition-table.bin
+            board/build/flasher_args.json
+            board/build/project_description.json
+          if-no-files-found: error
+
+  app:
+    needs: firmware
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: board/build
+      - run: python tools/bundle_firmware.py
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - working-directory: app
+        run: pnpm install --frozen-lockfile
+      - uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        with:
+          projectPath: app
+          tauriScript: pnpm tauri
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: fenixOS ${{ github.ref_name }}
+          releaseBody: >-
+            Install with fenixOS_*_x64-setup.exe (per user, no admin prompt). The installer
+            carries the matching board firmware; the first run sets up the board.
+            See the README for details.
+          releaseDraft: false
+          prerelease: false
+          uploadWorkflowArtifacts: true

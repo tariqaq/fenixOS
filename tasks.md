@@ -126,7 +126,16 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 5. Config: show the OOTB on first launch (`welcome_done` false), set it at the end (Skip also sets it); Settings > About "Show welcome again" (artboard 13 row)
   - [x] 6. Accepted 2026-10-29: erased board probed as "esp32 rev 3.1, 4MB", one confirm, erase + install 25 s with progress on the model screen, Home, dashboard; the Sample app went back on by itself (0.1 s); 165 fps throughout, 137 MB / 7 % CPU while playing, 68 MB after. Accept: erase the board's flash (blank like day one), launch with `welcome_done` false, plug-in to dashboard with only the install confirm; smooth at the S8 numbers; measure memory with the OOTB open and after it closes
   - [x] 7. Docs (PLAN, toolchain, decisions), stale sweep, commit
-- [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
+- [~] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass. Plan (2026-10-29):
+  - [x] 1. (Written; a local signed `pnpm tauri build` makes `fenixOS_0.1.0_x64-setup.exe` 3.84 MiB + `.sig`) `.github/workflows/release.yml` on tag `v*`: check tag = `VERSION`; job `firmware` (idf v5.5.5 container) builds and uploads `board/build` bins + `flasher_args.json` + `project_description.json`; job `app` (windows-latest) downloads them, runs `tools/bundle_firmware.py`, builds the NSIS installer with `tauri-apps/tauri-action` (signed updater artifacts, `latest.json`), publishes a GitHub release. NSIS `installMode` set to `currentUser` explicitly (no UAC)
+  - [!] 2. BLOCKED, needs the user: the agent may not write GitHub secrets. Run `gh secret set TAURI_SIGNING_PRIVATE_KEY < %USERPROFILE%\.taurienixos-updater.key` (cmd) once. Secret: `TAURI_SIGNING_PRIVATE_KEY` from `%USERPROFILE%\.tauri\fenixos-updater.key` via `gh secret set` (stdin, never echoed); the empty password is set in the workflow
+  - [!] 3. Waits on 2 (signing needs the key). Dry run: `workflow_dispatch` builds everything without publishing (artifact upload only), so the tag is pushed only once the pipeline is green
+  - [ ] 4. README for v0.1.0: install, first run, how apps work, build from source (+ simulator), screenshots from `docs/screens/`
+  - [ ] 5. Hardware pass: 1 h `fenix soak`, all screens via the simulator goldens + a board capture walk, rotations; shut down / wake stays an open item (needs a finger)
+  - [ ] 6. Sweep: docs, comments, CLI help, `tasks.md`; "in development" status lines
+  - [ ] 7. Tag `v0.1.0`, release CI publishes it; check the release assets (`fenixOS_0.1.0_x64-setup.exe`, `.sig`, `latest.json`)
+  - [ ] 8. Updater test (corrects PLAN P10.3: the endpoint is `releases/latest`, which skips pre-releases, so a `v0.1.1-test` pre-release would never be offered): a local build with VERSION 0.0.9 (not committed) must find v0.1.0, download, verify the signature and install it
+  - [ ] 9. Accept: clean install from the GitHub release (uninstall first, fresh config), erased board, OOTB to a working dashboard
 
 ## Decisions
 
