@@ -149,6 +149,7 @@ Consequences:
 | Board model colour | Real yellow PCB / **dark PCB** | **Dark PCB with gold pads**, as PLAN §3.9 says; sizes and part positions follow the real board |
 | Simulator window (`board/sim`) | SDL2 / **plain Win32** | **Win32 GDI**: one `StretchDIBits` per frame, no library to fetch or license, nothing beyond MSVC; the simulator is a Windows dev tool like the PC app |
 | Simulator time | Wall clock / **virtual** | **Virtual**: time moves only on script waits and `vTaskDelay`, and the clock reads Thursday 2026-10-29 08:35, so every run gives identical pixels and golden images can be compared exactly |
+| Simulator version string (after the 0.1.1 bump broke CI) | `VERSION` / **fixed 0.0.0** | **Fixed 0.0.0** in `board/sim/CMakeLists.txt`: About and Settings print the version, so every release changed three goldens |
 | Simulator golden images | Reuse `docs/screens/board/` / **own set** | **Own set** in `board/sim/golden/`, compared pixel for pixel in CI; the board captures stay as the reference for the real panel (they differ by ≤ 0.6%: clock minute, antialiasing) |
 | Simulator stream screen | Not streaming / **streaming** | **Streaming** (`stream on 10` in the script): `fenix shot` streams from the board, so the real capture shows it that way |
 | Release build | Hand-written upload steps / **tauri-action v1** | **`tauri-apps/tauri-action@v1`**: builds the NSIS bundle, signs the updater files and uploads them with `latest.json` in one step; the firmware is built in the IDF container job and handed over as an artifact |

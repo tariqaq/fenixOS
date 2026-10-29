@@ -16,9 +16,9 @@ if(NOT EXISTS ${LVGL_DIR}/lvgl.h)
 endif()
 file(GLOB_RECURSE LVGL_SRCS ${LVGL_DIR}/src/*.c ${LVGL_DIR}/src/*.cpp)
 
-file(READ ${BOARD}/../VERSION FENIX_VERSION)
-string(STRIP "${FENIX_VERSION}" FENIX_VERSION)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${BOARD}/../VERSION)
+# A fixed version, not the VERSION file: About and Settings show it, and the golden screens must
+# not change with every release (CI broke on the 0.1.1 bump).
+set(FENIX_VERSION "0.0.0")
 
 file(GLOB FONT_SRCS ${COMP}/fenix_ui/fonts/*.c)
 add_executable(fenix_sim
