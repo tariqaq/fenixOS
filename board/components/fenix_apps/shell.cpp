@@ -82,9 +82,19 @@ static void send_stream_info() {
   sys::link_send(fnx::ty::STREAM_INFO, b, w.size());
 }
 
+// Tell the PC whether the board streams (P14): the same STREAM_START / STREAM_STOP the PC sends,
+// so a start or stop on either side shows on both.
+static void report_stream() {
+  if (!s_shell.connected) return;
+  uint8_t fps = s_shell.stream_fps;
+  if (s_shell.streaming) sys::link_send(fnx::ty::STREAM_START, &fps, 1);
+  else sys::link_send(fnx::ty::STREAM_STOP, &fps, 0);
+}
+
 static void stream_set(bool on, uint8_t fps) {
   s_shell.streaming = on;
   s_shell.stream_fps = fps;
+  report_stream();
   if (on) send_stream_info();
   stream_enable(on, fps);
   refresh_if_top(stream_screen);
@@ -124,7 +134,12 @@ void on_link(const sys::LinkEvent& e) {
   }
 }
 
-// Called by the stream screen's "Stop streaming" button.
+// The stream screen's "Start streaming" and "Stop streaming" buttons.
+void stream_start_local() {
+  stream_set(true, STREAM_FPS);
+  sys::link_log(3, "stream started on the board");
+}
+
 void stream_stop_local() {
   stream_set(false, 0);
   sys::link_log(3, "stream stopped on the board");

@@ -248,7 +248,6 @@ fn reboot_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) {
 /// 4 bytes 0), then RGB565 pixels (little-endian) only when newer than `since`.
 #[tauri::command]
 fn mirror_frame(engine: tauri::State<Arc<Engine>>, since: u64) -> tauri::ipc::Response {
-    engine.mirror_poll();
     let m = engine.mirror.lock().unwrap();
     let c = &m.canvas;
     let mut out = Vec::with_capacity(16 + c.px.len() * 2);
@@ -264,9 +263,10 @@ fn mirror_frame(engine: tauri::State<Arc<Engine>>, since: u64) -> tauri::ipc::Re
     tauri::ipc::Response::new(out)
 }
 
+/// Start or stop the board's stream (Board page); `State.streaming` follows.
 #[tauri::command]
-fn mirror_stop(engine: tauri::State<Arc<Engine>>) {
-    engine.mirror_stop();
+fn mirror_set(app: AppHandle, engine: tauri::State<Arc<Engine>>, on: bool) {
+    engine.mirror_set(&app, on);
 }
 
 /// A click on the mirror, in board screen coordinates.
@@ -430,7 +430,7 @@ fn main() {
             app_button,
             remove_app,
             mirror_frame,
-            mirror_stop,
+            mirror_set,
             mirror_touch,
             update_board,
             clear_update,

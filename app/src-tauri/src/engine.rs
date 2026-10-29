@@ -18,17 +18,12 @@ use crate::registry::Manifest;
 
 const TIME_SYNC_EVERY: Duration = Duration::from_secs(3600);
 const MIRROR_FPS: u8 = 10;
-/// The mirror stops when the Board page has not asked for a frame for this long (page left,
-/// window closed).
-const MIRROR_IDLE: Duration = Duration::from_secs(2);
 
 /// Live copy of the board screen for the Board page (artboard 11).
 pub struct Mirror {
     pub canvas: StreamCanvas,
     /// Bumped on every completed rectangle; the UI asks "anything newer than N?".
     pub version: u64,
-    on: bool,
-    last_poll: Instant,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -78,6 +73,9 @@ pub struct State {
     pub bundled_firmware: Option<String>,
     /// A firmware update in progress or just finished (artboard 12).
     pub update: Option<Update>,
+    /// The board streams its screen (P14): started or stopped on the Board page or on the
+    /// board's Stream app, which reports every change.
+    pub streaming: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -128,6 +126,7 @@ impl Engine {
                 apps: apps.views(),
                 bundled_firmware,
                 update: None,
+                streaming: false,
             }),
             logs,
             link,
@@ -138,8 +137,6 @@ impl Engine {
             mirror: Mutex::new(Mirror {
                 canvas: StreamCanvas::default(),
                 version: 0,
-                on: false,
-                last_poll: Instant::now(),
             }),
             fw_dir,
             update_started: Mutex::new(None),
@@ -166,22 +163,29 @@ impl Engine {
         self.link.send(m);
     }
 
-    /// The Board page asks for the mirror; this starts the stream on first use.
-    pub fn mirror_poll(&self) {
-        let mut m = self.mirror.lock().unwrap();
-        m.last_poll = Instant::now();
-        if !m.on && self.state.lock().unwrap().status == Status::Connected {
-            m.on = true;
+    /// Start or stop the board's stream from the Board page. The board reports the change back
+    /// (P14); the state flips now so the page does not wait for it (and for v0.1.0 boards,
+    /// which do not report).
+    pub fn mirror_set(&self, app: &AppHandle, on: bool) {
+        if self.state.lock().unwrap().status != Status::Connected {
+            return;
+        }
+        if on {
             self.link.send(Msg::StreamStart { fps: MIRROR_FPS });
             self.link.send(Msg::StreamSync);
+        } else {
+            self.link.send(Msg::StreamStop);
         }
+        self.set_streaming(app, on);
     }
 
-    pub fn mirror_stop(&self) {
-        let mut m = self.mirror.lock().unwrap();
-        if m.on {
-            m.on = false;
-            self.link.send(Msg::StreamStop);
+    fn set_streaming(&self, app: &AppHandle, on: bool) {
+        let changed = {
+            let mut s = self.state.lock().unwrap();
+            std::mem::replace(&mut s.streaming, on) != on
+        };
+        if changed {
+            self.emit_state(app);
         }
     }
 
@@ -375,13 +379,6 @@ impl Engine {
                 changed |= self.handle(&app, e);
             }
             changed |= self.apps.lock().unwrap().tick();
-            let idle = {
-                let m = self.mirror.lock().unwrap();
-                m.on && m.last_poll.elapsed() > MIRROR_IDLE
-            };
-            if idle {
-                self.mirror_stop();
-            }
             self.flush_app_logs(&app);
             if self.state.lock().unwrap().status == Status::Connected && Instant::now() >= next_sync
             {
@@ -503,12 +500,15 @@ impl Engine {
                 self.sync_time(app);
                 self.finish_update(app, &fw);
                 self.apps.lock().unwrap().board_connected(firmware_ok);
-                self.mirror.lock().unwrap().on = false;
+                // Each session starts with the stream off, even when the board kept one running
+                // from an app that quit (P14).
+                self.link.send(Msg::StreamStop);
+                self.state.lock().unwrap().streaming = false;
                 true
             }
             Event::Disconnected { reason } => {
                 self.apps.lock().unwrap().board_disconnected();
-                self.mirror.lock().unwrap().on = false;
+                self.state.lock().unwrap().streaming = false;
                 let was = {
                     let mut s = self.state.lock().unwrap();
                     let was = s.status == Status::Connected;
@@ -581,6 +581,15 @@ impl Engine {
             }
             Event::Msg(Msg::Error { code, text }) => {
                 self.log(app, Source::Board, true, format!("Error {code}: {text}"));
+                false
+            }
+            // The board's own stream reports (its Stream app, or the answer to ours).
+            Event::Msg(Msg::StreamStart { .. }) => {
+                self.set_streaming(app, true);
+                false
+            }
+            Event::Msg(Msg::StreamStop) => {
+                self.set_streaming(app, false);
                 false
             }
             Event::Msg(m @ (Msg::StreamInfo { .. } | Msg::StreamRect(_))) => {

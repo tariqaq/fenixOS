@@ -75,6 +75,7 @@
           <Board
             board={snap.board}
             appVersion={snap.app_version}
+            streaming={snap.streaming}
             onlogs={() => (logs = true)}
             onreinstall={() => (reinstall = true)}
           />

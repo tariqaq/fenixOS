@@ -20,6 +20,9 @@ void home_tick();
 void settings_screen(lv_obj_t* scr);
 void stream_screen(lv_obj_t* scr);
 void session_open();
+// Stream rate when started on the board (the PC asks for the same).
+constexpr uint8_t STREAM_FPS = 10;
+void stream_start_local();
 void stream_stop_local();
 uint8_t current_screen();  // fnx::screen value
 

@@ -83,6 +83,8 @@ export interface State {
   apps: AppView[];
   bundled_firmware: string | null;
   update: { stage: "erasing" | "writing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
+  /** The board streams its screen; started or stopped here or on the board (P14). */
+  streaming: boolean;
 }
 
 export type Page = "apps" | "board" | "settings";
@@ -113,7 +115,7 @@ export const openLogFolder = () => invoke("open_log_folder");
 export const getAutostart = () => invoke<boolean>("get_autostart");
 export const setAutostart = (on: boolean) => invoke<boolean>("set_autostart", { on });
 export const rebootBoard = () => invoke("reboot_board");
-export const mirrorStop = () => invoke("mirror_stop");
+export const mirrorSet = (on: boolean) => invoke("mirror_set", { on });
 export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirror_touch", { x, y, down });
 /** Raw frame from the engine (see `mirror_frame` in main.rs). */
 export const mirrorFrame = (since: number) => invoke<ArrayBuffer>("mirror_frame", { since });

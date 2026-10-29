@@ -60,6 +60,7 @@ tap 158 200
 shot session
 tap 160 226                               # Cancel
 tap 258 200
+shot stream_idle                          # connected, not streaming: "Start streaming"
 stream on 10                              # as while `fenix shot` captures
 shot stream
 stream off

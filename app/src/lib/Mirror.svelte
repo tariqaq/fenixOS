@@ -1,21 +1,23 @@
 <script lang="ts">
-  // Live board screen (PcBoard, artboard 11). Off until the user starts it (P13): then it polls
-  // the engine for frames at up to 10 fps, and the engine stops the board's stream on its own
-  // once polling ends. Clicks on the picture are sent to the board as touches.
+  // Live board screen (PcBoard, artboard 11). Off until the user starts it here or on the board's
+  // Stream app (P13, P14); `live` is the engine's `streaming`, which both sides keep in sync, and
+  // the stream keeps running when the page is left. While live it polls the engine for frames at
+  // up to 10 fps. Clicks on the picture are sent to the board as touches.
   import { onDestroy } from "svelte";
-  import { mirrorFrame, mirrorStop, mirrorTouch } from "./api";
+  import { mirrorFrame, mirrorSet, mirrorTouch } from "./api";
 
+  let { live }: { live: boolean } = $props();
   let canvas: HTMLCanvasElement;
-  let live = $state(false);
   let fps = $state(0);
   let size = $state({ w: 320, h: 240 });
   let version = 0;
   const shown: number[] = [];
   let timer: ReturnType<typeof setTimeout> | undefined;
   let alive = true;
+  let run = 0; // one poll loop per stream start; a loop from an earlier start ends itself
 
-  async function poll() {
-    if (!alive || !live) return;
+  async function poll(r: number) {
+    if (!alive || r !== run) return;
     const t0 = performance.now();
     try {
       const buf = await mirrorFrame(version);
@@ -35,7 +37,7 @@
     } catch {
       // Board gone: keep polling; the page is replaced by the finding-the-board screen anyway.
     }
-    timer = setTimeout(poll, Math.max(0, 100 - (performance.now() - t0)));
+    if (r === run) timer = setTimeout(() => poll(r), Math.max(0, 100 - (performance.now() - t0)));
   }
 
   function draw(px: Uint16Array, w: number, h: number) {
@@ -58,14 +60,16 @@
     ctx.putImageData(img, 0, 0);
   }
 
-  function toggle() {
-    live = !live;
-    if (live) poll();
-    else {
+  $effect(() => {
+    if (!live) return;
+    const r = ++run;
+    poll(r);
+    return () => {
+      run++;
       clearTimeout(timer);
-      mirrorStop();
-    }
-  }
+    };
+  });
+  const toggle = () => mirrorSet(!live);
 
   // Board coordinates of a pointer event on the scaled picture.
   function at(e: PointerEvent): [number, number] {
@@ -101,7 +105,6 @@
   onDestroy(() => {
     alive = false;
     clearTimeout(timer);
-    if (live) mirrorStop();
   });
 </script>
 

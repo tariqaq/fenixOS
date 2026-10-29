@@ -8,9 +8,10 @@
   let {
     board,
     appVersion,
+    streaming,
     onlogs,
     onreinstall,
-  }: { board: Board; appVersion: string; onlogs: () => void; onreinstall: () => void } = $props();
+  }: { board: Board; appVersion: string; streaming: boolean; onlogs: () => void; onreinstall: () => void } = $props();
 
   // The uptime ticks locally from the boot time the engine worked out at the handshake.
   let now = $state(Date.now());
@@ -25,7 +26,7 @@
 <div class="wrap">
   <h1>Board</h1>
   <div class="cols">
-    <Mirror />
+    <Mirror live={streaming} />
     <div class="side">
       <div class="group">
         <div class="row"><p>Connection</p><p class="value">USB, {board.port}</p></div>

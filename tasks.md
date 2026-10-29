@@ -157,12 +157,12 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 1. `Mirror.svelte`: starts stopped (no poll, so the engine never asks the board to stream); the screen area says "The stream is off. Start it to see the board's screen here."; chip "Off"
   - [x] 2. Checked over CDP (window minimized / off-screen): opening Board shows Off with no frames; Start stream gives "Live" and the board's picture; Stop stream back to Off. One early run right after quitting the installed app flipped back to Off by itself; not seen again in three runs (likely the stale WebView2 attach in `docs/toolchain.md` Gotchas). Docs: decisions, mockups, PLAN status line (was still "not started")
 
-- [ ] P14 Stream state in sync between board and PC (user request 2026-10-29: "let the user manually toggle streaming from the app on board"; P13 only made the PC toggle). The stream stays on until stopped on either side or the link drops. No protocol version bump: STREAM_START / STREAM_STOP are also sent board→PC as state reports (old apps ignore them). Plan:
-  - [ ] 1. Board: the Stream app gets "Start streaming" (connected, not streaming), keeps "Stop streaming"; every stream start or stop (board button or PC request) is reported to the PC; on a new connection a running stream is reported again
-  - [ ] 2. Engine: `streaming` in `State`, set by the PC's own start/stop and by the board's reports, false on connect/disconnect; `mirror_start` / `mirror_stop` commands; no start on poll, no idle auto-stop
-  - [ ] 3. `Mirror.svelte` follows `streaming` (polls while on, keeps the stream when the page is left); Board page passes it
-  - [ ] 4. Docs: `proto/spec.md` (directions), decisions, mockups (artboard 11 and the board Stream screen), sim golden screen if the Stream screen changes
-  - [ ] 5. Flash (app quit first), test: start on the board shows Live on the PC; stop on the PC shows "Not streaming" on the board; and the reverse
+- [x] P14 Stream state in sync between board and PC (user request 2026-10-29: "let the user manually toggle streaming from the app on board"; P13 only made the PC toggle). The stream stays on until stopped on either side or the link drops. No protocol version bump: STREAM_START / STREAM_STOP are also sent board→PC as state reports (old apps ignore them). Plan:
+  - [x] 1. Board: the Stream app gets "Start streaming" (connected, not streaming), keeps "Stop streaming"; every stream start or stop (board button or PC request) is reported to the PC; on a new connection a running stream is reported again
+  - [x] 2. Engine: `streaming` in `State`, set by the PC's own start/stop and by the board's reports, false on connect/disconnect; `mirror_start` / `mirror_stop` commands; no start on poll, no idle auto-stop
+  - [x] 3. `Mirror.svelte` follows `streaming` (polls while on, keeps the stream when the page is left); Board page passes it
+  - [x] 4. Docs: `proto/spec.md` (directions), decisions, mockups (artboard 11 and the board Stream screen), PLAN stream row (corrected: no FRAME_END), new sim golden screen `stream_idle`. Change from plan: the PC sends STREAM_STOP at each connect instead of the board re-reporting (a repeated HELLO posts no CONNECTED on the board)
+  - [x] 5. Flashed, tested over CDP with touches sent through the app (Board page open): board Start gives Live on the PC within 2 s; PC Stop gives Off and the board shows Start again; board Stop gives Off; PC Start gives Live; leaving the page keeps it streaming; quit while streaming and start again: Off, board stopped
 
 ## Decisions
 

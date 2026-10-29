@@ -8,6 +8,7 @@ namespace fx::apps {
 
 using namespace fx::ui;
 
+static void start_cb(lv_event_t*) { stream_start_local(); }
 static void stop_cb(lv_event_t*) { stream_stop_local(); }
 
 static lv_obj_t* centre_column(lv_obj_t* scr, int gap, int pad_hor, int pad_bottom) {
@@ -38,8 +39,13 @@ void stream_screen(lv_obj_t* scr) {
     return;
   }
   if (!sh.streaming) {
-    message(centre_column(scr, 6, 24, 16), FX_ICON_SCREENCAST, "Not streaming",
-            "Open the board page in fenixOS on your PC to see this screen there.");
+    lv_obj_t* c = centre_column(scr, 6, 24, 16);
+    message(c, FX_ICON_SCREENCAST, "Not streaming",
+            "Start the stream here or on the Board page in fenixOS on your PC.");
+    lv_obj_t* b = capsule(c, FX_ICON_SCREENCAST, &fx_icon_fill_14, "Start streaming", FX_COLOR_ACCENT_FILL, 36, start_cb,
+                          nullptr);
+    lv_obj_set_width(b, LV_PCT(100));
+    lv_obj_set_style_margin_top(b, 8, 0);
     return;
   }
   lv_obj_t* c = centre_column(scr, 10, 16, 12);
