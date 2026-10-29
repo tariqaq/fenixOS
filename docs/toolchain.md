@@ -46,6 +46,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Firmware to the board: `pwsh -NoProfile -File board/idf.ps1 -p COM9 -b 460800 build flash`
 - Dev CLI (`cargo build -p fenix-cli`, then `target/debug/fenix.exe`): `ports`, `hello`, `logs [s]`, `time`, `reboot`, `tap <x> <y>`, `swipe <x1> <y1> <x2> <y2>`, `shot <png> [s]`, `bench [s] [nostream]` (slide fps, stream throughput), `list`, `install`, `remove`, `soak <min>`; `--port COMx`
 - Board screenshots: `bash tools/capture_screens.sh <dir>` erases the board's settings (NVS), installs `tools/sample-app`, taps through every system screen and the sample app, saves PNGs, and removes the sample again. Golden copies: `docs/screens/board/`
+- Sample app: `pwsh tools/sample-app/build.ps1` (board package, PC half `fenix-sample.exe`, local registry in `target/sample-registry`)
 - Registry: `python tools/registry.py` (writes `registry/index.json`), `--check` (CI), `--local <out> <manifest> --board <fxp> [--pc <exe>]` (a local registry for `FENIX_REGISTRY`); see `docs/registry.md`
 - App packages: `fenix-pkg build <dir> [-o out.fxp]`, `fenix-pkg inspect <file>`; on the board: `fenix install <file.fxp>`, `fenix list`, `fenix remove <id>`, `fenix set <file.fxp> <bind>=<value>...` (acts as the app's PC half), `fenix host <id> on|off`. `fenix tap` and `fenix swipe` print what the board sends back (EVENT, BOARD_STATE). C++ reader test: `pwsh board/components/fenix_pkg/test/run.ps1`
 

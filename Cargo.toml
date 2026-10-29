@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "app/src-tauri"]
+members = ["crates/*", "app/src-tauri", "tools/sample-app/pc"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,7 @@ repository = "https://github.com/tariqaq/fenixOS"
 fenix-proto = { path = "crates/fenix-proto" }
 fenix-link = { path = "crates/fenix-link" }
 fenix-pkg = { path = "crates/fenix-pkg" }
+fenix-sdk = { path = "crates/fenix-sdk" }
 
 [profile.release]
 opt-level = "s"

@@ -1019,6 +1019,22 @@ name = "fenix-proto"
 version = "0.1.0"
 
 [[package]]
+name = "fenix-sample"
+version = "0.1.0"
+dependencies = [
+ "fenix-sdk",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "fenix-sdk"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "fenixos"
 version = "0.1.0"
 dependencies = [
