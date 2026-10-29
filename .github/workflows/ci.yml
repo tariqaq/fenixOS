@@ -15,6 +15,7 @@ jobs:
           python-version: "3.12"
       - run: python tools/version.py --check
       - run: python tools/gen_tokens.py --check
+      - run: python tools/registry.py --check
 
   board:
     runs-on: ubuntu-latest

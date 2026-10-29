@@ -1,0 +1,21 @@
+{
+  "id": "io.github.tariqaq.sample",
+  "name": "Sample",
+  "description": "Test fixture: CPU and memory cards, a slider, a switch and a button",
+  "version": "0.1.0",
+  "min_fenixos": "0.1.0",
+  "color": "teal",
+  "icon": "puzzle-piece",
+  "repo": "https://github.com/tariqaq/fenixOS",
+  "board": {},
+  "pc": { "elevated": false },
+  "permissions": ["system-stats"],
+  "settings": [
+    { "key": "interval", "type": "choice", "label": "Update every", "default": "1", "options": [
+      { "value": "1", "label": "1 s" }, { "value": "2", "label": "2 s" }, { "value": "5", "label": "5 s" } ] },
+    { "key": "memory", "type": "toggle", "label": "Show memory", "default": true },
+    { "key": "level", "type": "slider", "label": "Start level", "default": 50, "min": 0, "max": 100, "step": 5, "unit": "%" },
+    { "key": "greeting", "type": "text", "label": "Greeting", "default": "Hello from the PC", "max_len": 60 },
+    { "key": "ping", "type": "button", "label": "Send a test log line" }
+  ]
+}
