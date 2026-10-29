@@ -6,6 +6,7 @@
 // on the back as (u, v) mm from the back's top-left corner: seen from the front, x = 43 - u and
 // y = 25 - v, so the USB ports sit on the left edge.
 import * as THREE from "three";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { Screen, type ScreenMode } from "./screen";
@@ -280,6 +281,14 @@ function cable(): THREE.Group {
 
 export type Pose = "intro" | "waiting" | "plugged" | "front";
 
+/** Render limits. Both windows use the GPU; 60 fps keeps a 165 Hz panel from costing a core. */
+export interface SceneLimits {
+  /** Frames per second at most (default 60). */
+  maxFps?: number;
+  /** Device pixel ratio at most (default 2). */
+  maxDpr?: number;
+}
+
 export class BoardScene {
   private r: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
@@ -305,11 +314,18 @@ export class BoardScene {
   reduced: boolean;
   /** Frame rate over the last second, for the S8 numbers. */
   fps = 0;
+  /** No frames while true (the window is minimized). */
+  paused = false;
+  private minGap: number;
+  private unlisten?: () => void;
+  private last = -Infinity;
 
-  constructor(canvas: HTMLCanvasElement, reduced: boolean) {
+  constructor(canvas: HTMLCanvasElement, reduced: boolean, limits: SceneLimits = {}) {
     this.reduced = reduced;
-    this.r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "low-power" });
-    this.r.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    // A little under the frame time, so a 30 fps cap on a 60 Hz display takes every other frame.
+    this.minGap = 1000 / (limits.maxFps ?? 60) - 4;
+    this.r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+    this.r.setPixelRatio(Math.min(limits.maxDpr ?? 2, window.devicePixelRatio));
     this.r.toneMapping = THREE.ACESFilmicToneMapping;
     this.r.toneMappingExposure = 0.9;
     this.scene.background = new THREE.Color(0x000000);
@@ -337,6 +353,11 @@ export class BoardScene {
     this.scene.add(this.board);
     this.resize();
     this.raf = requestAnimationFrame(this.frame);
+    // WebView2 keeps a minimized window "visible" and its frames coming: pause while minimized.
+    const win = getCurrentWindow();
+    const check = () => win.isMinimized().then((m) => (this.paused = m), () => {});
+    check();
+    win.onResized(check).then((f) => (this.unlisten = f), () => {});
   }
 
   /** The version the boot screen shows. */
@@ -395,6 +416,8 @@ export class BoardScene {
 
   private frame = (now: number) => {
     this.raf = requestAnimationFrame(this.frame);
+    if (this.paused || now - this.last < this.minGap) return;
+    this.last = now;
     const drift = this.reduced ? 0 : 1;
     const yaw = this.yaw.get(now) + drift * 0.05 * Math.sin(now / 6100);
     const pitch = this.pitch.get(now) + drift * 0.025 * Math.sin(now / 8300 + 1);
@@ -431,6 +454,7 @@ export class BoardScene {
   };
 
   dispose() {
+    this.unlisten?.();
     cancelAnimationFrame(this.raf);
     this.r.dispose();
   }

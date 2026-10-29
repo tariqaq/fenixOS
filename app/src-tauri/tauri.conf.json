@@ -23,7 +23,7 @@
         "backgroundColor": "#000000",
         "center": true,
         "create": false,
-        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --disable-gpu --in-process-gpu --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-component-update"
+        "additionalBrowserArgs": "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --force_high_performance_gpu --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-component-update"
       }
     ],
     "security": { "csp": "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; connect-src ipc: http://ipc.localhost" }

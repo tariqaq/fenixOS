@@ -43,11 +43,53 @@ pub fn open_window(app: &AppHandle) {
     else {
         return;
     };
-    match WebviewWindowBuilder::from_config(app, &cfg).and_then(|b| b.build()) {
+    // FENIX_WINDOW=background opens the window minimized without taking focus (scripted tests).
+    let quiet = std::env::var("FENIX_WINDOW").is_ok_and(|v| v == "background");
+    match WebviewWindowBuilder::from_config(app, &cfg).and_then(|b| b.focused(!quiet).build()) {
+        Ok(w) if quiet => {
+            let _ = w.minimize();
+        }
         Ok(w) => {
             let _ = w.set_focus();
         }
         Err(e) => eprintln!("window: {e}"),
+    }
+}
+
+/// Cores' worth of CPU fenixOS may use at most (user request, P11).
+const CPU_CORES: u32 = 4;
+
+/// Hard-cap this process and everything it starts (WebView2, PC halves, flashing) at
+/// `CPU_CORES` cores' worth of CPU time, at normal priority. A job object's CPU rate applies to
+/// the whole tree; WebView2's own sandbox jobs nest inside it. Threads still run on any core.
+fn cap_cpu() {
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectCpuRateControlInformation,
+        SetInformationJobObject, JOBOBJECT_CPU_RATE_CONTROL_INFORMATION,
+        JOB_OBJECT_CPU_RATE_CONTROL_ENABLE, JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP,
+    };
+    use windows_sys::Win32::System::Threading::GetCurrentProcess;
+    let all = std::thread::available_parallelism().map_or(1, |n| n.get() as u32);
+    if all <= CPU_CORES {
+        return;
+    }
+    unsafe {
+        let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+        if job.is_null() {
+            return;
+        }
+        let mut info: JOBOBJECT_CPU_RATE_CONTROL_INFORMATION = std::mem::zeroed();
+        info.ControlFlags = JOB_OBJECT_CPU_RATE_CONTROL_ENABLE | JOB_OBJECT_CPU_RATE_CONTROL_HARD_CAP;
+        // In 1/100 of a percent of all processors.
+        info.Anonymous.CpuRate = CPU_CORES * 10_000 / all;
+        SetInformationJobObject(
+            job,
+            JobObjectCpuRateControlInformation,
+            &info as *const _ as *const _,
+            std::mem::size_of::<JOBOBJECT_CPU_RATE_CONTROL_INFORMATION>() as u32,
+        );
+        // The handle stays open for the life of the process, so the job does too.
+        AssignProcessToJobObject(job, GetCurrentProcess());
     }
 }
 
@@ -357,6 +399,7 @@ fn open_url(url: String) -> Result<(), String> {
 }
 
 fn main() {
+    cap_cpu();
     let tray_only = std::env::args().any(|a| a == "--tray");
     let app = tauri::Builder::default()
         // First: a second launch hands its arguments to the running instance and exits.

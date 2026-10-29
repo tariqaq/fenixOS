@@ -218,7 +218,7 @@ docs/, pics/
   - Inter and Phosphor are bundled locally (no CDN).
   - The custom title bar and the sidebar (Apps, Board, Settings) follow the canvas pixel for pixel.
 - **App settings page:** rendered by fenixOS from the manifest's settings schema (toggle, slider, choice, text, button). Every app's settings therefore follow the fenixOS design, and values go to the sidecar.
-- **WebView2:** lean `additionalBrowserArgs` (PoC). No UI updates while hidden. The OOTB window's GPU needs are settled in S8.
+- **WebView2:** lean `additionalBrowserArgs` (PoC). No UI updates while hidden. The OOTB window's GPU needs are settled in S8. Corrected (P11, 2026-10-29): the main window now runs with the GPU on as well (`--force_high_performance_gpu`, the NVIDIA GPU here), because its board screen draws the same 3D scene; the whole app is capped at 4 cores' worth of CPU.
 - **hallmark:** its edit-time lint hook stays on for all UI work. `DESIGN.md` stays locked and overrides hallmark's own themes.
 
 ### 3.7 Registry

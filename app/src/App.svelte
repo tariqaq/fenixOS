@@ -1,6 +1,8 @@
 <script lang="ts">
   // Window root: title bar, then the finding-the-board screen (artboard 7) until a board answers,
-  // then the sidebar layout. All state comes from the engine (lib/api.ts).
+  // then the sidebar layout. The board screen stays over the layout for its plug-in animation and
+  // fades out (P11). A board already connected at start opens the layout at once. All state
+  // comes from the engine (lib/api.ts).
   import { onDestroy } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import TitleBar from "./lib/TitleBar.svelte";
@@ -19,14 +21,29 @@
   // Update dialog: "Later" hides the mismatch prompt until the board connects again.
   let later = $state(false);
   let reinstall = $state(false);
+  // The board screen: up while no board answers, then through its plug-in run and fade.
+  let looking = $state(false);
+  let leaving = $state(false);
+  const connected = $derived(!!snap && snap.status === "connected" && !!snap.board);
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let fadeTimer = 0;
   $effect(() => {
-    if (snap && snap.status !== "connected") later = false;
+    if (snap && snap.status !== "connected") {
+      later = false;
+      looking = true;
+      leaving = false;
+      clearTimeout(fadeTimer);
+    }
   });
+  function connectDone() {
+    leaving = true;
+    fadeTimer = window.setTimeout(() => (looking = leaving = false), reduced ? 250 : 600);
+  }
   const dialog = $derived.by(() => {
     if (!snap) return null;
     if (snap.update) return "progress" as const;
     if (reinstall) return "reinstall" as const;
-    if (snap.status === "connected" && !snap.firmware_ok && !later) return "mismatch" as const;
+    if (snap.status === "connected" && !snap.firmware_ok && !later && !looking) return "mismatch" as const;
     return null;
   });
 
@@ -48,7 +65,7 @@
 
 <div class="window">
   <TitleBar />
-  {#if snap && snap.status === "connected" && snap.board}
+  {#if snap && connected && snap.board}
     <div class="body">
       <Sidebar bind:page board={snap.board} />
       <main>
@@ -66,8 +83,11 @@
         {/if}
       </main>
     </div>
-  {:else if snap}
-    <Connect silent={snap.silent} />
+  {/if}
+  {#if snap && looking}
+    <div class="over" class:leaving>
+      <Connect silent={snap.silent} {connected} appVersion={snap.app_version} ondone={connectDone} />
+    </div>
   {/if}
   {#if logs}
     <LogSheet onclose={() => (logs = false)} />
@@ -86,9 +106,26 @@
 
 <style>
   .window {
+    position: relative;
     height: 100%;
     display: flex;
     flex-direction: column;
+  }
+  /* The board screen covers everything under the title bar (40 px). */
+  .over {
+    position: absolute;
+    inset: 40px 0 0 0;
+    display: flex;
+    transition: opacity 600ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .over.leaving {
+    opacity: 0;
+    pointer-events: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .over {
+      transition-duration: 250ms;
+    }
   }
   .body {
     flex: 1;

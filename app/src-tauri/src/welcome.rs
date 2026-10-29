@@ -1,11 +1,12 @@
 //! First-run experience window (PLAN §3.9). It is its own window with its own WebView2 data
-//! folder, so it can run with the GPU on while the main window keeps its lean, GPU-off args
-//! (WebView2 shares one browser process, and so one set of args, per data folder).
+//! folder (WebView2 shares one browser process, and so one set of args, per data folder), so
+//! `FENIX_OOTB_ARGS=lean` can still compare it with the old GPU-off args. Since P11 the main
+//! window runs with the GPU on too (its connect screen draws the same 3D board).
 
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const LEAN_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --disable-gpu --in-process-gpu --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-component-update";
-const GPU_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-component-update";
+const GPU_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --enable-features=NetworkServiceInProcess2 --force_high_performance_gpu --renderer-process-limit=1 --disable-extensions --disable-background-networking --disable-component-update";
 
 pub fn open(app: &AppHandle) {
     if let Some(w) = app.get_webview_window("welcome") {
