@@ -203,7 +203,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 
 - [~] P22 Release v0.1.3 (user 2026-10-30): P21 burn-in protection. VERSION 0.1.3, tag, GitHub builds; meanwhile a local build on all cores (user: "only for now"), installed on the PC and flashed to the board
   - [x] 1. VERSION 0.1.3, commit, tag v0.1.3, push
-  - [ ] 2. Local firmware build (all cores), bundle, tauri build with the updater key, install the setup from PowerShell, flash the board
+  - [x] 2. Local firmware build (all cores, 23 s), bundle, tauri build with the updater key (all cores, 29 s incremental, 3.97 MiB setup), flashed the board, installed the setup from PowerShell (`/S`, exit 0, fenixos.exe 0.1.3), app started
   - [ ] 3. Watch the release run (app job warm with the `app` cache saved by v0.1.2?)
 
 ## Decisions
