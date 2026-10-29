@@ -79,7 +79,12 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Flipped rotations (2, 3): screenshots in `docs/screens/board/`
   - [ ] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: come with P6
   - [ ] PC simulator (user asked in round 7): after P8, before release
-- [ ] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
+- [~] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
+  - [x] Format 1 spec `docs/packages.md`; `crates/fenix-pkg` compiler + reader (`fenix-pkg build`/`inspect`, limits, 2 tests); `tools/sample-app/board` builds to 1643 B, 15 elements, 6 bindings
+  - [ ] Board store + install in the link task: APP_INSTALL_BEGIN/CHUNK/END (sha256 via mbedtls, `.tmp` then rename, `.sha`), real APP_LIST, APP_REMOVE, delete `*.tmp` at mount
+  - [ ] Board reader + LVGL builder `app_pkg.cpp`: bindings (BIND_SET), events (EVENT), APP_OPENED/APP_CLOSED, app tiles with fade in/out, HostWaiting/HostOff
+  - [ ] CLI: `fenix install <file.fxp>` (rewind on stalled acks), `fenix remove <id>`, `fenix apps`, `fenix set <bind> <value>`
+  - [ ] Accept: install <= 5 s, remove leaves nothing, screenshots of the sample app in both orientations
 - [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"

@@ -1,0 +1,38 @@
+{
+  "type": "box", "w": "100%", "grow": 1, "pad": 12, "gap": 10,
+  "children": [
+    {
+      "type": "box", "flow": "row", "w": "100%", "gap": 10,
+      "portrait": { "flow": "column" },
+      "children": [
+        {
+          "type": "box", "bg": "surface_1", "radius": 12, "pad": 10, "gap": 4, "grow": 1,
+          "portrait": { "w": "100%" },
+          "children": [
+            { "type": "label", "text": "CPU", "font": "label", "color": "label_2" },
+            { "type": "label", "text": "--", "font": "title_l", "bind": "cpu_text" },
+            { "type": "bar", "min": 0, "max": 100, "bind": "cpu", "w": "100%", "h": 6, "color": "accent" }
+          ]
+        },
+        {
+          "type": "box", "bg": "surface_1", "radius": 12, "pad": 10, "gap": 4, "grow": 1,
+          "portrait": { "w": "100%" },
+          "children": [
+            { "type": "label", "text": "Memory", "font": "label", "color": "label_2" },
+            { "type": "label", "text": "--", "font": "title_l", "bind": "mem_text" },
+            { "type": "bar", "min": 0, "max": 100, "bind": "mem", "w": "100%", "h": 6, "color": "success" }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "box", "flow": "row", "w": "100%", "gap": 10, "cross": "center",
+      "children": [
+        { "type": "icon", "icon": "sun", "size": 18, "color": "label_2" },
+        { "type": "slider", "min": 0, "max": 100, "value": 50, "bind": "level", "event": "level", "grow": 1 },
+        { "type": "switch", "bind": "on", "event": "toggle" }
+      ]
+    },
+    { "type": "button", "text": "Say hello", "icon": "hand-tap", "bg": "surface_2", "w": "100%", "event": "hello" }
+  ]
+}

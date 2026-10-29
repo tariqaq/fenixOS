@@ -1,0 +1,7 @@
+# Test fixture only (docs/packages.md). Not a shipped app.
+id = "io.github.tariqaq.sample"
+name = "Sample"
+version = "0.1.0"
+min_fenixos = "0.1.0"
+color = "teal"
+icon = "icon.png"

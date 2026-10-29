@@ -1,0 +1,16 @@
+[package]
+name = "fenix-pkg"
+description = "fenixOS app package (.fxp) compiler and reader"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "fenix-pkg"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+png = "0.17"
