@@ -190,3 +190,9 @@ Measured with `fenix bench` (opens and closes Settings every second: two full-sc
 - **Stream throttle:** only frames on the PC's `STREAM_START` rate are encoded. Areas drawn in between, and bands that did not fit the TX buffer, are marked stale and redrawn for the stream when the screen is idle (or after 1 s). During slides the stream is link-bound (~45 KB/s, ~3.5 screens of pixels per s, RLE ~11×).
 - **Shut down (deep sleep), 2026-10-29:** Session › Shut down fades the backlight, holds the backlight and LED pins and sleeps; the link goes silent at once. A PC-side reset through RTS (EN pin) wakes it as a normal boot (reset reason POWERON, so the time is unset again). Tap-to-wake (ext0 on GPIO36) still needs a check by hand. The PC app can offer "Wake board" through the same RTS pulse.
 - **Rotations:** all four work, including touch through `fenix tap` (LovyanGFX rotates touch with the panel). The stream sends logical coordinates, so PC screenshots are always upright.
+
+## Release hardware pass (P10, 2026-10-29)
+
+- **1 h link soak** (`fenix soak 60`, v0.1.0, PC app closed): 1 connect, 0 disconnects, 0 RX errors over 4578 frames, max round trip 22 ms, free heap 120016 B at the end, minimum 110052 B, 0 stream drops.
+- **Screen walk** (`tools/capture_screens.sh`, all 20 screens in landscape and portrait, with the sample app): pixel-identical to `docs/screens/board/` except the live clock on Home (Tiles, Dock, portrait) and Session, and the Host PC navbar, which the older reference caught mid-fade.
+- Not covered remotely: tap-to-wake after Shut down, LED brightness, touch corners, physical replug (open items in `tasks.md`).
