@@ -1,0 +1,96 @@
+<script lang="ts">
+  // Sidebar (PcDashboard and siblings): Apps, Board, Settings, and the board status card.
+  import Icon from "./Icon.svelte";
+  import type { IconName } from "./icons";
+  import type { Board, Page } from "./api";
+
+  let { page = $bindable(), board }: { page: Page; board: Board | null } = $props();
+
+  const items: { id: Page; label: string; icon: IconName }[] = [
+    { id: "apps", label: "Apps", icon: "squares-four" },
+    { id: "board", label: "Board", icon: "cpu" },
+    { id: "settings", label: "Settings", icon: "gear-six" },
+  ];
+</script>
+
+<nav aria-label="fenixOS">
+  {#each items as it (it.id)}
+    <button
+      type="button"
+      class:current={page === it.id}
+      aria-current={page === it.id ? "page" : undefined}
+      onclick={() => (page = it.id)}
+    >
+      <Icon name={it.icon} size={18} color={page === it.id ? "var(--accent)" : "var(--label-2)"} />
+      <span>{it.label}</span>
+    </button>
+  {/each}
+  <div class="status">
+    <span class="status-icon"><Icon name="usb" size={20} color={board ? "var(--success)" : "var(--label-2)"} /></span>
+    <div class="lines">
+      <p class="title">{board ? "Board connected" : "Board not connected"}</p>
+      {#if board}
+        <p>USB on {board.port}</p>
+        <p>fenixOS v{board.firmware}</p>
+      {:else}
+        <p>Looking for the board</p>
+      {/if}
+    </div>
+  </div>
+</nav>
+
+<style>
+  nav {
+    flex: 1 1 220px;
+    max-width: 260px;
+    background: var(--surface-1);
+    padding: 16px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  button {
+    height: 36px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--label);
+    padding: 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    text-align: left;
+  }
+  button.current {
+    background: var(--surface-2);
+    font-weight: 600;
+  }
+  .status {
+    margin-top: auto;
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .status-icon {
+    flex: 0 0 20px;
+    margin-top: 1px;
+  }
+  .lines {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .lines p {
+    font-size: 12px;
+    color: var(--label-3);
+  }
+  .lines p.title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--label);
+  }
+</style>

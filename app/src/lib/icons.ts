@@ -1,0 +1,33 @@
+// Phosphor icons used by the PC app (bundled from @phosphor-icons/core, no CDN). Names follow
+// the artboards in design/mockups (fill weight unless the artboard draws bold or regular).
+import squaresFour from "@phosphor-icons/core/assets/fill/squares-four-fill.svg?raw";
+import cpu from "@phosphor-icons/core/assets/fill/cpu-fill.svg?raw";
+import gearSix from "@phosphor-icons/core/assets/fill/gear-six-fill.svg?raw";
+import usb from "@phosphor-icons/core/assets/bold/usb-bold.svg?raw";
+import plus from "@phosphor-icons/core/assets/bold/plus-bold.svg?raw";
+import puzzlePiece from "@phosphor-icons/core/assets/fill/puzzle-piece-fill.svg?raw";
+import checkCircle from "@phosphor-icons/core/assets/fill/check-circle-fill.svg?raw";
+import arrowClockwise from "@phosphor-icons/core/assets/regular/arrow-clockwise.svg?raw";
+import downloadSimple from "@phosphor-icons/core/assets/bold/download-simple-bold.svg?raw";
+import x from "@phosphor-icons/core/assets/bold/x-bold.svg?raw";
+import caretUpDown from "@phosphor-icons/core/assets/bold/caret-up-down-bold.svg?raw";
+import warning from "@phosphor-icons/core/assets/fill/warning-fill.svg?raw";
+import listBullets from "@phosphor-icons/core/assets/regular/list-bullets.svg?raw";
+
+export const icons = {
+  "squares-four": squaresFour,
+  cpu,
+  "gear-six": gearSix,
+  usb,
+  plus,
+  "puzzle-piece": puzzlePiece,
+  "check-circle": checkCircle,
+  "arrow-clockwise": arrowClockwise,
+  "download-simple": downloadSimple,
+  x,
+  "caret-up-down": caretUpDown,
+  warning,
+  "list-bullets": listBullets,
+} as const;
+
+export type IconName = keyof typeof icons;

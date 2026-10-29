@@ -62,16 +62,39 @@ fn inspect(file: &Path) -> i32 {
     };
     match fenix_pkg::parse(&b) {
         Ok(p) => {
-            println!("{} \"{}\" v{} (min fenixOS {}.{}.{}), {} B", p.id(), p.name(), p.version(),
-                p.min_fenixos.0, p.min_fenixos.1, p.min_fenixos.2, b.len());
-            println!("tile colour #{:06X}, icons {} / {}", p.tile_color, p.icon_small, p.icon_large);
+            println!(
+                "{} \"{}\" v{} (min fenixOS {}.{}.{}), {} B",
+                p.id(),
+                p.name(),
+                p.version(),
+                p.min_fenixos.0,
+                p.min_fenixos.1,
+                p.min_fenixos.2,
+                b.len()
+            );
+            println!(
+                "tile colour #{:06X}, icons {} / {}",
+                p.tile_color, p.icon_small, p.icon_large
+            );
             println!("bindings: {:?}", p.bind_names());
             for (i, e) in p.elems.iter().enumerate() {
-                let ev = p.event_name(i as u16).map(|n| format!(" event={n}")).unwrap_or_default();
-                println!("  #{i} kind {} parent {} props {:?}{ev}", e.kind, e.parent as i32, e.props);
+                let ev = p
+                    .event_name(i as u16)
+                    .map(|n| format!(" event={n}"))
+                    .unwrap_or_default();
+                println!(
+                    "  #{i} kind {} parent {} props {:?}{ev}",
+                    e.kind, e.parent as i32, e.props
+                );
             }
             for (i, a) in p.assets.iter().enumerate() {
-                println!("  asset {i}: format {} {}x{} {} B", a.format, a.w, a.h, a.data.len());
+                println!(
+                    "  asset {i}: format {} {}x{} {} B",
+                    a.format,
+                    a.w,
+                    a.h,
+                    a.data.len()
+                );
             }
             0
         }

@@ -12,7 +12,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use fenix_proto::{FrameDecoder, HelloAck, Msg, BAUD, PROTO_VERSION, USB_PID, USB_VID};
+use fenix_proto::{err, FrameDecoder, HelloAck, Msg, BAUD, PROTO_VERSION, USB_PID, USB_VID};
 use serialport::{SerialPort, SerialPortType};
 
 #[derive(Debug, Clone)]
@@ -352,6 +352,7 @@ fn session(
             Err(e) => return format!("read: {e}"),
         };
         let mut pongs = vec![];
+        let mut restarted = false;
         dec.push(&buf[..n], |p| {
             if let Ok((_, m)) = Msg::decode(&p) {
                 last_rx = Instant::now();
@@ -365,6 +366,10 @@ fn session(
                         }
                     }
                     Msg::Ping(t) => pongs.push(t),
+                    Msg::Error {
+                        code: err::NO_SESSION,
+                        ..
+                    } => restarted = true,
                     other => {
                         let _ = ev.send(Event::Msg(other));
                     }
@@ -373,6 +378,9 @@ fn session(
         });
         for t in pongs {
             let _ = port.write_all(&Msg::Pong(t).to_frame(0));
+        }
+        if restarted {
+            return "board restarted".into();
         }
         if last_rx.elapsed() > opts.timeout {
             return "heartbeat timeout".into();

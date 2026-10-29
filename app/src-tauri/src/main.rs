@@ -1,0 +1,152 @@
+//! fenixOS PC app: the engine (board link) runs in the tray; the window is created on demand and
+//! destroyed on close, so an idle fenixOS holds no webview (PLAN §3.5, §3.6).
+//! `fenixos --quit` quits a running instance; `--tray` (autostart) starts without the window.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod engine;
+mod logs;
+mod tray;
+
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use tauri::{AppHandle, Manager, RunEvent, WebviewWindowBuilder};
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+
+use engine::{Engine, State};
+use logs::Source;
+
+/// Show the main window, creating its webview if it was closed.
+pub fn open_window(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+        return;
+    }
+    let Some(cfg) = app
+        .config()
+        .app
+        .windows
+        .iter()
+        .find(|w| w.label == "main")
+        .cloned()
+    else {
+        return;
+    };
+    match WebviewWindowBuilder::from_config(app, &cfg).and_then(|b| b.build()) {
+        Ok(w) => {
+            let _ = w.set_focus();
+        }
+        Err(e) => eprintln!("window: {e}"),
+    }
+}
+
+fn local_dir() -> PathBuf {
+    std::env::var_os("LOCALAPPDATA")
+        .map(PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join("fenixOS")
+}
+
+// ---- Commands (the UI's only way in) ----
+
+#[tauri::command]
+fn get_state(engine: tauri::State<Arc<Engine>>) -> State {
+    engine.snapshot()
+}
+
+#[tauri::command]
+fn get_logs(engine: tauri::State<Arc<Engine>>) -> Vec<logs::Line> {
+    engine.logs.recent()
+}
+
+#[tauri::command]
+fn open_log_folder(engine: tauri::State<Arc<Engine>>) {
+    let _ = std::process::Command::new("explorer.exe")
+        .arg(engine.logs.dir())
+        .spawn();
+}
+
+#[tauri::command]
+fn get_autostart(app: AppHandle) -> bool {
+    app.autolaunch().is_enabled().unwrap_or(false)
+}
+
+#[tauri::command]
+fn set_autostart(app: AppHandle, on: bool) -> Result<bool, String> {
+    let a = app.autolaunch();
+    if on { a.enable() } else { a.disable() }.map_err(|e| e.to_string())?;
+    a.is_enabled().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn reboot_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) {
+    engine.log(&app, Source::Pc, false, "Asked the board to restart");
+    engine.send(fenix_proto::Msg::Reboot);
+}
+
+/// Open an https link in the default browser (links never load inside the app window).
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") || url.contains('"') {
+        return Err("only https links".into());
+    }
+    std::process::Command::new("rundll32.exe")
+        .args(["url.dll,FileProtocolHandler", &url])
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+fn main() {
+    let tray_only = std::env::args().any(|a| a == "--tray");
+    let app = tauri::Builder::default()
+        // First: a second launch hands its arguments to the running instance and exits.
+        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+            if args.iter().any(|a| a == "--quit") {
+                app.exit(0);
+            } else {
+                open_window(app);
+            }
+        }))
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--tray"]),
+        ))
+        .invoke_handler(tauri::generate_handler![
+            get_state,
+            get_logs,
+            open_log_folder,
+            get_autostart,
+            set_autostart,
+            reboot_board,
+            open_url
+        ])
+        .setup(move |app| {
+            // Reached only by the first instance: `--quit` with nothing running is a no-op.
+            if std::env::args().any(|a| a == "--quit") {
+                std::process::exit(0);
+            }
+            let logs = logs::Logs::new(local_dir().join("logs"));
+            let engine = Engine::start(app.handle().clone(), logs);
+            app.manage(engine);
+            tray::create(app.handle())?;
+            // Created last, so every command it calls finds the managed state (PoC gotcha).
+            if !tray_only {
+                open_window(app.handle());
+            }
+            Ok(())
+        })
+        .build(tauri::generate_context!())
+        .expect("build fenixOS");
+    app.run(|_app, e| {
+        // Closing the window keeps fenixOS in the tray; only Quit (exit code set) ends it.
+        if let RunEvent::ExitRequested {
+            code: None, api, ..
+        } = e
+        {
+            api.prevent_exit();
+        }
+    });
+}

@@ -118,3 +118,7 @@ Consequences:
 | Store index (PLAN: "a small index") | Index file / **`.sha` next to each package** | **`<id>.sha`**; id and version are read from the package header for APP_LIST |
 | Bound values while an app is open | Only what is on screen / **cache per binding** | **Cache per binding** while the app is open (cleared on close), so rotation and host-state rebuilds keep the values |
 | `APP_ACK` after `APP_INSTALL_BEGIN` | Silent / **ack offset 0** | **Ack 0**: the PC knows the install started; a refused BEGIN gets `APP_RESULT` instead |
+| Tray menu (P7) | Custom webview popup / **native menu** | **Native menu** (status line, detail line, Open fenixOS, Quit): no webview in tray-only mode keeps it at about 4 MB; the styled popup can come later without changing the engine |
+| P7 Apps and Settings pages | Build P8 content early / **placeholders** | **Placeholders**: Apps shows the empty state, Settings has Start with Windows and About. P8 fills them from artboards 8–13 |
+| Spotting a board restart while the PC still holds the session | Wait for the 3 s heartbeat timeout / **board says "no session"** | **`ERROR` 5 (no session)** in reply to a PING before HELLO; the PC handshakes again at once. A restarting board answers PINGs within about 1 s, so the timeout alone never fired. Additive code, so proto stays 1 |
+| Reboot log line | Problem / **normal** | **Normal**: "Board disconnected (board restarted)" is not marked as a problem; the next boot line gives the reset reason, which shows a crash |

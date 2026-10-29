@@ -48,6 +48,9 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Board screenshots: `bash tools/capture_screens.sh <dir>` erases the board's settings (NVS), installs `tools/sample-app`, taps through every system screen and the sample app, saves PNGs, and removes the sample again. Golden copies: `docs/screens/board/`
 - App packages: `fenix-pkg build <dir> [-o out.fxp]`, `fenix-pkg inspect <file>`; on the board: `fenix install <file.fxp>`, `fenix list`, `fenix remove <id>`, `fenix set <file.fxp> <bind>=<value>...` (acts as the app's PC half), `fenix host <id> on|off`. `fenix tap` and `fenix swipe` print what the board sends back (EVENT, BOARD_STATE). C++ reader test: `pwsh board/components/fenix_pkg/test/run.ps1`
 
+- PC app: `cd app; pnpm install; pnpm tauri dev` (hot reload) or `pnpm tauri build --no-bundle` (release exe at `target/release/fenixos.exe`). Flags: `--tray` starts without a window (autostart uses it), `--quit` quits a running instance. Logs: `%LOCALAPPDATA%\fenixOS\logs\fenixos.log`
+- PC app footprint: `pwsh tools/measure_app.ps1 [-Seconds 10]` (private working set + CPU over `fenixos.exe` and its own WebView2 processes)
+
 More commands are added here as each phase lands.
 
 ## Debug knobs

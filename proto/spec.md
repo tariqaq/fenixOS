@@ -52,7 +52,7 @@ payload = type:u8 ‖ seq:u8 ‖ body
 | 0x03 | PING | both | t_ms:u32 |
 | 0x04 | PONG | both | t_ms:u32 (echo) |
 | 0x05 | LOG | B→P | level:u8 (1 error, 2 warn, 3 info, 4 debug) ‖ text:bytes |
-| 0x06 | ERROR | both | code:u8 ‖ text:bytes. Codes: 1 proto mismatch, 2 unknown type, 3 bad body, 4 busy |
+| 0x06 | ERROR | both | code:u8 ‖ text:bytes. Codes: 1 proto mismatch, 2 unknown type, 3 bad body, 4 busy, 5 no session (PING before HELLO: the board restarted, so the PC must send HELLO again) |
 | 0x07 | STATS | B→P | free_heap:u32 ‖ min_heap:u32 ‖ fps_x10:u16 (animation fps over the last 5 s: only frames ≤ 100 ms after the previous one count; 0 when nothing animated) ‖ rx_frames:u32 ‖ rx_errors:u32 ‖ stream_dropped:u32 |
 
 ### System (0x1_)

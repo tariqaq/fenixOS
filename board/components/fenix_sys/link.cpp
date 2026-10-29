@@ -205,6 +205,8 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
       return;
     }
     case fnx::ty::PING: {
+      // A PING without a HELLO means the PC still holds a session from before a restart.
+      if (!s_connected) return send_error(fnx::err::NO_SESSION, "no session");
       uint32_t t = r.u32();
       send_with(fnx::ty::PONG, [&](fnx::Writer& w) { w.u32(t); });
       return;

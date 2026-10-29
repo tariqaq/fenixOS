@@ -41,6 +41,8 @@ pub mod err {
     pub const UNKNOWN_TYPE: u8 = 2;
     pub const BAD_BODY: u8 = 3;
     pub const BUSY: u8 = 4;
+    /// PING before HELLO: the board restarted and the PC must handshake again.
+    pub const NO_SESSION: u8 = 5;
 }
 
 /// `APP_RESULT` ops and codes.

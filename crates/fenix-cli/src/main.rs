@@ -486,7 +486,10 @@ fn install(opts: LinkOptions, file: &Path) -> i32 {
 /// Set bindings of an app like its PC half would (`cpu=42`, `on=true`, `cpu_text=42 %`), then
 /// print what the board sends back (EVENT, APP_OPENED, ...) for 3 s.
 fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
-    let pkg = match std::fs::read(file).map_err(|e| e.to_string()).and_then(|b| fenix_pkg::parse(&b)) {
+    let pkg = match std::fs::read(file)
+        .map_err(|e| e.to_string())
+        .and_then(|b| fenix_pkg::parse(&b))
+    {
         Ok(p) => p,
         Err(e) => {
             eprintln!("{}: {e}", file.display());
@@ -526,7 +529,9 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
     while Instant::now() < end {
         if let Some(e) = link.recv_event(Duration::from_millis(100)) {
             match e {
-                Event::Msg(Msg::Event { elem, kind, value, .. }) => println!(
+                Event::Msg(Msg::Event {
+                    elem, kind, value, ..
+                }) => println!(
                     "{} event {:?} kind {kind} value {value}",
                     ts(),
                     pkg.event_name(elem).unwrap_or("?")

@@ -402,7 +402,7 @@ Accept: the sample app installs ≤ 5 s, shows bound values, sends events and re
 
 1. Scaffold Tauri 2 + Svelte 5 in `app/`: tokens CSS, local fonts and icons, custom title bar, sidebar, routing.
 2. Engine in Rust: link manager on `fenix-link`, state store, events to the UI. The engine runs without a window.
-3. Tray with menu (P2 design), single instance, `--quit`, destroy webview on close, autostart setting.
+3. Tray with menu (P2 design), single instance, `--quit`, destroy webview on close, autostart setting. (Corrected: v0.1 uses the native tray menu; see `docs/decisions.md`.)
 4. Logs: rolling file plus the log view (P2 design).
 5. Finding-the-board screen (7) and time sync.
 

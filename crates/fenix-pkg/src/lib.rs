@@ -26,7 +26,11 @@ pub const MAX_ID: usize = 48;
 
 /// Letters, digits, `.`, `-`, `_`; 1 to `MAX_ID` bytes.
 pub fn valid_id(id: &str) -> bool {
-    !id.is_empty() && id.len() <= MAX_ID && id.bytes().all(|c| c.is_ascii_alphanumeric() || b".-_".contains(&c))
+    !id.is_empty()
+        && id.len() <= MAX_ID
+        && id
+            .bytes()
+            .all(|c| c.is_ascii_alphanumeric() || b".-_".contains(&c))
 }
 
 pub const ICON_SMALL: u32 = 20;
@@ -129,7 +133,10 @@ pub struct Elem {
 
 impl Elem {
     pub fn prop(&self, k: u8) -> Option<i32> {
-        self.props.iter().find(|(key, _)| *key == k).map(|(_, v)| *v)
+        self.props
+            .iter()
+            .find(|(key, _)| *key == k)
+            .map(|(_, v)| *v)
     }
 }
 
@@ -167,15 +174,22 @@ impl Package {
         &self.strings[self.version as usize]
     }
     pub fn bind_names(&self) -> Vec<&str> {
-        self.binds.iter().map(|&s| self.strings[s as usize].as_str()).collect()
+        self.binds
+            .iter()
+            .map(|&s| self.strings[s as usize].as_str())
+            .collect()
     }
     pub fn bind_id(&self, name: &str) -> Option<u16> {
-        self.binds.iter().position(|&s| self.strings[s as usize] == name).map(|i| i as u16)
+        self.binds
+            .iter()
+            .position(|&s| self.strings[s as usize] == name)
+            .map(|i| i as u16)
     }
     /// Event name of element `elem` (what the PC half sees for an `EVENT`).
     pub fn event_name(&self, elem: u16) -> Option<&str> {
         let e = self.elems.get(elem as usize)?;
-        e.prop(key::EVENT).map(|s| self.strings[s as usize].as_str())
+        e.prop(key::EVENT)
+            .map(|s| self.strings[s as usize].as_str())
     }
 
     pub fn to_bytes(&self) -> Vec<u8> {
@@ -183,7 +197,12 @@ impl Package {
         b.extend_from_slice(MAGIC);
         b.push(FORMAT);
         b.push(0);
-        b.extend_from_slice(&[self.min_fenixos.0, self.min_fenixos.1, self.min_fenixos.2, 0]);
+        b.extend_from_slice(&[
+            self.min_fenixos.0,
+            self.min_fenixos.1,
+            self.min_fenixos.2,
+            0,
+        ]);
         for v in [
             self.strings.len() as u16,
             self.binds.len() as u16,
@@ -248,7 +267,11 @@ impl Package {
             if e.kind < kind::BOX || e.kind > kind::ICON {
                 return Err(format!("element {i}: unknown kind {}", e.kind));
             }
-            depth[i] = if e.parent == NONE { 1 } else { depth[e.parent as usize] + 1 };
+            depth[i] = if e.parent == NONE {
+                1
+            } else {
+                depth[e.parent as usize] + 1
+            };
             if depth[i] > MAX_DEPTH {
                 return Err(format!("tree deeper than {MAX_DEPTH}"));
             }
@@ -282,12 +305,30 @@ impl Package {
             .sum();
         let ram = self.elems.len() * RAM_PER_ELEM + strings + image_bytes;
         let checks = [
-            (size <= MAX_SIZE, format!("package is {size} B, limit {MAX_SIZE}")),
-            (self.elems.len() <= MAX_ELEMS, format!("{} elements, limit {MAX_ELEMS}", self.elems.len())),
-            (strings <= MAX_STRING_BYTES, format!("{strings} B of strings, limit {MAX_STRING_BYTES}")),
-            (self.binds.len() <= MAX_BINDS, format!("{} bindings, limit {MAX_BINDS}", self.binds.len())),
-            (image_bytes <= MAX_IMAGE_BYTES, format!("{image_bytes} B of images, limit {MAX_IMAGE_BYTES}")),
-            (ram <= MAX_RAM, format!("RAM estimate {ram} B, limit {MAX_RAM}")),
+            (
+                size <= MAX_SIZE,
+                format!("package is {size} B, limit {MAX_SIZE}"),
+            ),
+            (
+                self.elems.len() <= MAX_ELEMS,
+                format!("{} elements, limit {MAX_ELEMS}", self.elems.len()),
+            ),
+            (
+                strings <= MAX_STRING_BYTES,
+                format!("{strings} B of strings, limit {MAX_STRING_BYTES}"),
+            ),
+            (
+                self.binds.len() <= MAX_BINDS,
+                format!("{} bindings, limit {MAX_BINDS}", self.binds.len()),
+            ),
+            (
+                image_bytes <= MAX_IMAGE_BYTES,
+                format!("{image_bytes} B of images, limit {MAX_IMAGE_BYTES}"),
+            ),
+            (
+                ram <= MAX_RAM,
+                format!("RAM estimate {ram} B, limit {MAX_RAM}"),
+            ),
         ];
         for (ok, msg) in checks {
             if !ok {
@@ -353,14 +394,23 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
         let props = (0..n)
             .map(|_| Ok((r.u8()?, r.u32()? as i32)))
             .collect::<Result<Vec<_>, String>>()?;
-        elems.push(Elem { kind, parent, props });
+        elems.push(Elem {
+            kind,
+            parent,
+            props,
+        });
     }
     let mut assets = Vec::with_capacity(na as usize);
     for _ in 0..na {
         let format = r.u8()?;
         let (w, h) = (r.u16()?, r.u16()?);
         let n = r.u32()? as usize;
-        assets.push(Asset { format, w, h, data: r.take(n)?.to_vec() });
+        assets.push(Asset {
+            format,
+            w,
+            h,
+            data: r.take(n)?.to_vec(),
+        });
     }
     if r.i != bytes.len() {
         return Err("trailing bytes".into());
@@ -378,7 +428,10 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
         icon_small,
         icon_large,
     };
-    for s in [p.id, p.name, p.version].into_iter().chain(p.binds.iter().copied()) {
+    for s in [p.id, p.name, p.version]
+        .into_iter()
+        .chain(p.binds.iter().copied())
+    {
         if s as usize >= p.strings.len() {
             return Err("string index out of range".into());
         }
@@ -423,7 +476,10 @@ struct Compiler<'a> {
 }
 
 fn parse_version(v: &str) -> Result<(u8, u8, u8), String> {
-    let p: Vec<u8> = v.split('.').map(|x| x.parse().map_err(|_| format!("bad version {v}"))).collect::<Result<_, _>>()?;
+    let p: Vec<u8> = v
+        .split('.')
+        .map(|x| x.parse().map_err(|_| format!("bad version {v}")))
+        .collect::<Result<_, _>>()?;
     match p.as_slice() {
         [a, b, c] => Ok((*a, *b, *c)),
         _ => Err(format!("bad version {v}")),
@@ -432,7 +488,9 @@ fn parse_version(v: &str) -> Result<(u8, u8, u8), String> {
 
 fn hex_color(s: &str) -> Option<u32> {
     let h = s.strip_prefix('#')?;
-    (h.len() == 6).then(|| u32::from_str_radix(h, 16).ok()).flatten()
+    (h.len() == 6)
+        .then(|| u32::from_str_radix(h, 16).ok())
+        .flatten()
 }
 
 impl<'a> Compiler<'a> {
@@ -541,14 +599,27 @@ impl<'a> Compiler<'a> {
             let mut d = Vec::with_capacity((w * h * 2) as usize);
             for p in rgba.chunks(4) {
                 let a = p[3] as u32;
-                let (r, g, b) = (p[0] as u32 * a / 255, p[1] as u32 * a / 255, p[2] as u32 * a / 255);
+                let (r, g, b) = (
+                    p[0] as u32 * a / 255,
+                    p[1] as u32 * a / 255,
+                    p[2] as u32 * a / 255,
+                );
                 let v = ((r >> 3) << 11 | (g >> 2) << 5 | (b >> 3)) as u16;
                 d.extend_from_slice(&v.to_le_bytes());
             }
             d
         };
-        let format = if a8 { asset_format::A8 } else { asset_format::RGB565 };
-        Ok(self.push_asset(Asset { format, w: w as u16, h: h as u16, data }))
+        let format = if a8 {
+            asset_format::A8
+        } else {
+            asset_format::RGB565
+        };
+        Ok(self.push_asset(Asset {
+            format,
+            w: w as u16,
+            h: h as u16,
+            data,
+        }))
     }
 
     fn size(v: &Value) -> Result<i32, String> {
@@ -556,7 +627,10 @@ impl<'a> Compiler<'a> {
             Value::Number(n) => Ok(n.as_i64().ok_or("size must be an integer")? as i32),
             Value::String(s) if s == "content" => Ok(SIZE_CONTENT),
             Value::String(s) if s.ends_with('%') => {
-                let p: i32 = s.trim_end_matches('%').parse().map_err(|_| format!("bad size {s}"))?;
+                let p: i32 = s
+                    .trim_end_matches('%')
+                    .parse()
+                    .map_err(|_| format!("bad size {s}"))?;
                 Ok(SIZE_PCT | p.clamp(0, 100))
             }
             _ => Err(format!("bad size {v}")),
@@ -564,14 +638,30 @@ impl<'a> Compiler<'a> {
     }
 
     fn pick(list: &[&str], v: &str, what: &str) -> Result<i32, String> {
-        list.iter().position(|x| *x == v).map(|i| i as i32).ok_or_else(|| format!("unknown {what} {v}"))
+        list.iter()
+            .position(|x| *x == v)
+            .map(|i| i as i32)
+            .ok_or_else(|| format!("unknown {what} {v}"))
     }
 
-    fn props(&mut self, kind: u8, o: &Map<String, Value>, portrait: bool) -> Result<Vec<(u8, i32)>, String> {
+    fn props(
+        &mut self,
+        kind: u8,
+        o: &Map<String, Value>,
+        portrait: bool,
+    ) -> Result<Vec<(u8, i32)>, String> {
         let mut out = Vec::new();
         let flag = if portrait { key::PORTRAIT } else { 0 };
-        let str_of = |v: &Value, k: &str| v.as_str().map(str::to_string).ok_or_else(|| format!("{k} must be a string"));
-        let int_of = |v: &Value, k: &str| v.as_i64().map(|x| x as i32).ok_or_else(|| format!("{k} must be an integer"));
+        let str_of = |v: &Value, k: &str| {
+            v.as_str()
+                .map(str::to_string)
+                .ok_or_else(|| format!("{k} must be a string"))
+        };
+        let int_of = |v: &Value, k: &str| {
+            v.as_i64()
+                .map(|x| x as i32)
+                .ok_or_else(|| format!("{k} must be an integer"))
+        };
         for (k, v) in o {
             let kv = match k.as_str() {
                 "type" | "children" | "portrait" => continue,
@@ -591,13 +681,28 @@ impl<'a> Compiler<'a> {
                 "radius" => (key::RADIUS, int_of(v, k)?),
                 "min" => (key::MIN, int_of(v, k)?),
                 "max" => (key::MAX, int_of(v, k)?),
-                "value" => (key::VALUE, v.as_bool().map(i32::from).map_or_else(|| int_of(v, k), Ok)?),
-                "flow" => (key::FLOW, Self::pick(&["column", "row", "row_wrap"], &str_of(v, k)?, "flow")?),
+                "value" => (
+                    key::VALUE,
+                    v.as_bool()
+                        .map(i32::from)
+                        .map_or_else(|| int_of(v, k), Ok)?,
+                ),
+                "flow" => (
+                    key::FLOW,
+                    Self::pick(&["column", "row", "row_wrap"], &str_of(v, k)?, "flow")?,
+                ),
                 "main" | "cross" => {
-                    let a = Self::pick(&["start", "center", "end", "space_between"], &str_of(v, k)?, "alignment")?;
+                    let a = Self::pick(
+                        &["start", "center", "end", "space_between"],
+                        &str_of(v, k)?,
+                        "alignment",
+                    )?;
                     (if k == "main" { key::MAIN } else { key::CROSS }, a)
                 }
-                "align" => (key::ALIGN, Self::pick(&["left", "center", "right"], &str_of(v, k)?, "align")?),
+                "align" => (
+                    key::ALIGN,
+                    Self::pick(&["left", "center", "right"], &str_of(v, k)?, "align")?,
+                ),
                 "icon" => (key::ICON, Self::pick(&ICONS, &str_of(v, k)?, "icon")?),
                 "size" => {
                     let s = int_of(v, k)?;
@@ -617,7 +722,10 @@ impl<'a> Compiler<'a> {
                     let s = str_of(v, k)?;
                     (key::EVENT, self.string(&s) as i32)
                 }
-                "hidden" => (key::HIDDEN, v.as_bool().ok_or("hidden must be true or false")? as i32),
+                "hidden" => (
+                    key::HIDDEN,
+                    v.as_bool().ok_or("hidden must be true or false")? as i32,
+                ),
                 other => return Err(format!("unknown prop {other}")),
             };
             out.push((kv.0 | flag, kv.1));
@@ -630,7 +738,10 @@ impl<'a> Compiler<'a> {
             return Err(format!("tree deeper than {MAX_DEPTH}"));
         }
         let o = v.as_object().ok_or("element must be an object")?;
-        let ty = o.get("type").and_then(Value::as_str).ok_or("element without type")?;
+        let ty = o
+            .get("type")
+            .and_then(Value::as_str)
+            .ok_or("element without type")?;
         let k = match ty {
             "box" => kind::BOX,
             "label" => kind::LABEL,
@@ -648,7 +759,11 @@ impl<'a> Compiler<'a> {
             props.extend(self.props(k, po, true)?);
         }
         let ix = self.elems.len();
-        self.elems.push(Elem { kind: k, parent, props });
+        self.elems.push(Elem {
+            kind: k,
+            parent,
+            props,
+        });
         if let Some(children) = o.get("children") {
             if k != kind::BOX {
                 return Err(format!("{ty} cannot have children"));
@@ -665,9 +780,13 @@ impl<'a> Compiler<'a> {
 pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
     let read = |f: &str| std::fs::read_to_string(dir.join(f)).map_err(|e| format!("{f}: {e}"));
     let m: Manifest = toml::from_str(&read("app.toml")?).map_err(|e| format!("app.toml: {e}"))?;
-    let layout: Value = serde_json::from_str(&read("layout.json")?).map_err(|e| format!("layout.json: {e}"))?;
+    let layout: Value =
+        serde_json::from_str(&read("layout.json")?).map_err(|e| format!("layout.json: {e}"))?;
     if !valid_id(&m.id) {
-        return Err(format!("bad app id {:?} (letters, digits, . - _; ≤ {MAX_ID} bytes)", m.id));
+        return Err(format!(
+            "bad app id {:?} (letters, digits, . - _; ≤ {MAX_ID} bytes)",
+            m.id
+        ));
     }
     if m.name.is_empty() || m.name.len() > 24 {
         return Err("name must be 1–24 bytes".into());
@@ -683,7 +802,12 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
         let (w, h, rgba) = c.load_png(icon)?;
         for (size, slot) in [(ICON_SMALL, &mut icon_small), (ICON_LARGE, &mut icon_large)] {
             let data = Compiler::a8_scaled(&rgba, w, h, size);
-            *slot = c.push_asset(Asset { format: asset_format::A8, w: size as u16, h: size as u16, data }) as u16;
+            *slot = c.push_asset(Asset {
+                format: asset_format::A8,
+                w: size as u16,
+                h: size as u16,
+                data,
+            }) as u16;
         }
     }
     c.element(&layout, NONE, 1)?;

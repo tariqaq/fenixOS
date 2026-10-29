@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- fenixOS app icon: the board's screen with the boot sweep line (design/mockups/Main). -->
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="#000000"/>
+  <rect x="32" y="32" width="960" height="960" rx="216" fill="none" stroke="#2C2C2E" stroke-width="12"/>
+  <rect x="200" y="272" width="624" height="480" rx="72" fill="#1C1C1E" stroke="#FFFFFF" stroke-width="40"/>
+  <rect x="332" y="548" width="360" height="28" rx="14" fill="#3A3A3C"/>
+  <rect x="420" y="548" width="132" height="28" rx="14" fill="#FFFFFF"/>
+  <rect x="372" y="420" width="280" height="56" rx="28" fill="#0A84FF"/>
+</svg>

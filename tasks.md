@@ -90,13 +90,14 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Golden screenshots refreshed with the sample installed (19 + 3 flipped in `docs/screens/board/`, new: `storage`, `app`, `app_host_off`); flipped-rotation shots are from before P6 (no app tile)
   - [x] Sample app in portrait (`app_portrait.png`); fixed on the way: `grow` in a content-sized parent squeezed cards to 0 px, so `grow` now applies only when the parent has a set size along its flow (`docs/packages.md`)
   - [x] Stale sweep (PLAN layout, board-info heap/image, tasks)
-- [~] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
-  - [ ] 1. Scaffold `app/` (Svelte 5 + Vite + TS, `app/src-tauri` as a workspace member): local Inter + Phosphor, tokens CSS, custom title bar, sidebar (Apps, Board, Settings), routing; matches PcConnect / PcDashboard chrome
-  - [ ] 2. Engine (Rust, runs without a window): link manager on `fenix-link`, state store, time sync on connect + hourly, events to the UI only while a window exists
-  - [ ] 3. Tray (status, Open fenixOS, Quit; left click opens), single instance (second launch opens the window, `--quit` quits), window close destroys the webview, autostart setting (off by default)
-  - [ ] 4. Logs: rolling 3 × 1 MB in `%LOCALAPPDATA%enixOS\logs` incl. board LOG frames; log sheet (PcLogs)
-  - [ ] 5. Finding-the-board screen (PcConnect, artboard 7)
-  - [ ] 6. Accept: `tools/measure_app.ps1` (tray ≤ 35 MB, window ≤ 120 MB, cold start ≤ 1.5 s); connect / disconnect ≤ 2 s (board reboot over the link as the stand-in; a physical replug is an open item for the user)
+- [x] P7 PC app shell (accepted 2026-10-29: window 64 MB / 4 processes, tray only 4 MB / 1 process, 0.01 % CPU, window 74 ms after launch; reboot over the link reconnects in about 1 s)
+  - [x] 1. Scaffold `app/` (Svelte 5 + Vite + TS, `app/src-tauri` as a workspace member): local Inter + Phosphor, tokens CSS, custom title bar, sidebar (Apps, Board, Settings); Apps is an empty state and Settings has Start with Windows + About until P8
+  - [x] 2. Engine (Rust, runs without a window): link manager on `fenix-link`, state store, time sync on connect + hourly, events to the UI only while a window exists
+  - [x] 3. Tray (native menu: status, detail, Open fenixOS, Quit; left click opens), single instance (second launch opens the window, `--quit` quits, `--quit` with nothing running exits at once), window close destroys the webview, autostart (`--tray`, off by default)
+  - [x] 4. Logs: rolling 3 × 1 MB in `%LOCALAPPDATA%\fenixOS\logs` incl. board LOG frames; log sheet (All / Board / Apps / Problems, Copy, Open log folder)
+  - [x] 5. Finding-the-board screen (PcConnect, artboard 7); Board page (facts, firmware match, Reboot board, Logs)
+  - [x] 6. Accept with `tools/measure_app.ps1`: window open 64.1 MB over 4 processes (target 120), tray only 4 MB over 1 process (target 35), CPU 0.01 %, window handle 74 ms after launch (target 1.5 s). Release exe 3.9 MB
+  - [x] Fixed on the way: after "Reboot board" the board answered PINGs without a new HELLO, so the app stayed "connected" with stale facts. The board now answers a PING before HELLO with `ERROR` 5 (no session) and the PC handshakes again: request to reconnect about 1 s
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"
 - [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
@@ -108,6 +109,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 ## Open (needs user input or flashing)
 
 - [ ] Touch corner coverage of the default raw range (tap the 4 corners while logging)
+- [ ] Physical USB replug with the PC app running (P7 reconnect was measured with a board reboot over the link)
 - [ ] Tap-to-wake from Shut down (deep sleep, ext0 on GPIO36), and the time surviving it
 - [ ] RGB LED levels (S6): connect pulse looks right, not too bright
 - [ ] V1.4 RGB LED and LDR (IO34) circuits: resistor values differ from the schematic; LED is tested in P1 S6, LDR is not in v0.1
