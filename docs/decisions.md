@@ -6,7 +6,7 @@ Every design choice, in order, with the options offered. "(Rec.)" marks the opti
 
 | Topic | Options | Picked |
 |---|---|---|
-| Toolchain versions | Upgrade (IDF v5.5.6 / v6.x, CH340 driver 3.9) / keep current | **Keep current:** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 driver 3.3.2011.11 |
+| Toolchain versions | Upgrade (IDF v5.5.6 / v6.x, CH340 driver 3.9) / keep current | **Keep current:** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 driver 3.3.2011.11. Corrected 2026-10-29: the CH340 driver should be updated (it crashed Windows, see below) |
 
 ## 2026-10-29: round 1, board core
 
@@ -156,3 +156,4 @@ Consequences:
 | Installer scope | Per machine (UAC) / **per user** | **Per user** (`nsis.installMode: currentUser`, also Tauri's default, now explicit): no admin prompt, and the updater can replace it silently |
 | Install folder | Move the data elsewhere / **share `%LOCALAPPDATA%\fenixOS`** | **Share**: Tauri's per-user NSIS default; uninstall and update were tested to leave the data alone, and moving the data would need a migration for no gain |
 | LCD write clock | 80 MHz (S1 colour bars) / **40 MHz** | **40 MHz**: 80 MHz garbled the real panel under LVGL's small DMA writes (user video, 2026-10-29). The ESP32 SPI clock is 80 MHz / (n + 1), so the only step below 80 is 40, which is also what the vendor demo's and FenixDeck's "55 MHz" became. Slides: 26.1 fps (was 34.5) |
+| CH340 PC driver (after a crash) | Keep 3.3.2011.11 / **update to CH341SER 3.9.2024.9** | **Update**: the 2011 driver bugchecked Windows (0x48) when a pending COM9 read was cancelled at process exit (`docs/board-info.md`, Version status). The app also closes the port before it exits (`Link::shutdown`) |

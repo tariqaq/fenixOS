@@ -28,3 +28,4 @@ node_modules/
 /board/spikes/*/sdkconfig.old
 /board/spikes/*/managed_components/
 /docs/recordedvids/
+docs/tempcrashlogs/

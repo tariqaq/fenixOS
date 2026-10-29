@@ -103,6 +103,11 @@ pub struct Engine {
 }
 
 impl Engine {
+    /// Release the board's serial port before the app exits (see `Link::shutdown`).
+    pub fn shutdown(&self) {
+        self.link.shutdown();
+    }
+
     pub fn start(app: AppHandle, logs: Logs) -> Arc<Engine> {
         let fw_dir = crate::flash::dir(app.path().resource_dir().ok());
         let bundled_firmware = fw_dir.as_deref().and_then(crate::flash::bundled_version);

@@ -88,9 +88,11 @@ On the ESP32, peripheral drivers (SPI, UART, LEDC, NVS, Wi-Fi) are compiled into
 | LovyanGFX | 1.2.35 (FenixDeck submodule, per `docs/toolchain.md`; the version string is not in the binary) | 1.2.35 (2026-10-25) | GitHub releases API (`lovyan03/LovyanGFX`) |
 | CH340 Windows driver (PC side) | 3.3.2011.11 (2011, installed `ch341ser.inf`); the vendor copy in `docs/vendor/CH340/` is older still, 3.1.2009.06 | 3.9.2024.9 per the Microsoft Update Catalog and oemdrivers.com; WCH's own page renders by JS and was not read | web search |
 
-v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood out in its notes; it has Wi-Fi supplicant security ports). ESP-IDF v5.5 is supported until January 2028. Moving to v6.x needs a check that LovyanGFX works on it (still unconfirmed; see `docs/POC-WRITEUP.md` §7.5). The 2011 CH340 driver has worked here without errors at 460800 baud.
+v5.5.6 changes for the classic ESP32 are minor (no ESP32-specific fixes stood out in its notes; it has Wi-Fi supplicant security ports). ESP-IDF v5.5 is supported until January 2028. Moving to v6.x needs a check that LovyanGFX works on it (still unconfirmed; see `docs/POC-WRITEUP.md` §7.5). The 2011 CH340 driver works at 460800 baud, but it crashed Windows once (bugcheck 0x48, see below).
 
 **Decision (user, 2026-10-29): stay on the current versions** (IDF v5.5.5, LovyanGFX 1.2.35, CH340 driver 3.3.2011.11).
+
+Corrected (2026-10-29, after a PC crash): **update the CH340 driver** to WCH's current CH341SER (3.9.2024.9). Driver 3.3.2011.11 (`CH341S64.SYS`, `oem160.inf`) blue-screened the PC at 15:30: bugcheck `0x48 CANCEL_STATE_IN_COMPLETED_IRP`, `PROCESS_NAME: fenix.exe`, `CH341S64+4120`. The stack is `NtReadFile` then `IopCancelAlertedRequest` then `IoCancelIrp`: a synchronous read on COM9 was cancelled after the driver had completed it without clearing its cancel routine. This is a driver race, not a hardware fault. Ending a process with a read pending triggers it: here an agent force-killed `fenix logs` while it held COM9. Until the driver is updated, do not force-kill a fenixOS program that has the port open, and quit the app before unplugging the board. If Windows keeps the old driver, remove it from an elevated shell (`pnputil /delete-driver oem160.inf /uninstall /force`), then install the new one. The app now closes the port before it exits (`Link::shutdown` on Quit and before an app update), so a normal Quit cancels no read. The full write-up stays local (`docs/tempcrashlogs/`, git-ignored).
 
 ## Design-relevant findings (2026-10-28)
 

@@ -149,7 +149,7 @@ Details and the options offered: `docs/decisions.md`.
 - Board: **C++17 on ESP-IDF 5.5.5**, UI with **LVGL 9 + LovyanGFX**.
 - Board half of host apps: **declarative packages** (layout + assets + bindings); logic in the PC half (answers C3).
 - Orientation: **switchable in Settings**, all 4 rotations; every layout adapts.
-- Versions: stay on IDF 5.5.5, LovyanGFX 1.2.35, CH340 driver 3.3.2011.11.
+- Versions: stay on IDF 5.5.5, LovyanGFX 1.2.35. Corrected 2026-10-29: update the CH340 driver (3.3.2011.11 crashed Windows; `docs/board-info.md`).
 - Navigation: iOS-style **top nav bar** (`< Home`, centred title).
 - Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, Wi-Fi NTP later; no manual set. `--:--` until the first sync after power-up.
 - Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE/LZ); ~10 fps in normal use.

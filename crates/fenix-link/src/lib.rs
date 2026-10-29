@@ -116,7 +116,7 @@ pub struct Link {
     retarget: Arc<AtomicBool>,
     events: Mutex<Receiver<Event>>,
     stop: Arc<AtomicBool>,
-    handle: Option<thread::JoinHandle<()>>,
+    handle: Mutex<Option<thread::JoinHandle<()>>>,
 }
 
 impl Link {
@@ -144,7 +144,7 @@ impl Link {
             retarget,
             events: Mutex::new(ev_rx),
             stop,
-            handle: Some(handle),
+            handle: Mutex::new(Some(handle)),
         }
     }
 
@@ -185,12 +185,23 @@ impl Link {
     }
 }
 
-impl Drop for Link {
-    fn drop(&mut self) {
+impl Link {
+    /// Stop the link thread and wait until it has closed the port. Call it before the process
+    /// exits by a path that skips destructors (`std::process::exit`, Tauri's `app.exit`): a
+    /// process that dies inside a serial `ReadFile` makes Windows cancel that read, and the CH340
+    /// driver 3.3.2011.11 crashes the PC on that cancel (bugcheck 0x48, 2026-10-29).
+    pub fn shutdown(&self) {
         self.stop.store(true, Ordering::Relaxed);
-        if let Some(h) = self.handle.take() {
+        let h = self.handle.lock().ok().and_then(|mut h| h.take());
+        if let Some(h) = h {
             let _ = h.join();
         }
+    }
+}
+
+impl Drop for Link {
+    fn drop(&mut self) {
+        self.shutdown();
     }
 }
 

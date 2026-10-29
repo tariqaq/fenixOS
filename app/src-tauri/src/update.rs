@@ -98,8 +98,18 @@ pub async fn check(app: &AppHandle, quiet: bool) -> AppUpdate {
 /// Download, verify and run the new installer; the app quits while it installs and the
 /// installer starts it again.
 pub async fn install(app: &AppHandle) -> Result<(), String> {
+    // The installer step ends the process without RunEvent::Exit: close the board link first
+    // (Link::shutdown, the CH340 driver crash), then Tauri's own cleanup, which this replaces.
+    let h = app.clone();
     let up = app
-        .updater()
+        .updater_builder()
+        .on_before_exit(move || {
+            if let Some(engine) = h.try_state::<std::sync::Arc<crate::engine::Engine>>() {
+                engine.shutdown();
+            }
+            h.cleanup_before_exit();
+        })
+        .build()
         .map_err(|e| e.to_string())?
         .check()
         .await

@@ -94,6 +94,7 @@ P9 acceptance run (the full first-run flow, the real scene): 165 fps (the displa
 
 ## Gotchas found
 
+- **The 2011 CH340 driver crashes Windows when a pending read is cancelled** (2026-10-29, bugcheck `0x48`, `CH341S64+4120`, process `fenix.exe`). Force-killing a program that is blocked in `ReadFile` on COM9 does that. Update to WCH CH341SER 3.9 (`docs/board-info.md`). Never `Stop-Process -Force` a fenixOS program that holds the port; the app and the CLI close the port before they exit (`Link::shutdown`, also run by Quit and before an app update installs).
 - **The per-user NSIS installer installs into `%LOCALAPPDATA%\fenixOS`, which is also the app's data folder** (2026-10-29). Checked: uninstall removes only its own files (`fenixos.exe`, `firmware/`, `uninstall.exe`), so apps, logs and WebView data survive, and the updater installs over it in place.
 - **`cargo tree` colours its output when `CARGO_TERM_COLOR=always`** (2026-10-29; set on GitHub runners by the Rust toolchain action), even into a pipe. ANSI codes reached the generated `licenses.json` and failed CI's `--check`. `tools/licenses.py` passes `--color never`.
 - **MSVC mangles C++ names of global variables; GCC does not** (2026-10-29). `fenix_fonts.h` declared the C font objects without `extern "C"`, which links on the board (Itanium ABI leaves globals unmangled) but not in the MSVC simulator. `tools/gen_fonts.py` now wraps the declarations in `extern "C"`.

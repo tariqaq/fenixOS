@@ -431,13 +431,18 @@ fn main() {
         })
         .build(tauri::generate_context!())
         .expect("build fenixOS");
-    app.run(|_app, e| {
+    app.run(|app, e| match e {
         // Closing the window keeps fenixOS in the tray; only Quit (exit code set) ends it.
-        if let RunEvent::ExitRequested {
+        RunEvent::ExitRequested {
             code: None, api, ..
-        } = e
-        {
-            api.prevent_exit();
+        } => api.prevent_exit(),
+        // The process ends right after this without dropping managed state, so close the serial
+        // port cleanly first (a read cancelled by process exit crashed the CH340 driver).
+        RunEvent::Exit => {
+            if let Some(engine) = app.try_state::<Arc<Engine>>() {
+                engine.shutdown();
+            }
         }
+        _ => {}
     });
 }

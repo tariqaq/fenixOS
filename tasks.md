@@ -142,10 +142,12 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
+- 2026-10-29: **Corrected: update the CH340 driver.** 3.3.2011.11 blue-screened the PC (bugcheck 0x48) when `fenix.exe` was force-killed with a COM9 read pending. The app now closes the port before exit (`Link::shutdown`).
 
 ## Open (needs user input or flashing)
 
 - [x] Touch corner coverage (2026-10-29, user at the board): the default range was mirrored left to right; fixed (`y_min`/`y_max` reversed), confirmed by the user. `docs/board-info.md` "Hands-on review"
+- [ ] User: install WCH CH341SER 3.9.2024.9 (needs admin; `docs/board-info.md` Version status). Until then: do not force-kill fenixOS programs holding COM9, quit the app before unplugging
 - [ ] Physical USB replug with the PC app running (P7 reconnect was measured with a board reboot over the link)
 - [~] Tap-to-wake from Shut down: works since the touch-bus pins are held in sleep (user confirmed); the follow-up "touch dead after wake" is fixed and flashed. Still to check: the time surviving it, and the LED staying off in sleep (fix built, not flashed while the user has the board)
 - [ ] RGB LED levels (S6): connect pulse looks right, not too bright
