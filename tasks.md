@@ -98,7 +98,15 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 5. Finding-the-board screen (PcConnect, artboard 7); Board page (facts, firmware match, Reboot board, Logs)
   - [x] 6. Accept with `tools/measure_app.ps1`: window open 64.1 MB over 4 processes (target 120), tray only 4 MB over 1 process (target 35), CPU 0.01 %, window handle 74 ms after launch (target 1.5 s). Release exe 3.9 MB
   - [x] Fixed on the way: after "Reboot board" the board answered PINGs without a new HELLO, so the app stayed "connected" with stale facts. The board now answers a PING before HELLO with `ERROR` 5 (no session) and the PC handshakes again: request to reconnect about 1 s
-- [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
+- [~] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
+  - [ ] 1. Registry: manifest format (`registry/apps/<id>.json`, PLAN 3.7) documented in `docs/registry.md`; `tools/registry.py` builds `registry/index.json` and `--check`s it (CI); sample app manifest; `FENIX_REGISTRY=<folder>` for a local registry (local file paths allowed only there)
+  - [ ] 2. Sidecar protocol + `crates/fenix-sdk`: named pipe `\.\pipeenixos-<id>-<nonce>`, u32 length + JSON (`hello`, `settings`, `opened`, `closed`, `event`, `set`, `log`), documented in `docs/sidecars.md`; sample PC half in `tools/sample-app/pc` (CPU + memory to the binds, logs events)
+  - [ ] 3. Engine app manager: `%APPDATA%enixOS\config.json`, apps in `%LOCALAPPDATA%enixOSpps\<id>\<version>\`, download + sha256 check, enable (push package, start sidecar, HOST_STATE on) / disable (stop sidecar, remove from board), reconcile on connect, route EVENT / APP_OPENED / APP_CLOSED to sidecars and `set` to BIND_SET, restart back-off (3 tries, then tile error), elevated start on a worker thread
+  - [ ] 4. UI: Apps dashboard (8, incl. empty state), App settings (9, rendered from the manifest schema), Add app (10) + permissions sheet (15)
+  - [ ] 5. Board page (11): live mirror from STREAM, facts, reboot, reinstall firmware
+  - [ ] 6. Update flow (12): version check on connect, dialog, `espflash` with progress, reconnect; merged firmware image bundled as an app resource
+  - [ ] 7. Settings (13): start with Windows, connection port, updates, about ("Show welcome again" hooks into P9)
+  - [ ] 8. Accept: full loop with the sample app from a local registry; a mismatched firmware gets updated from the dialog; mirror ≥ 10 fps on Home
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"
 - [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
 
