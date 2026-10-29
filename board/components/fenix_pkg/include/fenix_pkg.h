@@ -13,7 +13,7 @@ constexpr uint8_t FORMAT = 1;
 constexpr size_t HEADER_LEN = 32;
 constexpr uint16_t NONE = 0xFFFF;
 
-constexpr size_t MAX_SIZE = 256 * 1024;
+constexpr size_t MAX_SIZE = 64 * 1024;  // the board holds a whole package in RAM
 constexpr size_t MAX_ELEMS = 200;
 constexpr size_t MAX_STRING_BYTES = 8 * 1024;
 constexpr size_t MAX_BINDS = 64;
@@ -34,7 +34,7 @@ constexpr uint8_t TEXT = 1, FONT = 2, COLOR = 3, BG = 4, BIND = 5, W = 6, H = 7,
                   SIZE = 19, SRC = 20, EVENT = 21, HIDDEN = 22, ALIGN = 23, PORTRAIT = 0x80;
 }
 namespace asset_format {
-constexpr uint8_t A8 = 1, RGB565 = 2;
+constexpr uint8_t A8 = 1, RGB565 = 2;  // RGB565 is little-endian (LVGL's native order)
 }
 constexpr int32_t SIZE_CONTENT = -1;
 constexpr int32_t SIZE_PCT = 0x40000000;

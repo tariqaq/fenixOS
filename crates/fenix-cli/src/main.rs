@@ -75,9 +75,9 @@ fn main() {
             arg_u64(&args, 2, 3),
         ),
         "list" => list(opts),
-        "install" => match (args.get(1), args.get(2), args.get(3)) {
-            (Some(f), Some(id), Some(v)) => install(opts, Path::new(f), id, v),
-            _ => usage(),
+        "install" => match args.get(1) {
+            Some(f) => install(opts, Path::new(f)),
+            None => usage(),
         },
         "remove" => match args.get(1) {
             Some(id) => remove(opts, id),
@@ -90,7 +90,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <fxp> <id> <ver>|remove <id>|soak <min> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|soak <min> [--port COMx]");
     2
 }
 
@@ -393,11 +393,20 @@ fn list(opts: LinkOptions) -> i32 {
     1
 }
 
-fn install(opts: LinkOptions, file: &Path, id: &str, version: &str) -> i32 {
+/// Install a package: id and version come from the package itself. Keeps 4 chunks in flight and
+/// goes back to the last acked offset when acks stop for a second (a chunk was lost).
+fn install(opts: LinkOptions, file: &Path) -> i32 {
     let data = match std::fs::read(file) {
         Ok(d) => d,
         Err(e) => {
             eprintln!("{e}");
+            return 1;
+        }
+    };
+    let pkg = match fenix_pkg::parse(&data) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{}: {e}", file.display());
             return 1;
         }
     };
@@ -408,16 +417,20 @@ fn install(opts: LinkOptions, file: &Path, id: &str, version: &str) -> i32 {
     }
     let t0 = Instant::now();
     link.send(Msg::AppInstallBegin {
-        id: id.into(),
-        version: version.into(),
+        id: pkg.id().into(),
+        version: pkg.version().into(),
         size: data.len() as u32,
         sha256: sha,
     });
-    let mut sent = 0usize;
-    let mut acked = 0usize;
+    let (mut sent, mut acked, mut ended) = (0usize, 0usize, false);
+    let mut last_ack = Instant::now();
     const WINDOW: usize = 4 * fenix_proto::MAX_CHUNK;
     let end = Instant::now() + Duration::from_secs(60);
     while Instant::now() < end {
+        if last_ack.elapsed() > Duration::from_secs(1) && sent > acked {
+            sent = acked;
+            last_ack = Instant::now();
+        }
         while sent < data.len() && sent < acked + WINDOW {
             let n = (data.len() - sent).min(fenix_proto::MAX_CHUNK);
             link.send(Msg::AppChunk {
@@ -426,15 +439,21 @@ fn install(opts: LinkOptions, file: &Path, id: &str, version: &str) -> i32 {
             });
             sent += n;
         }
-        if acked == data.len() && sent == data.len() {
+        if acked == data.len() && !ended {
             link.send(Msg::AppInstallEnd);
-            sent += 1; // only once
+            ended = true;
         }
-        match link.recv_event(Duration::from_millis(100)) {
-            Some(Event::Msg(Msg::AppAck { next_offset })) => acked = next_offset as usize,
+        match link.recv_event(Duration::from_millis(50)) {
+            Some(Event::Msg(Msg::AppAck { next_offset })) => {
+                acked = next_offset as usize;
+                last_ack = Instant::now();
+            }
             Some(Event::Msg(Msg::AppResult { op, code, id, text })) => {
                 println!(
-                    "result op {op} code {code} {id} {text} in {:.2} s",
+                    "{} v{} ({} B): op {op} code {code} {id} {text} in {:.2} s",
+                    pkg.id(),
+                    pkg.version(),
+                    data.len(),
                     t0.elapsed().as_secs_f32()
                 );
                 return if code == app::OK { 0 } else { 1 };

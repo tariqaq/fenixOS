@@ -20,10 +20,11 @@
 namespace fx::sys {
 
 static constexpr uart_port_t UART = UART_NUM_0;
-static constexpr int RX_BUF = 4096;
+static constexpr int RX_BUF = 8192;  // 4 install chunks in flight while LittleFS writes
 static constexpr int TX_BUF = 16384;  // also the stream TX ring (PLAN §4.1)
 static constexpr int64_t LINK_TIMEOUT_US = 3000000;
 static constexpr int64_t STATS_PERIOD_US = 5000000;
+static constexpr int64_t INSTALL_TIMEOUT_US = 10000000;
 
 static SemaphoreHandle_t s_tx_lock;
 static QueueHandle_t s_events;
@@ -172,6 +173,16 @@ static void send_error(uint8_t code, const char* text) {
 }
 
 static int64_t s_last_rx;
+static int64_t s_install_rx;  // last install message, for the stall timeout
+
+static void send_app_result(uint8_t op, uint8_t code, const char* id, const char* text) {
+  send_with(fnx::ty::APP_RESULT, [&](fnx::Writer& w) {
+    w.u8(op);
+    w.u8(code);
+    w.str(id);
+    w.bytes(text, strlen(text));
+  });
+}
 
 static void on_frame(const uint8_t* p, size_t n, void*) {
   if (n < 2) return;
@@ -215,10 +226,64 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
       s_remote = ((uint32_t)(x & 0xFFF) << 13) | ((uint32_t)(y & 0xFFF) << 1) | (down ? 1 : 0);
       return;
     }
-    case fnx::ty::APP_LIST_REQ:
-      // App store arrives in P6: no apps yet.
-      send_with(fnx::ty::APP_LIST, [](fnx::Writer& w) { w.u8(0); });
+    case fnx::ty::APP_LIST_REQ: {
+      AppMeta apps[MAX_APPS];
+      int n = store_list(apps, MAX_APPS);
+      send_with(fnx::ty::APP_LIST, [&](fnx::Writer& w) {
+        w.u8(n);
+        for (int i = 0; i < n; i++) {
+          fnx::AppEntry e{};
+          strlcpy(e.id, apps[i].id, sizeof e.id);
+          strlcpy(e.version, apps[i].version, sizeof e.version);
+          memcpy(e.sha256, apps[i].sha256, 32);
+          fnx::write_app_entry(w, e);
+        }
+      });
       return;
+    }
+    case fnx::ty::APP_INSTALL_BEGIN: {
+      fnx::AppInstallBegin b{};
+      if (!fnx::read_app_install_begin(r, b)) return send_error(fnx::err::BAD_BODY, "install");
+      uint8_t code = store_begin(b.id, b.version, b.size, b.sha256);
+      s_install_rx = esp_timer_get_time();
+      if (code != fnx::app::OK) return send_app_result(fnx::app::OP_INSTALL, code, b.id, "");
+      send_with(fnx::ty::APP_ACK, [](fnx::Writer& w) { w.u32(0); });
+      return;
+    }
+    case fnx::ty::APP_CHUNK: {
+      uint32_t off = r.u32();
+      size_t len = 0;
+      const uint8_t* d = r.rest(&len);
+      if (!r.ok()) return send_error(fnx::err::BAD_BODY, "chunk");
+      const char* id;
+      if (!store_installing(&id)) return send_app_result(fnx::app::OP_INSTALL, fnx::app::BUSY, "", "no install");
+      char keep[fnx::ID_LEN];
+      strlcpy(keep, id, sizeof keep);
+      uint32_t next = store_chunk(off, d, len);
+      s_install_rx = esp_timer_get_time();
+      if (!store_installing(nullptr)) return send_app_result(fnx::app::OP_INSTALL, fnx::app::STORAGE, keep, "write failed");
+      send_with(fnx::ty::APP_ACK, [&](fnx::Writer& w) { w.u32(next); });
+      return;
+    }
+    case fnx::ty::APP_INSTALL_END: {
+      const char* id = "";
+      store_installing(&id);
+      char keep[fnx::ID_LEN], why[64];
+      strlcpy(keep, id, sizeof keep);
+      uint8_t code = store_end(why, sizeof why);
+      send_app_result(fnx::app::OP_INSTALL, code, keep, why);
+      if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, keep);
+      return;
+    }
+    case fnx::ty::APP_REMOVE: {
+      char id[fnx::ID_LEN];
+      r.str(id, sizeof id);
+      if (!r.done()) return send_error(fnx::err::BAD_BODY, "remove");
+      uint8_t code = store_remove(id);
+      send_app_result(fnx::app::OP_REMOVE, code, id, "");
+      if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, id);
+      return;
+    }
     case fnx::ty::STREAM_START: {
       uint8_t fps = r.u8();
       post(LinkEv::STREAM_START, fps ? fps : 10);
@@ -252,8 +317,10 @@ static void link_task(void*) {
     if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) {
       s_connected = false;
       s_remote = 0;
+      store_abort();
       post(LinkEv::DISCONNECTED);
     }
+    if (store_installing(nullptr) && now - s_install_rx > INSTALL_TIMEOUT_US) store_abort();
     if (now >= next_stats) {
       next_stats = now + STATS_PERIOD_US;
       if (s_connected) send_stats();
@@ -275,7 +342,7 @@ void link_start() {
   uart_param_config(UART, &c);
   // With the console off, UART0 is not routed to its pins by default (spike S3).
   uart_set_pin(UART, 1, 3, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
-  xTaskCreatePinnedToCore(link_task, "link", 6144, nullptr, 6, nullptr, 0);
+  xTaskCreatePinnedToCore(link_task, "link", 8192, nullptr, 6, nullptr, 0);
 }
 
 }  // namespace fx::sys

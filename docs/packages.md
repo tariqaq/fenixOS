@@ -4,7 +4,7 @@ Version: **package format 1** (fenixOS v0.1). Plan: `docs/PLAN.md` §3.4. Source
 - Compiler and reader (Rust): `crates/fenix-pkg` (`fenix-pkg build <dir>`, `fenix-pkg inspect <file>`)
 - Board reader (C++): `board/components/fenix_pkg` (same checks as the Rust reader; host test `test/run.ps1` parses the sample and survives every single-byte flip)
 - Board builder: `board/components/fenix_apps/app_pkg.cpp`; store: `board/components/fenix_sys/store.cpp`
-- Test fixture: `tools/sample-app`
+- Test fixture: `tools/sample-app/board` (`fenix-pkg build tools/sample-app/board`, then `fenix install tools/sample-app/board/app.fxp`)
 
 A host app has two halves. The **board half** is this package: a declarative screen (no code runs on the board). The **PC half** is a sidecar process (P8) that sets bound values and gets events.
 
@@ -57,11 +57,11 @@ Checked by the compiler and again by the board before it commits an install. Bot
 
 | What | Limit |
 |---|---|
-| Package size | 256 KB |
+| Package size | 64 KB (the board holds the whole package in RAM to check it and while the app is open) |
 | Elements | 200 |
 | Strings (all, bytes) | 8 KB |
 | Bindings | 64 |
-| Image pixels loaded at open (all images) | 24 KB of image data |
+| Image data (every asset except the two tile icons) | 24 KB |
 | RAM estimate (`elements × 160 B + strings + images`) | 40 KB |
 | Tree depth | 8 |
 
@@ -89,7 +89,7 @@ header (32 bytes)
 strings   n_strings × (len:u16 ‖ utf8)
 binds     n_binds × name:u16 (string index); the bind id is the position
 elements  n_elems × (kind:u8 ‖ parent:u16 (0xFFFF = root) ‖ nprops:u8 ‖ nprops × (key:u8 ‖ value:i32))
-assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 big-endian) ‖ w:u16 ‖ h:u16 ‖ len:u32 ‖ data)
+assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's native order) ‖ w:u16 ‖ h:u16 ‖ len:u32 ‖ data)
 ```
 
 - Elements are in tree order: a parent always comes before its children. The element index (position) is the `elem` in `EVENT`.
@@ -123,10 +123,12 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 big-endian) ‖ w:u16 ‖ h
   | 23 | align | 0 left, 1 center, 2 right |
 
 - **Sizes:** `≥ 0` pixels, `-1` content, `0x40000000 | pct` percent.
-- Assets are stored raw in format 1 (no compression yet; the 256 KB cap holds). Compression is a later format version.
+- Assets are stored raw in format 1 (no compression). Compression is a later format version.
 
 ## Store on the board
 
 - LittleFS partition `apps` (~1.9 MB) at `/apps`: `<id>.fxp` and `<id>.sha` (32-byte sha256).
-- Install: `APP_INSTALL_BEGIN` opens `/apps/<id>.tmp`; each `APP_CHUNK` at the expected offset is written and acked with the next offset (others are acked with the expected offset, so the PC rewinds); `APP_INSTALL_END` checks size, sha256 and the package header and limits, then removes the old files and renames the temp file. Leftover `*.tmp` files are deleted at boot, so a power cut never leaves a half app.
-- `APP_LIST` reads each package header (id, version) and its `.sha`.
+- Install: `APP_INSTALL_BEGIN` opens `/apps/<id>.tmp`; each `APP_CHUNK` at the expected offset is written and acked with the next offset (others are acked with the expected offset, so the PC rewinds); `APP_INSTALL_END` checks size, sha256 and the package header and limits, then removes the old files and renames the temp file. Leftover `*.tmp` files are deleted at boot, so a power cut never leaves a half app. The UART RX ISR runs from IRAM (`CONFIG_UART_ISR_IN_IRAM`) and the RX buffer is 8 KB, so flash writes do not drop chunk bytes.
+- `APP_LIST` reads each package header (id, version) and its `.sha`. Up to 10 apps (`MAX_APPS`).
+- A failed check leaves the old version in place. A `.fxp` or `.sha` without its partner is deleted at boot too (a cut between the two steps of a commit or remove); the PC reinstalls it on the next reconcile.
+- Measured (2026-10-29, COM9): 1.6 KB sample installs in 0.13 s, a 21 KB package with a 110×90 RGB565 image in 0.51 s (~42 KB/s, so a 64 KB package takes ~1.6 s). Remove brings the store back to its empty size (8 KB of LittleFS metadata).

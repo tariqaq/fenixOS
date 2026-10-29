@@ -12,7 +12,8 @@ pub const FORMAT: u8 = 1;
 pub const HEADER_LEN: usize = 32;
 pub const NONE: u16 = 0xFFFF;
 
-pub const MAX_SIZE: usize = 256 * 1024;
+/// The board loads a whole package into RAM to check it and while the app is open.
+pub const MAX_SIZE: usize = 64 * 1024;
 pub const MAX_ELEMS: usize = 200;
 pub const MAX_STRING_BYTES: usize = 8 * 1024;
 pub const MAX_BINDS: usize = 64;
@@ -271,11 +272,13 @@ impl Package {
     /// Check the limits of `docs/packages.md` (the board checks the same).
     pub fn check_limits(&self, size: usize) -> Result<(), String> {
         let strings: usize = self.strings.iter().map(|s| s.len()).sum();
+        // Every asset except the two tile icons counts as image data.
         let image_bytes: usize = self
-            .elems
+            .assets
             .iter()
-            .filter_map(|e| e.prop(key::SRC))
-            .map(|i| self.assets.get(i as usize).map_or(0, |a| a.data.len()))
+            .enumerate()
+            .filter(|(i, _)| *i as u16 != self.icon_small && *i as u16 != self.icon_large)
+            .map(|(_, a)| a.data.len())
             .sum();
         let ram = self.elems.len() * RAM_PER_ELEM + strings + image_bytes;
         let checks = [
@@ -534,13 +537,13 @@ impl<'a> Compiler<'a> {
         let data = if a8 {
             rgba.chunks(4).map(|p| p[3]).collect()
         } else {
-            // RGB565 big-endian over black (the board's screen background).
+            // RGB565 little-endian (LVGL's native order) over black (the board's screen background).
             let mut d = Vec::with_capacity((w * h * 2) as usize);
             for p in rgba.chunks(4) {
                 let a = p[3] as u32;
                 let (r, g, b) = (p[0] as u32 * a / 255, p[1] as u32 * a / 255, p[2] as u32 * a / 255);
                 let v = ((r >> 3) << 11 | (g >> 2) << 5 | (b >> 3)) as u16;
-                d.extend_from_slice(&v.to_be_bytes());
+                d.extend_from_slice(&v.to_le_bytes());
             }
             d
         };

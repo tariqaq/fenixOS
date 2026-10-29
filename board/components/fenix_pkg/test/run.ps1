@@ -14,7 +14,7 @@ $bat = Join-Path $out 'build.cmd'
 set PATH=C:\Windows\system32;C:\Windows;${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer
 call "$vs\VC\Auxiliary\Build\vcvars64.bat" >nul
 cd /d "$out"
-cl /nologo /std:c++17 /EHsc /W4 /I "$root\include" "$root\fenix_pkg.cpp" "$PSScriptRoot\test_pkg.cpp" /Fe:t.exe
+cl /nologo /std:c++17 /EHsc /W4 /D_CRT_SECURE_NO_WARNINGS /I "$root\include" "$root\fenix_pkg.cpp" "$PSScriptRoot\test_pkg.cpp" /Fe:t.exe
 "@ | Set-Content -Encoding ascii $bat
 cmd /c $bat | Where-Object { $_ -notmatch '^(fenix_pkg|test_pkg)\.cpp$' }
 if ($LASTEXITCODE -ne 0) { Write-Host 'compile failed'; exit 1 }

@@ -196,9 +196,10 @@ const char* Package::check() {
       }
       if (v < 0 || (size_t)v >= limit) return "element index out of range";
     }
-    int32_t src;
-    // As in Rust: the first SRC prop counts toward the image budget.
-    if (e.prop(key::SRC, &src)) image_bytes += assets[src].len;
+  }
+  // Every asset except the two tile icons counts as image data.
+  for (size_t i = 0; i < assets.size(); i++) {
+    if (i != head.icon_small && i != head.icon_large) image_bytes += assets[i].len;
   }
   size_t string_bytes = 0;
   for (auto s : strings) string_bytes += s.size();

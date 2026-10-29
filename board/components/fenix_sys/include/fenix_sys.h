@@ -31,9 +31,23 @@ void clock_set_utc(uint32_t epoch_s);
 bool clock_valid();
 bool clock_local(struct tm* out);  // false while invalid
 
-// ---- App storage (LittleFS partition "apps" at /apps) ----
-bool store_mount();
+// ---- App storage (LittleFS partition "apps" at /apps; rules in docs/packages.md) ----
+constexpr int MAX_APPS = 10;  // APP_LIST fits in one frame; Home has room for them
+struct AppMeta {
+  char id[64], version[64];
+  uint8_t sha256[32];
+};
+bool store_mount();  // also deletes leftovers of an interrupted install or remove
 void store_usage(uint32_t* used_kb, uint32_t* total_kb);
+int store_list(AppMeta* out, int max);           // sorted by id
+uint8_t* store_load(const char* id, size_t* n);  // whole package (malloc, caller frees); nullptr if missing
+// Install and remove. Link task only. Results are fnx::app codes.
+uint8_t store_begin(const char* id, const char* version, uint32_t size, const uint8_t sha256[32]);
+uint32_t store_chunk(uint32_t offset, const uint8_t* data, size_t n);  // next expected offset
+uint8_t store_end(char* why, size_t cap);  // checks size, sha256 and the package, then commits
+void store_abort();
+bool store_installing(const char** id);
+uint8_t store_remove(const char* id);
 
 // ---- Shared board state (written by the UI, read by the link task) ----
 struct BoardInfo {
@@ -56,7 +70,7 @@ enum class LinkEv : uint8_t {
   STREAM_STOP,
   STREAM_SYNC,
   HOST_STATE,  // value = running, text = app id
-  APPS_CHANGED,
+  APPS_CHANGED,  // text = app id installed or removed
 };
 struct LinkEvent {
   LinkEv type;
