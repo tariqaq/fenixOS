@@ -160,7 +160,7 @@ Findings:
 
 ## fenixOS board core (P4, 2026-10-29)
 
-- **Image:** ~811 KB app (`fenixos.bin`, 61% of the 2 MB factory slot free, P6 app store included). Free heap with Home shown: ~128 KB (was ~134 KB before P6 added the 8 KB UART RX buffer and 8 KB link stack), minimum ~120 KB with 80-line bands (the gate is ≥ 60 KB).
+- **Image:** ~826 KB app (`fenixos.bin`, 60% of the 2 MB factory slot free, P6 app store and runtime included). Free heap with Home shown and one app installed: ~121 KB (was ~134 KB before P6: +4 KB UART RX buffer, +2 KB link stack, ~5 KB bind queue, tile icons), minimum ~117 KB (the gate is ≥ 60 KB). An open app adds its package (a few KB) and its LVGL objects.
 - **Link task:** UART0 at 921600 with a 4 KB RX and a 16 KB TX buffer. The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
 - **Stream:** each flushed area is cut into bands of ≤ 3 KB raw and sent RLE16 (raw when RLE is not smaller). A static Home screen streams at ~3–4 KB/s.
 - **Reset reason:** a reset through the EN pin (the PC's RTS line, esptool, `serial_read.py --reset`) reports `ESP_RST_POWERON`, the same as a cold power-on, and the RTC clock restarts. So the "time valid" flag is cleared at boot on POWERON (`hal::time_boot_check`); it survives `esp_restart` and deep sleep. (Corrected: the first version also required reset reason ≠ POWERON when reading the flag, so the time never became valid after a PC-triggered reset.)

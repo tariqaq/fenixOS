@@ -328,6 +328,18 @@ static lv_obj_t* make_switch(lv_obj_t* parent, bool on) {
   return s;
 }
 
+// `grow` shares the parent's free space along its flow. A parent sized to its content has none,
+// and LVGL would squeeze the element to 0 (a row turned column in portrait), so it only applies
+// when the parent has a set size along its flow. The root's parent is the app body (fixed).
+static bool grow_applies(const fpkg::Elem& e, bool port) {
+  if (e.parent == fpkg::NONE) return true;
+  const fpkg::Elem& p = s_app.pkg.elems[e.parent];
+  int32_t flow = 0, size;
+  p.prop(fpkg::key::FLOW, &flow, port);
+  bool set = p.prop(flow == 0 ? fpkg::key::H : fpkg::key::W, &size, port);
+  return set && size != fpkg::SIZE_CONTENT;
+}
+
 static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool port) {
   auto get = [&](uint8_t k, int32_t def) {
     int32_t v;
@@ -426,7 +438,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   int32_t v;
   if (e.prop(fpkg::key::W, &v, port)) lv_obj_set_width(o, lv_size(v));
   if (e.prop(fpkg::key::H, &v, port)) lv_obj_set_height(o, lv_size(v));
-  if (e.prop(fpkg::key::GROW, &v, port)) lv_obj_set_flex_grow(o, v);
+  if (e.prop(fpkg::key::GROW, &v, port) && grow_applies(e, port)) lv_obj_set_flex_grow(o, v);
   if (get(fpkg::key::HIDDEN, 0)) lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
   if (e.prop(fpkg::key::BIND, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o});
   if (e.prop(fpkg::key::EVENT, &v, port)) {

@@ -34,6 +34,10 @@ tap 160 155; shot rotation
 tap 160 101                          # Portrait
 shot rotation_portrait
 back; back; back; shot home_portrait
+tap 177 278                          # Sample tile (grid, second row, right)
+"$F" set "$PKG" cpu=42 "cpu_text=42 %" mem=63 "mem_text=5.1 GB" on=true level=80 >/dev/null
+shot app_portrait
+back
 tap 62 206; shot settings_portrait
 tap 120 60; shot display_portrait
 tap 120 255                          # Rotation

@@ -39,7 +39,7 @@ A folder with:
 | `image` | A8 (tinted with `color`) or RGB565 image | `src`, `color` (A8 only) |
 | `icon` | Built-in Phosphor glyph | `icon`, `size` (12 14 15 16 18 20 26 28 40), `color` |
 
-Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`), `grow`, `bind` (a binding name), `event` (an event name), `hidden`, and `portrait` (an object with any of these props, used when the board is in portrait).
+Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes default to their content size), `grow` (share of the parent's free space along its flow; only applies when the parent has a set `h` for a column or `w` for a row, so a row that turns into a column in portrait keeps its children's natural height), `bind` (a binding name), `event` (an event name), `hidden`, and `portrait` (an object with any of these props, used when the board is in portrait).
 
 - **Fonts:** `body` (15), `body_semibold`, `label` (13), `label_medium`, `label_semibold`, `caption` (12), `caption_medium`, `title` (17), `title_l` (22), `clock_56`, `clock_64`. Default `body`. Inter only, digits and Basic Latin; see `tools/gen_fonts.py` for the character set.
 - **Colours:** a token name from `design/tokens.json` (`label`, `label_2`, `accent`, `success`, `warning`, `danger`, `surface_1` … `tile_*`) or `"#RRGGBB"`.

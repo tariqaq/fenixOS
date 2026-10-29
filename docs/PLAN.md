@@ -62,8 +62,8 @@ board/                   ESP-IDF project (C++17, IDF v5.5.5)
     fenix_hal/           display, touch, backlight, RGB LED, power, RTC time
     fenix_ui/            LVGL glue, theme from tokens, fonts, nav, widgets
     fenix_sys/           settings (NVS), clock, link task, app store (LittleFS), stream encoder
-    fenix_pkg/           package reader, LVGL builder, bindings
-    fenix_apps/          boot, home, settings, session, stream, host-app shell
+    fenix_pkg/           package reader (no IDF dependency, host-tested)
+    fenix_apps/          boot, home, settings, session, stream, host-app runtime (app_pkg.cpp: LVGL builder, bindings; corrected 2026-10-29)
   sim/                   SDL2 simulator of fenix_ui + fenix_apps (stub HAL)
   partitions.csv, sdkconfig.defaults, idf.ps1
 app/                     Tauri 2 + Svelte 5 PC app (src/, src-tauri/)

@@ -61,7 +61,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 - [~] P3 Link protocol (done: `proto/spec.md`, fenix-proto Rust + 31 golden vectors in `proto/vectors.txt`, C++ `fenix_proto` + MSVC host test 31/31; fenix-link with pause + StreamCanvas, `fenix` CLI built; next: on-board link task in P4, then 1 h soak): `proto/spec.md`, fenix-proto (Rust), fenix_proto (C++), golden vectors, fenix-link, fenix-cli
 - [x] P4 Board core (accepted 2026-10-29: `fenix hello`/`time` work, STATS heap ~134 KB min ~121 KB, 0 RX errors, slides 34.5 fps / 29 fps while streaming): fenix_hal, fenix_ui, SDL2 sim + screenshots, fenix_sys (settings, clock, link task, LittleFS), init order
   - [x] fenix_hal: LED, deep sleep, touch calibration, time-valid flag (fixed: EN resets report POWERON, so the flag is cleared at boot by `time_boot_check`)
-  - [x] fenix_sys: NVS settings, clock (MYT), link task (UART0 921600, HELLO/PING/TIME_SET/REBOOT/STATS/APP_LIST stub), LittleFS mount, stream encoder (RLE16 bands into the 16 KB UART TX buffer, stale re-send)
+  - [x] fenix_sys: NVS settings, clock (MYT), link task (UART0 921600, HELLO/PING/TIME_SET/REBOOT/STATS; APP_LIST was a stub until P6), LittleFS mount, stream encoder (RLE16 bands into the 16 KB UART TX buffer, stale re-send)
   - [x] fenix_ui: LVGL glue (display, touch, auto-dim, stream hook, fps), widgets, nav stack
   - [x] fenix_apps (P5 started early): boot sweep, Home Tiles/Dock, Settings tree, Session sheet, Stream, LED
   - [x] main: init order; built (796 KB), flashed COM9; `fenix hello`, `fenix time`, `fenix shot` all work; Home PNG matches HomeA
@@ -79,7 +79,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Flipped rotations (2, 3): screenshots in `docs/screens/board/`
   - [x] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: done in P6
   - [ ] PC simulator (user asked in round 7): after P8, before release
-- [~] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
+- [x] P6 App packages (accepted 2026-10-29: install 0.13 s for 1.6 KB, 0.51 s for 21 KB, ~1.6 s for the 64 KB cap; remove leaves the store at its empty 8 KB; reconcile itself is the PC engine's job in P7/P8): `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
   - [x] Format 1 spec `docs/packages.md`; `crates/fenix-pkg` compiler + reader (`fenix-pkg build`/`inspect`, limits, 2 tests); `tools/sample-app/board` builds to 1643 B, 15 elements, 6 bindings
   - [x] C++ reader `board/components/fenix_pkg` (same checks as Rust; app ids capped at 48 bytes for LittleFS names; host test passes, survives every single-byte flip)
   - [x] Board store + install in the link task: APP_INSTALL_BEGIN/CHUNK/END (sha256 via mbedtls, `.tmp` then rename, `.sha`), real APP_LIST, APP_REMOVE, cleanup at mount; UART ISR in IRAM, RX buffer 8 KB, link stack 8 KB. Tested on COM9: install 0.13 s (1.6 KB) / 0.51 s (21 KB), reinstall, remove back to 8 KB used, unknown remove = code 6. Package cap lowered to 64 KB (board holds it in RAM); RGB565 assets now little-endian
@@ -88,7 +88,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] CLI: `fenix install <file.fxp>` (id/version from the package, rewind on stalled acks), `fenix remove <id>`, `fenix list`
   - [x] CLI: `fenix set <file.fxp> <bind>=<value>...`, `fenix host <id> on|off`; `tap`/`swipe` print the board's replies
   - [x] Golden screenshots refreshed with the sample installed (19 + 3 flipped in `docs/screens/board/`, new: `storage`, `app`, `app_host_off`); flipped-rotation shots are from before P6 (no app tile)
-  - [ ] Accept: install <= 5 s (done: 0.13 s / 0.51 s, ~1.6 s for 64 KB), remove leaves nothing (done: back to 8 KB), sample app in portrait (screenshot pending), stale sweep, close P6
+  - [x] Sample app in portrait (`app_portrait.png`); fixed on the way: `grow` in a content-sized parent squeezed cards to 0 px, so `grow` now applies only when the parent has a set size along its flow (`docs/packages.md`)
+  - [x] Stale sweep (PLAN layout, board-info heap/image, tasks)
 - [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"
