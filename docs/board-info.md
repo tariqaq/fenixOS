@@ -220,3 +220,9 @@ Two phone videos (`docs/recordedvids/`, not in git) and live tests with the user
 ### USB replug (2026-10-29)
 
 With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends the session with "Board disconnected (read: Access is denied. (os error 5))": Windows reports a vanished COM port to an open handle as access denied. Plugging it back in, the app finds the board on COM9 again by itself (boot reason power on). No crash. The clock is still right after a tap wake from Shut down (user, 2026-10-29). The LED checks (off in sleep, connect pulse level) are deferred by the user.
+
+## Battery and SD card (planning notes, 2026-10-29)
+
+- **No battery circuit on the board.** Power is 5 V (USB or the 5 V connector) into an AMS1117-3.3. A LiPo needs a charger plus a 5 V boost (or a one-chip "power bank" module) feeding that 5 V input; 3.7 V straight into 5 V leaves the AMS1117 below 3.3 V.
+- **Draw (estimates, not measured here):** ~115 mA at 5 V with the backlight full, about 40 % less dimmed (secondary spec pages); Wi-Fi adds ~80–120 mA on average with TX peaks near 240 mA (ESP32 datasheet), BLE ~30–50 mA. At the cell, with a ~85 % boost, multiply the 5 V current by ~1.6: UI only ~185 mA, BLE ~240 mA, Wi-Fi ~350 mA. Shut down (light sleep since P19) plus regulator and boost quiescent current is a few mA, so a hard power switch is worth having. Measure with the real firmware before choosing.
+- **SD card:** ESP-IDF v5.5.5's FatFs has exFAT compiled out (`FF_FS_EXFAT 0` in `components/fatfs/src/ffconf.h`, no Kconfig option), so cards must be FAT32 (FAT12/16 also work). FAT32 itself is not limited to 32 GB: larger SDXC cards work once reformatted to FAT32 (Windows' own format tool refuses FAT32 above 32 GB; use another formatter). Files are limited to 4 GB.
