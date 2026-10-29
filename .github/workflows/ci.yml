@@ -9,7 +9,7 @@ jobs:
   checks:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     container: espressif/idf:v5.5.5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - name: build
@@ -38,12 +38,12 @@ jobs:
   sim:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - run: python tools/sim_shots.py
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sim-shots
           path: board/sim/build/shots
@@ -51,7 +51,7 @@ jobs:
   rust:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive  # tools/licenses.py reads LovyanGFX's library.json
       - uses: dtolnay/rust-toolchain@stable
@@ -59,7 +59,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with:
           version: 12.15.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: pnpm
