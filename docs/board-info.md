@@ -211,4 +211,4 @@ Two phone videos (`docs/recordedvids/`, not in git) and live tests with the user
 
 ### USB replug (2026-10-29)
 
-With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends the session with "Board disconnected (read: Access is denied. (os error 5))": Windows reports a vanished COM port to an open handle as access denied. Plugging it back in, the app finds the board on COM9 again by itself (boot reason power on). No crash. LED checks (off in sleep, connect pulse level) and the clock after a tap wake are deferred by the user.
+With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends the session with "Board disconnected (read: Access is denied. (os error 5))": Windows reports a vanished COM port to an open handle as access denied. Plugging it back in, the app finds the board on COM9 again by itself (boot reason power on). No crash. The clock is still right after a tap wake from Shut down (user, 2026-10-29). The LED checks (off in sleep, connect pulse level) are deferred by the user.
