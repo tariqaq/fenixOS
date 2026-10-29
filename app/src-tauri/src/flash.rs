@@ -107,9 +107,18 @@ impl ProgressCallbacks for Progress<'_> {
     }
 }
 
-/// Write the image to the board on `port`. Blocks for up to a minute; call it off the UI and
-/// engine threads, with the board link paused (the port must be free).
-pub fn flash(port: &str, img: &Image, report: &mut dyn FnMut(f32)) -> Result<(), String> {
+/// What the bootloader says about a board that does not answer as fenixOS (first-run probe).
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct Probe {
+    /// e.g. "esp32 rev 1.0".
+    pub chip: String,
+    /// e.g. "4MB".
+    pub flash: String,
+    pub mac: String,
+}
+
+/// Reset the board on `port` into its bootloader and connect (with the flasher stub).
+fn connect(port: &str) -> Result<Flasher, String> {
     let info = serialport::available_ports()
         .map_err(|e| e.to_string())?
         .into_iter()
@@ -119,10 +128,22 @@ pub fn flash(port: &str, img: &Image, report: &mut dyn FnMut(f32)) -> Result<(),
             _ => None,
         })
         .ok_or_else(|| format!("{port} is not a USB serial port"))?;
-    let serial = serialport::new(port, 115_200)
-        .flow_control(serialport::FlowControl::None)
-        .open_native()
-        .map_err(|e| format!("{port}: {e}"))?;
+    // The paused link lets go of the port only after its current handshake try (up to 2.5 s on a
+    // board that does not answer), so keep trying for a while.
+    let mut tries = 0;
+    let serial = loop {
+        match serialport::new(port, 115_200)
+            .flow_control(serialport::FlowControl::None)
+            .open_native()
+        {
+            Ok(s) => break s,
+            Err(_) if tries < 40 => {
+                tries += 1;
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => return Err(format!("{port}: {e}")),
+        }
+    };
     let conn = Connection::new(
         serial,
         info,
@@ -130,8 +151,46 @@ pub fn flash(port: &str, img: &Image, report: &mut dyn FnMut(f32)) -> Result<(),
         ResetBeforeOperation::DefaultReset,
         115_200,
     );
-    let mut flasher = Flasher::connect(conn, true, true, true, Some(Chip::Esp32), Some(FLASH_BAUD))
-        .map_err(|e| format!("could not reach the bootloader: {e}"))?;
+    Flasher::connect(conn, true, true, true, Some(Chip::Esp32), Some(FLASH_BAUD))
+        .map_err(|e| format!("could not reach the bootloader: {e}"))
+}
+
+/// Ask the bootloader what chip is on `port`, then reset the board back into its own firmware.
+/// Same rules as `flash`: off the UI thread, link paused.
+pub fn probe(port: &str) -> Result<Probe, String> {
+    let mut flasher = connect(port)?;
+    let d = flasher.device_info().map_err(|e| e.to_string())?;
+    let chip = match d.revision {
+        Some((major, minor)) => format!("{} rev {major}.{minor}", d.chip),
+        None => d.chip.to_string(),
+    };
+    let p = Probe {
+        chip,
+        flash: d.flash_size.to_string(),
+        mac: d.mac_address.unwrap_or_default(),
+    };
+    flasher
+        .connection()
+        .reset_after(true, Chip::Esp32)
+        .map_err(|e| format!("reset failed: {e}"))?;
+    Ok(p)
+}
+
+/// Write the image to the board on `port`; `erase` wipes the whole flash first (first install:
+/// whatever was on the board, its settings and files included, goes). Blocks for up to a minute;
+/// call it off the UI and engine threads, with the board link paused (the port must be free).
+pub fn flash(
+    port: &str,
+    img: &Image,
+    erase: bool,
+    report: &mut dyn FnMut(f32),
+) -> Result<(), String> {
+    let mut flasher = connect(port)?;
+    if erase {
+        flasher
+            .erase_flash()
+            .map_err(|e| format!("erasing failed: {e}"))?;
+    }
     let segments: Vec<Segment> = img
         .parts
         .iter()

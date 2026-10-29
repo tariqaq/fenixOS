@@ -82,7 +82,7 @@ export interface State {
   firmware_ok: boolean;
   apps: AppView[];
   bundled_firmware: string | null;
-  update: { stage: "writing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
+  update: { stage: "erasing" | "writing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
 }
 
 export type Page = "apps" | "board" | "settings";
@@ -118,6 +118,11 @@ export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirr
 /** Raw frame from the engine (see `mirror_frame` in main.rs). */
 export const mirrorFrame = (since: number) => invoke<ArrayBuffer>("mirror_frame", { since });
 export const updateBoard = () => invoke("update_board");
+export type Probe = { chip: string; flash: string; mac: string };
+export const probeBoard = () => invoke<Probe>("probe_board");
+export const installBoard = () => invoke("install_board");
+export const finishWelcome = (openMain: boolean) => invoke("finish_welcome", { openMain });
+export const showWelcome = () => invoke("show_welcome");
 export const clearUpdate = () => invoke("clear_update");
 export type PortItem = { name: string; product: string; board: boolean };
 export const listPorts = () => invoke<{ selected: string | null; ports: PortItem[] }>("list_ports");

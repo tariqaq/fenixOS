@@ -41,7 +41,7 @@
 
 <div class="scrim">
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="upd-title">
-    {#if u && (u.stage === "writing" || u.stage === "restarting")}
+    {#if u && (u.stage === "erasing" || u.stage === "writing" || u.stage === "restarting")}
       <Icon name="cpu" size={44} color="var(--accent)" />
       <h2 id="upd-title">Updating the board</h2>
       <p>Keep the board plugged in. It restarts on its own when done.</p>
@@ -49,7 +49,9 @@
         <div style="width: {u.percent}%"></div>
       </div>
       <p class="status">
-        <span>{u.stage === "writing" ? "Writing firmware…" : "Restarting the board…"}</span>
+        <span>
+          {u.stage === "erasing" ? "Erasing the board…" : u.stage === "writing" ? "Writing firmware…" : "Restarting the board…"}
+        </span>
         <span class="num">{u.percent}%</span>
       </p>
     {:else if u && u.stage === "done"}

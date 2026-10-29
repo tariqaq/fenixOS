@@ -137,6 +137,49 @@ fn set_port(
     engine.set_port(&app, port)
 }
 
+/// First run: what is on a board that does not answer as fenixOS (resets it into the bootloader).
+#[tauri::command]
+async fn probe_board(app: AppHandle) -> Result<flash::Probe, String> {
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || e.probe(&app))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// First run: erase the board and install the bundled fenixOS.
+#[tauri::command]
+fn install_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) -> Result<(), String> {
+    engine.inner().start_update(&app, true)
+}
+
+/// End the first-run experience: remember it, close its window, open the main one if asked.
+/// Async: on Windows a sync command that creates a webview blocks WebView2 and the new window
+/// stays black.
+#[tauri::command]
+async fn finish_welcome(app: AppHandle, open_main: bool) {
+    let engine = app.state::<Arc<Engine>>().inner().clone();
+    engine.with_apps(|a| {
+        a.cfg.welcome_done = true;
+        if let Err(e) = a.cfg.save() {
+            eprintln!("config: {e}");
+        }
+    });
+    // The welcome already showed the install finishing; the main window need not say it again.
+    engine.clear_update(&app);
+    if open_main {
+        open_window(&app);
+    }
+    if let Some(w) = app.get_webview_window("welcome") {
+        let _ = w.destroy();
+    }
+}
+
+/// Settings > About > Show welcome again.
+#[tauri::command]
+async fn show_welcome(app: AppHandle) {
+    welcome::open(&app);
+}
+
 /// Settings > Updates: the last check (the app checks once at start).
 #[tauri::command]
 fn get_app_update(updates: tauri::State<update::Updates>) -> update::AppUpdate {
@@ -193,7 +236,7 @@ fn mirror_touch(engine: tauri::State<Arc<Engine>>, x: u16, y: u16, down: bool) {
 /// Flash the bundled firmware (update dialog, Reinstall firmware).
 #[tauri::command]
 fn update_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) -> Result<(), String> {
-    engine.inner().start_update(&app)
+    engine.inner().start_update(&app, false)
 }
 
 #[tauri::command]
@@ -352,7 +395,11 @@ fn main() {
             set_port,
             get_app_update,
             check_app_update,
-            install_app_update
+            install_app_update,
+            probe_board,
+            install_board,
+            finish_welcome,
+            show_welcome
         ])
         .setup(move |app| {
             // Reached only by the first instance: `--quit` with nothing running is a no-op.
@@ -361,7 +408,8 @@ fn main() {
             }
             let logs = logs::Logs::new(local_dir().join("logs"));
             let engine = Engine::start(app.handle().clone(), logs);
-            let check = engine.with_apps(|a| a.cfg.check_updates);
+            let (check, welcome_done) =
+                engine.with_apps(|a| (a.cfg.check_updates, a.cfg.welcome_done));
             app.manage(engine);
             app.manage(update::Updates::new());
             if check {
@@ -372,7 +420,9 @@ fn main() {
             }
             tray::create(app.handle())?;
             // Created last, so every command it calls finds the managed state (PoC gotcha).
-            if std::env::args().any(|a| a == "--welcome") {
+            // First launch (or `--welcome`): the first-run experience instead of the main window.
+            // Autostart (`--tray`) never shows it.
+            if std::env::args().any(|a| a == "--welcome") || (!welcome_done && !tray_only) {
                 welcome::open(app.handle());
             } else if !tray_only {
                 open_window(app.handle());

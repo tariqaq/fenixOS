@@ -71,6 +71,8 @@ three.js 0.186.1, a lit PCB + glass test scene, 1280 × 800 at 1.25× scale, thi
 
 WebGL still works under `--disable-gpu`, but on the CPU. WebView2 shares one browser process, and so one set of args, per user-data folder, so the welcome window gets its own folder (`%LOCALAPPDATA%\fenixOS\webview-welcome`) with the GPU on; the main window keeps its lean args. Debug switch: `FENIX_OOTB_ARGS=lean` runs the welcome window with the lean args.
 
+P9 acceptance run (the full first-run flow, the real scene): 165 fps (the display rate) the whole way; 137 MB and 7 % CPU for the app while the welcome window plays; 68 MB once it closes and the main window opens (its WebView2 processes end with it).
+
 ## Debug knobs
 
 | Variable | Effect |
@@ -78,6 +80,9 @@ WebGL still works under `--disable-gpu`, but on the CPU. WebView2 shares one bro
 | `FENIX_REGEN=1` | `cargo test -p fenix-proto` rewrites the golden vectors (only after an intended wire change + proto version bump) |
 | `FENIX_REGISTRY=<folder>` | The PC app reads the app registry from a local folder (`tools/sample-app/build.ps1` makes one in `target/sample-registry`) |
 | `FENIX_FIRMWARE=<folder>` | The PC app flashes the firmware in this folder instead of its bundled resources |
+| `FENIX_OOTB_FPS=1` | The first-run window shows its frame rate in the bottom-right corner |
+| `FENIX_OOTB_ARGS=lean` | The first-run window uses the main window's GPU-off args (S8 comparison) |
+| `--welcome` (flag) | Open the first-run window instead of the main one, whatever `welcome_done` says |
 | `FENIX_DEBUG=1` | `fenix-link` prints the raw bytes it reads during the handshake |
 
 ## Gotchas found
@@ -86,6 +91,9 @@ WebGL still works under `--disable-gpu`, but on the CPU. WebView2 shares one bro
 
 - **Tauri IPC needs `connect-src ipc: http://ipc.localhost` in a custom CSP** (2026-10-29). Without it the webview cannot reach the IPC custom protocol and Tauri silently falls back to `postMessage`: plain commands still work, but a binary `tauri::ipc::Response` arrives as a plain array instead of an `ArrayBuffer` (the board mirror stayed black). Fixed in `app/src-tauri/tauri.conf.json`.
 - **A VERSION bump did not reach the firmware** (2026-10-29). `board/CMakeLists.txt` reads `VERSION` at configure time only, so `idf.py build` kept the old `PROJECT_VER`. Fixed: `VERSION` is now in `CMAKE_CONFIGURE_DEPENDS`, so a change re-runs CMake.
+- **A webview window created from a sync Tauri command stays black** (2026-10-29). On Windows, `finish_welcome` built the main window inside a sync command and WebView2 never painted it. Commands that create windows are `async` now.
+- **Flashing a port the link is probing: "Access is denied"** (2026-10-29). `Link::pause` takes effect after the current handshake try, up to 2.5 s on a board that does not answer, so the 500 ms wait was too short for a blank board. `flash::connect` retries opening the port for 4 s.
+- **Phosphor SVGs in a canvas** (2026-10-29). They already carry `fill="currentColor"` and no size: adding a second `fill` makes invalid XML (a broken image, and `drawImage` throws every frame), and without a size the image has no natural size. Swap `currentColor` and add `width`/`height`.
 - **Python on Windows writes CRLF in text mode** (2026-10-29). Edit scripts must open files with `newline="\n"`, or git warns about CRLF. A path like `\fenixOS` in a non-raw Python string turns `\f` into a form feed: use raw strings.
 
 From the FenixDeck PoC unless dated; still valid for fenixOS.

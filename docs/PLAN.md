@@ -207,6 +207,7 @@ docs/, pics/
   - After an update, the app offers to flash the matching firmware.
   - Wired in P8 (Settings > Updates, a quiet check at start); the key exists locally since P8, and P10 adds it to CI and tests a real release.
 - **Logs:** `%LOCALAPPDATA%\fenixOS\logs\`, rolling 3 × 1 MB, including board `LOG` frames.
+- **First-run window:** its own window and WebView2 data folder with the GPU on (S8), closed when the welcome ends; see §3.9.
 - **Plugins:** `tauri-plugin-single-instance` (a second launch opens the window; `--quit` quits the running one), `tauri-plugin-autostart` (off by default).
 
 ### 3.6 PC UI (Svelte 5)

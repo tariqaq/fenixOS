@@ -6,7 +6,7 @@
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 use tauri_plugin_updater::{Error, UpdaterExt};
 
 use crate::logs::Source;
@@ -35,7 +35,7 @@ impl Updates {
 
 fn set(app: &AppHandle, u: AppUpdate) {
     *app.state::<Updates>().0.lock().unwrap() = u.clone();
-    let _ = app.emit_to("main", "app_update", u);
+    crate::engine::emit_ui(app, "app_update", u);
 }
 
 fn log(app: &AppHandle, problem: bool, text: String) {

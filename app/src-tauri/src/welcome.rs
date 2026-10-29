@@ -13,10 +13,20 @@ pub fn open(app: &AppHandle) {
         let _ = w.set_focus();
         return;
     }
-    // S8 spike switch: FENIX_OOTB_ARGS=lean runs the welcome window with the main window's args.
+    // FENIX_OOTB_ARGS=lean runs the welcome window with the main window's args (S8 comparison).
     let lean = std::env::var("FENIX_OOTB_ARGS").is_ok_and(|v| v == "lean");
-    let dir = crate::local_dir().join(if lean { "webview-welcome-lean" } else { "webview-welcome" });
-    let r = WebviewWindowBuilder::new(app, "welcome", WebviewUrl::App("welcome.html".into()))
+    let dir = crate::local_dir().join(if lean {
+        "webview-welcome-lean"
+    } else {
+        "webview-welcome"
+    });
+    // FENIX_OOTB_FPS=1 shows the frame rate in a corner (S8 / P9 acceptance numbers).
+    let page = if std::env::var("FENIX_OOTB_FPS").is_ok_and(|v| v == "1") {
+        "welcome.html?fps"
+    } else {
+        "welcome.html"
+    };
+    let r = WebviewWindowBuilder::new(app, "welcome", WebviewUrl::App(page.into()))
         .title("Welcome to fenixOS")
         .inner_size(1280.0, 800.0)
         .min_inner_size(720.0, 520.0)

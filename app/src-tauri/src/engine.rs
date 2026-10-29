@@ -82,7 +82,7 @@ pub struct State {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Update {
-    /// `writing`, `restarting`, `done` or `failed`.
+    /// `erasing` (first install only), `writing`, `restarting`, `done` or `failed`.
     pub stage: String,
     pub percent: u8,
     pub error: String,
@@ -202,29 +202,63 @@ impl Engine {
         self.emit_state(app);
     }
 
-    /// Flash the bundled firmware to the board (update dialog, Reinstall firmware). Runs on its
-    /// own thread; progress arrives in `State::update`.
-    pub fn start_update(self: &Arc<Self>, app: &AppHandle) -> Result<(), String> {
+    /// The port to flash or probe: the connected board, else the first CH340 port that did not
+    /// answer as fenixOS.
+    fn target_port(&self) -> Result<String, String> {
+        let s = self.state.lock().unwrap();
+        s.board
+            .as_ref()
+            .map(|b| b.port.clone())
+            .or_else(|| s.silent.first().map(|x| x.port.clone()))
+            .ok_or_else(|| "no board found".into())
+    }
+
+    /// First run: ask the bootloader of a board that does not answer as fenixOS what it is.
+    /// Blocks for a few seconds (call it from an async command).
+    pub fn probe(&self, app: &AppHandle) -> Result<crate::flash::Probe, String> {
+        let port = self.target_port()?;
+        self.log(
+            app,
+            Source::Pc,
+            false,
+            format!("Checking the board on {port}"),
+        );
+        self.link.pause(true);
+        thread::sleep(Duration::from_millis(500)); // the link thread closes the port
+        let r = crate::flash::probe(&port);
+        self.link.pause(false);
+        match &r {
+            Ok(p) => self.log(
+                app,
+                Source::Pc,
+                false,
+                format!("{port}: {}, {} flash, MAC {}", p.chip, p.flash, p.mac),
+            ),
+            Err(e) => self.log(app, Source::Pc, true, format!("Board check failed: {e}")),
+        }
+        r
+    }
+
+    /// Flash the bundled firmware to the board (update dialog, Reinstall firmware; `erase` for the
+    /// first install). Runs on its own thread; progress arrives in `State::update`.
+    pub fn start_update(self: &Arc<Self>, app: &AppHandle, erase: bool) -> Result<(), String> {
         let port = {
             let s = self.state.lock().unwrap();
             if s.update
                 .as_ref()
-                .is_some_and(|u| u.stage == "writing" || u.stage == "restarting")
+                .is_some_and(|u| u.stage != "done" && u.stage != "failed")
             {
                 return Err("an update is already running".into());
             }
-            s.board
-                .as_ref()
-                .map(|b| b.port.clone())
-                .or_else(|| s.silent.first().map(|x| x.port.clone()))
-                .ok_or("no board found")?
+            drop(s);
+            self.target_port()?
         };
         let dir = self
             .fw_dir
             .clone()
             .ok_or("this app has no bundled firmware")?;
         let img = crate::flash::load(&dir)?;
-        self.set_update(app, "writing", 0, "");
+        self.set_update(app, if erase { "erasing" } else { "writing" }, 0, "");
         *self.update_started.lock().unwrap() = Some(Instant::now());
         let (me, app) = (self.clone(), app.clone());
         thread::Builder::new()
@@ -239,7 +273,7 @@ impl Engine {
                 me.link.pause(true);
                 thread::sleep(Duration::from_millis(500)); // the link thread closes the port
                 let mut last = 0u8;
-                let r = crate::flash::flash(&port, &img, &mut |f| {
+                let r = crate::flash::flash(&port, &img, erase, &mut |f| {
                     let pct = (f * 100.0).clamp(0.0, 100.0) as u8;
                     if pct != last {
                         last = pct;
@@ -275,9 +309,7 @@ impl Engine {
     fn emit_state(&self, app: &AppHandle) {
         let snap = self.snapshot();
         crate::tray::update(app, &snap);
-        if window_open(app) {
-            let _ = app.emit_to("main", "state", snap);
-        }
+        emit_ui(app, "state", snap);
     }
 
     /// Hand a change to the engine thread.
@@ -312,9 +344,7 @@ impl Engine {
 
     pub fn log(&self, app: &AppHandle, source: Source, problem: bool, text: impl Into<String>) {
         let line = self.logs.add(source, problem, text);
-        if window_open(app) {
-            let _ = app.emit_to("main", "log", line);
-        }
+        emit_ui(app, "log", line);
     }
 
     fn run(self: Arc<Self>, app: AppHandle) {
@@ -561,8 +591,13 @@ impl Engine {
     }
 }
 
-pub fn window_open(app: &AppHandle) -> bool {
-    app.get_webview_window("main").is_some()
+/// Send an event to every open fenixOS window (main and the first-run welcome).
+pub fn emit_ui<S: Serialize + Clone>(app: &AppHandle, event: &str, payload: S) {
+    for label in ["main", "welcome"] {
+        if app.get_webview_window(label).is_some() {
+            let _ = app.emit_to(label, event, payload.clone());
+        }
+    }
 }
 
 /// `esp_reset_reason_t` in plain words.

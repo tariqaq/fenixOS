@@ -56,6 +56,11 @@
    "name": "svelte",
    "version": "5.57.3",
    "license": "MIT"
+  },
+  {
+   "name": "three",
+   "version": "0.186.1",
+   "license": "MIT"
   }
  ],
  "rust": [

@@ -1,8 +1,11 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "The main window: fenixOS commands and window controls for the custom title bar.",
-  "windows": ["main"],
+  "description": "The main and first-run windows: fenixOS commands and window controls for the custom title bar.",
+  "windows": [
+    "main",
+    "welcome"
+  ],
   "permissions": [
     "core:default",
     "core:window:allow-minimize",

@@ -1,6 +1,5 @@
 <script lang="ts">
   // Artboard 13 (PcSettings): Start with Windows, connection port, app updates, about.
-  // "Show welcome again" joins About with the first-run experience (P9).
   import { onDestroy } from "svelte";
   import Icon from "../lib/Icon.svelte";
   import LicensesSheet from "../lib/LicensesSheet.svelte";
@@ -14,6 +13,7 @@
     onAppUpdate,
     setAutostart,
     setPort,
+    showWelcome,
     type AppUpdate,
     type PortItem,
   } from "../lib/api";
@@ -159,6 +159,7 @@
 
   <h2 class="section-title">About</h2>
   <div class="group">
+    <button type="button" class="row" onclick={() => showWelcome()}>Show welcome again</button>
     <a class="row" href="https://github.com/tariqaq/fenixOS">Source code on GitHub</a>
     <button type="button" class="row" onclick={() => (licenses = true)}>Open-source licenses</button>
   </div>
