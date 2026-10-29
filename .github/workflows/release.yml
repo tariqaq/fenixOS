@@ -52,7 +52,7 @@ jobs:
       - run: python tools/bundle_firmware.py
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v5
         with:
           version: 12.15.0
       - uses: actions/setup-node@v5
