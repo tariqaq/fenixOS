@@ -139,6 +139,14 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 8. Updater test against the real release passed 2026-10-29 16:25: the 0.0.9 client (`target/updtest/fenixos-0.0.9.exe`) logged "fenixOS v0.1.0 is available" at start; Install (invoked over WebView2 CDP) downloaded from GitHub, verified the signature, installed per user, and the new v0.1.0 started from `%LOCALAPPDATA%enixOS` 4 s later (uninstall entry DisplayVersion 0.1.0). The old app closed the board link before exiting ("Board disconnected (stopped)", `Link::shutdown` in the updater hook)
   - [x] 9. Clean install from the GitHub release passed 2026-10-29 16:27: board NVS (touch calibration) and `config.json` backed up; uninstall `/S`, config removed, board flash erased (first 128 KB read back all 0xFF); installer downloaded with `gh release download`, SHA-256 matches GitHub's digest (`bf84fc0c...a0e5f0`); `/S` install, no UAC; welcome showed "Install fenixOS on this board? ESP32 REV 3.1 · 4MB flash · COM9", one confirm, firmware in 25 s, main window "Board connected · USB on COM9 · fenixOS v0.1.0", board on Home. Then NVS and config restored; the Sample app went back on the board (0.1 s). The released app stays installed and running
 
+- [~] P11 Connect screen in 3D (user request 2026-10-29: "show that cool 3d animation but unplugged version, and when replugged play the same plug in animation from the welcome screen then smoothly fade into the app dashboard"). Plan:
+  - [ ] 1. `BoardScene` options: frame cap and pixel-ratio cap (the main window runs WebView2 with the GPU off, so WebGL is software: S8 measured 40 % CPU uncapped), start straight into the "waiting" pose
+  - [ ] 2. `Connect.svelte`: the scene full-page with the cable hovering beside the USB-C port, copy bottom-left like the welcome ("Plug in your board", driver link); the "did not answer" card stays
+  - [ ] 3. `App.svelte`: on connect, keep Connect up: plug seats with the port glow, the model's screen boots, then a 600 ms cross-fade to the dashboard. A board already connected at start goes straight to the dashboard. Reduced motion: cuts and a plain fade
+  - [ ] 4. Measure (`tools/measure_app.ps1`) while waiting; pick the cap, or GPU args for the main window if software WebGL costs too much; log in `docs/decisions.md`
+  - [ ] 5. Test: Reboot board from the app (disconnect, then reconnect) drives the whole flow; screenshots
+  - [ ] 6. Docs (PLAN artboard 7, decisions, toolchain if needed), sweep, commit
+
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
