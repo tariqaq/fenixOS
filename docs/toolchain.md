@@ -58,6 +58,19 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 
 More commands are added here as each phase lands.
 
+## PC spike results
+
+### S8: WebGL for the first-run window (2026-10-29)
+
+three.js 0.186.1, a lit PCB + glass test scene, 1280 × 800 at 1.25× scale, this laptop (RTX 4060 Laptop GPU), release build, no main window open. Memory is the private working set of `fenixos.exe` and its WebView2 processes (`tools/measure_app.ps1`).
+
+| WebView2 args | Renderer | fps | CPU (of 16 threads) | Memory |
+|---|---|---|---|---|
+| Main window's lean args (`--disable-gpu --in-process-gpu`) | WARP (Microsoft Basic Render Driver, software) | 122 | 40 % | 184 MB |
+| Same without `--disable-gpu --in-process-gpu` | ANGLE D3D11 on the GPU | 165 (display rate) | 1.1 % | 89 MB |
+
+WebGL still works under `--disable-gpu`, but on the CPU. WebView2 shares one browser process, and so one set of args, per user-data folder, so the welcome window gets its own folder (`%LOCALAPPDATA%\fenixOS\webview-welcome`) with the GPU on; the main window keeps its lean args. Debug switch: `FENIX_OOTB_ARGS=lean` runs the welcome window with the lean args.
+
 ## Debug knobs
 
 | Variable | Effect |

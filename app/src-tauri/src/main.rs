@@ -12,6 +12,7 @@ mod registry;
 mod sidecar;
 mod tray;
 mod update;
+mod welcome;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -371,7 +372,9 @@ fn main() {
             }
             tray::create(app.handle())?;
             // Created last, so every command it calls finds the managed state (PoC gotcha).
-            if !tray_only {
+            if std::env::args().any(|a| a == "--welcome") {
+                welcome::open(app.handle());
+            } else if !tray_only {
                 open_window(app.handle());
             }
             Ok(())
