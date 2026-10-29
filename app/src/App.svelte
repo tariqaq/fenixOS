@@ -39,7 +39,7 @@
       <Sidebar bind:page board={snap.board} />
       <main>
         {#if page === "apps"}
-          <Apps />
+          <Apps apps={snap.apps} />
         {:else if page === "board"}
           <Board board={snap.board} appVersion={snap.app_version} onlogs={() => (logs = true)} />
         {:else}

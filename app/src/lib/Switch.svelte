@@ -1,11 +1,19 @@
 <script lang="ts">
-  // iOS-style switch, 51 × 31 (PcSettings, PcDashboard).
+  // iOS-style switch, 51 × 31 (PcSettings, PcAppSettings). `tile`: the PcDashboard variant on a
+  // coloured tile (white 38 % track when on, #48484A when off).
   let {
     checked,
     label,
     labelledby,
+    tile = false,
     onchange,
-  }: { checked: boolean; label?: string; labelledby?: string; onchange: (v: boolean) => void } = $props();
+  }: {
+    checked: boolean;
+    label?: string;
+    labelledby?: string;
+    tile?: boolean;
+    onchange: (v: boolean) => void;
+  } = $props();
 </script>
 
 <button
@@ -15,6 +23,7 @@
   aria-label={label}
   aria-labelledby={labelledby}
   class:on={checked}
+  class:tile
   onclick={() => onchange(!checked)}
 >
   <span aria-hidden="true"></span>
@@ -35,6 +44,12 @@
   }
   button.on {
     background: var(--success);
+  }
+  button.tile {
+    background: #48484a;
+  }
+  button.tile.on {
+    background: rgba(255, 255, 255, 0.38);
   }
   span {
     width: 27px;

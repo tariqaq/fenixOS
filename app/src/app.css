@@ -117,6 +117,20 @@ button.row:last-child {
   letter-spacing: 0.02em;
 }
 
+/* Thin dark scrollbars (WebView2 draws light Windows ones otherwise). */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
