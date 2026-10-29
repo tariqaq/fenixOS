@@ -147,7 +147,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 ## Open (needs user input or flashing)
 
 - [x] Touch corner coverage (2026-10-29, user at the board): the default range was mirrored left to right; fixed (`y_min`/`y_max` reversed), confirmed by the user. `docs/board-info.md` "Hands-on review"
-- [ ] User: install WCH CH341SER 3.9.2024.9 (needs admin; `docs/board-info.md` Version status). Until then: do not force-kill fenixOS programs holding COM9, quit the app before unplugging
+- [x] CH340 driver updated 2026-10-29 16:22 (user accepted UAC): WCH CH341SER 4.0.2026.2 on COM9, 2011 driver `oem160.inf` deleted, link and bench OK (`docs/board-info.md` Version status)
 - [ ] Physical USB replug with the PC app running (P7 reconnect was measured with a board reboot over the link)
 - [~] Tap-to-wake from Shut down: works since the touch-bus pins are held in sleep (user confirmed); the follow-up "touch dead after wake" is fixed and flashed. LED-off-in-sleep fix flashed 15:23; the board then woke from sleep by a tap (app log 15:56: boot reason "wake from sleep"). Remote test 16:05: Session > Shut down logs "shutting down (deep sleep, tap to wake)" and the link goes silent (no HELLO_ACK). Board left asleep with no PC app running. Still to check by eye: the LED is off in sleep, a tap wakes it, and the clock is still right
 - [ ] RGB LED levels (S6): connect pulse looks right, not too bright
