@@ -11,7 +11,8 @@ export interface Board {
   height: number;
   rotation: number;
   mac: string;
-  uptime_s: number;
+  /** When the board booted, Unix ms. */
+  booted_at_ms: number;
   free_heap: number;
   min_heap: number;
   fps_x10: number;
@@ -80,6 +81,8 @@ export interface State {
   app_version: string;
   firmware_ok: boolean;
   apps: AppView[];
+  bundled_firmware: string | null;
+  update: { stage: "writing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
 }
 
 export type Page = "apps" | "board" | "settings";
@@ -114,6 +117,8 @@ export const mirrorStop = () => invoke("mirror_stop");
 export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirror_touch", { x, y, down });
 /** Raw frame from the engine (see `mirror_frame` in main.rs). */
 export const mirrorFrame = (since: number) => invoke<ArrayBuffer>("mirror_frame", { since });
+export const updateBoard = () => invoke("update_board");
+export const clearUpdate = () => invoke("clear_update");
 export const listRegistry = () => invoke<RegistryApp[]>("list_registry");
 export const addApp = (id: string) => invoke("add_app", { id });
 export const setAppEnabled = (id: string, on: boolean) => invoke("set_app_enabled", { id, on });

@@ -51,6 +51,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - App packages: `fenix-pkg build <dir> [-o out.fxp]`, `fenix-pkg inspect <file>`; on the board: `fenix install <file.fxp>`, `fenix list`, `fenix remove <id>`, `fenix set <file.fxp> <bind>=<value>...` (acts as the app's PC half), `fenix host <id> on|off`. `fenix tap` and `fenix swipe` print what the board sends back (EVENT, BOARD_STATE). C++ reader test: `pwsh board/components/fenix_pkg/test/run.ps1`
 
 - PC app: `cd app; pnpm install; pnpm tauri dev` (hot reload) or `pnpm tauri build --no-bundle` (release exe at `target/release/fenixos.exe`). Flags: `--tray` starts without a window (autostart uses it), `--quit` quits a running instance. Logs: `%LOCALAPPDATA%\fenixOS\logs\fenixos.log`
+- Bundle the board firmware into the PC app: `python tools/bundle_firmware.py` after `board/idf.ps1 build` (copies the bins named in `board/build/flasher_args.json` to `app/src-tauri/resources/firmware/` with `firmware.json`: version + offset/size/sha256 per file; refuses a build whose version differs from `VERSION`). The bins are git-ignored; release CI (P10) runs this before `tauri build`. The update dialog and Reinstall firmware flash exactly these
 - PC app footprint: `pwsh tools/measure_app.ps1 [-Seconds 10]` (private working set + CPU over `fenixos.exe` and its own WebView2 processes)
 
 More commands are added here as each phase lands.
@@ -60,6 +61,8 @@ More commands are added here as each phase lands.
 | Variable | Effect |
 |---|---|
 | `FENIX_REGEN=1` | `cargo test -p fenix-proto` rewrites the golden vectors (only after an intended wire change + proto version bump) |
+| `FENIX_REGISTRY=<folder>` | The PC app reads the app registry from a local folder (`tools/sample-app/build.ps1` makes one in `target/sample-registry`) |
+| `FENIX_FIRMWARE=<folder>` | The PC app flashes the firmware in this folder instead of its bundled resources |
 | `FENIX_DEBUG=1` | `fenix-link` prints the raw bytes it reads during the handshake |
 
 ## Gotchas found
@@ -67,6 +70,7 @@ More commands are added here as each phase lands.
 - **`board/sdkconfig` does not pick up later edits to `sdkconfig.defaults`** (2026-10-29). IDF applies defaults only when `sdkconfig` is created. After changing `sdkconfig.defaults`, delete `board/sdkconfig` (it is git-ignored) and build again. A stale one cost half the UI frame rate (`docs/board-info.md`, Rendering speed).
 
 - **Tauri IPC needs `connect-src ipc: http://ipc.localhost` in a custom CSP** (2026-10-29). Without it the webview cannot reach the IPC custom protocol and Tauri silently falls back to `postMessage`: plain commands still work, but a binary `tauri::ipc::Response` arrives as a plain array instead of an `ArrayBuffer` (the board mirror stayed black). Fixed in `app/src-tauri/tauri.conf.json`.
+- **A VERSION bump did not reach the firmware** (2026-10-29). `board/CMakeLists.txt` reads `VERSION` at configure time only, so `idf.py build` kept the old `PROJECT_VER`. Fixed: `VERSION` is now in `CMAKE_CONFIGURE_DEPENDS`, so a change re-runs CMake.
 - **Python on Windows writes CRLF in text mode** (2026-10-29). Edit scripts must open files with `newline="\n"`, or git warns about CRLF. A path like `\fenixOS` in a non-raw Python string turns `\f` into a form feed: use raw strings.
 
 From the FenixDeck PoC unless dated; still valid for fenixOS.

@@ -5,19 +5,20 @@
   import Mirror from "../lib/Mirror.svelte";
   import { rebootBoard, uptime, type Board } from "../lib/api";
 
-  let { board, appVersion, onlogs }: { board: Board; appVersion: string; onlogs: () => void } = $props();
+  let {
+    board,
+    appVersion,
+    onlogs,
+    onreinstall,
+  }: { board: Board; appVersion: string; onlogs: () => void; onreinstall: () => void } = $props();
 
-  // The uptime ticks locally between engine updates.
-  let base = $state({ at: Date.now(), up: 0 });
-  $effect(() => {
-    base = { at: Date.now(), up: board.uptime_s };
-  });
+  // The uptime ticks locally from the boot time the engine worked out at the handshake.
   let now = $state(Date.now());
   $effect(() => {
     const t = setInterval(() => (now = Date.now()), 30000);
     return () => clearInterval(t);
   });
-  const up = $derived(base.up + Math.floor((now - base.at) / 1000));
+  const up = $derived(Math.max(0, Math.floor((now - board.booted_at_ms) / 1000)));
   const matches = $derived(board.firmware === appVersion);
 </script>
 
@@ -45,6 +46,10 @@
         <button type="button" class="row" onclick={() => rebootBoard()}>
           <Icon name="arrow-clockwise" size={18} color="var(--accent)" />
           <span>Reboot board</span>
+        </button>
+        <button type="button" class="row" onclick={onreinstall}>
+          <Icon name="download-simple" size={18} color="var(--accent)" />
+          <span>Reinstall firmware</span>
         </button>
         <button type="button" class="row" onclick={onlogs}>
           <Icon name="list-bullets" size={18} color="var(--accent)" />

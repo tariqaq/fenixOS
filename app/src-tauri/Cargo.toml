@@ -19,6 +19,8 @@ fenix-link.workspace = true
 fenix-pkg.workspace = true
 fenix-sdk.workspace = true
 sha2 = "0.10"
+espflash = { version = "=4.6.0", default-features = false, features = ["serialport"] }
+serialport = { version = "4.10.1", default-features = false }
 ureq = "3"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",

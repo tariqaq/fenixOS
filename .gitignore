@@ -20,7 +20,8 @@ node_modules/
 /app/dist/
 /app/src-tauri/target/
 /app/src-tauri/gen/
-/app/src-tauri/resources/firmware/
+/app/src-tauri/resources/firmware/*.bin
+/app/src-tauri/resources/firmware/firmware.json
 *.log
 /board/spikes/*/build/
 /board/spikes/*/sdkconfig

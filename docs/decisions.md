@@ -129,3 +129,7 @@ Consequences:
 | Apps on the board that the PC does not have switched on | Keep / **remove** | **Remove** at reconcile: the PC is the source of truth (PLAN §3.5). Apps put on by `fenix install` during development are removed when the app connects |
 | Mirror fps chip | Board rects per second / **pictures shown** | **New pictures the PC showed per second** (max 10): the stream has no frame marker, and a frame is many rects |
 | Clicks on the mirror | View only / **touches** | **Touches** (`TOUCH` messages): a press is held ≥ 100 ms because the board keeps only the latest touch state |
+| Firmware writes | Full image / **only changed regions** | **Only changed regions** (espflash `skip`, MD5 per region): a same-version Reinstall takes ~10 s instead of ~23 s; every written region is verified |
+| Flash baud | 115200 / 921600 / **460800** | **460800**, the speed `board/idf.ps1` uses and proven on the CH340C; a full update takes ~23 s |
+| Firmware in the PC app | Download on demand / **bundled resource** | **Bundled** (`resources/firmware`, ~0.85 MB): the board and the app always match without a network, as PLAN §3.8 lockstep needs |
+| Mismatch "Later" | Ask again on every state change / **until next connect** | **Until the board connects again**: no nagging while it stays plugged in; the Board page still offers Reinstall |

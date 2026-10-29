@@ -6,6 +6,7 @@
   import TitleBar from "./lib/TitleBar.svelte";
   import Sidebar from "./lib/Sidebar.svelte";
   import LogSheet from "./lib/LogSheet.svelte";
+  import UpdateDialog from "./lib/UpdateDialog.svelte";
   import Connect from "./pages/Connect.svelte";
   import Apps from "./pages/Apps.svelte";
   import Board from "./pages/Board.svelte";
@@ -15,6 +16,19 @@
   let snap = $state<State | null>(null);
   let page = $state<Page>("apps");
   let logs = $state(false);
+  // Update dialog: "Later" hides the mismatch prompt until the board connects again.
+  let later = $state(false);
+  let reinstall = $state(false);
+  $effect(() => {
+    if (snap && snap.status !== "connected") later = false;
+  });
+  const dialog = $derived.by(() => {
+    if (!snap) return null;
+    if (snap.update) return "progress" as const;
+    if (reinstall) return "reinstall" as const;
+    if (snap.status === "connected" && !snap.firmware_ok && !later) return "mismatch" as const;
+    return null;
+  });
 
   getState().then((s) => (snap = s));
   const stop = onState((s) => (snap = s));
@@ -41,7 +55,12 @@
         {#if page === "apps"}
           <Apps apps={snap.apps} />
         {:else if page === "board"}
-          <Board board={snap.board} appVersion={snap.app_version} onlogs={() => (logs = true)} />
+          <Board
+            board={snap.board}
+            appVersion={snap.app_version}
+            onlogs={() => (logs = true)}
+            onreinstall={() => (reinstall = true)}
+          />
         {:else}
           <Settings appVersion={snap.app_version} />
         {/if}
@@ -52,6 +71,16 @@
   {/if}
   {#if logs}
     <LogSheet onclose={() => (logs = false)} />
+  {/if}
+  {#if snap && dialog}
+    <UpdateDialog
+      {snap}
+      mode={dialog}
+      onclose={() => {
+        if (dialog === "mismatch") later = true;
+        reinstall = false;
+      }}
+    />
   {/if}
 </div>
 

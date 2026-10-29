@@ -47,8 +47,8 @@ pub struct Board {
     pub height: u16,
     pub rotation: u8,
     pub mac: String,
-    /// Uptime at the handshake plus the time since, so the UI can count on its own.
-    pub uptime_s: u64,
+    /// When the board booted, in Unix ms (PC clock), so the UI counts the uptime on its own.
+    pub booted_at_ms: u64,
     pub free_heap: u32,
     pub min_heap: u32,
     pub fps_x10: u16,
@@ -74,23 +74,38 @@ pub struct State {
     /// Board firmware equals this app's version (PLAN §3.8); false while searching.
     pub firmware_ok: bool,
     pub apps: Vec<AppView>,
+    /// Version of the firmware bundled with this app, if any (`resources/firmware`).
+    pub bundled_firmware: Option<String>,
+    /// A firmware update in progress or just finished (artboard 12).
+    pub update: Option<Update>,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Update {
+    /// `writing`, `restarting`, `done` or `failed`.
+    pub stage: String,
+    pub percent: u8,
+    pub error: String,
 }
 
 pub struct Engine {
     state: Mutex<State>,
     pub logs: Logs,
     link: Link,
-    connected_at: Mutex<Option<(Instant, u32)>>,
     apps: Mutex<Apps>,
     inbox: Mutex<Sender<Cmd>>,
     inbox_rx: Mutex<Option<Receiver<Cmd>>>,
     /// The registry as last read by Add app.
     pub registry: Mutex<Vec<Manifest>>,
     pub mirror: Mutex<Mirror>,
+    fw_dir: Option<std::path::PathBuf>,
+    update_started: Mutex<Option<Instant>>,
 }
 
 impl Engine {
     pub fn start(app: AppHandle, logs: Logs) -> Arc<Engine> {
+        let fw_dir = crate::flash::dir(app.path().resource_dir().ok());
+        let bundled_firmware = fw_dir.as_deref().and_then(crate::flash::bundled_version);
         let (tx, rx) = mpsc::channel();
         let cfg = crate::config::Config::load();
         let link = Link::spawn(LinkOptions {
@@ -106,10 +121,11 @@ impl Engine {
                 app_version: env!("CARGO_PKG_VERSION").into(),
                 firmware_ok: false,
                 apps: apps.views(),
+                bundled_firmware,
+                update: None,
             }),
             logs,
             link,
-            connected_at: Mutex::new(None),
             apps: Mutex::new(apps),
             inbox: Mutex::new(tx),
             inbox_rx: Mutex::new(Some(rx)),
@@ -120,6 +136,8 @@ impl Engine {
                 on: false,
                 last_poll: Instant::now(),
             }),
+            fw_dir,
+            update_started: Mutex::new(None),
         });
         engine.log(
             &app,
@@ -136,11 +154,7 @@ impl Engine {
     }
 
     pub fn snapshot(&self) -> State {
-        let mut s = self.state.lock().unwrap().clone();
-        if let (Some(b), Some((at, up))) = (s.board.as_mut(), *self.connected_at.lock().unwrap()) {
-            b.uptime_s = up as u64 + at.elapsed().as_secs();
-        }
-        s
+        self.state.lock().unwrap().clone()
     }
 
     pub fn send(&self, m: Msg) {
@@ -163,6 +177,106 @@ impl Engine {
         if m.on {
             m.on = false;
             self.link.send(Msg::StreamStop);
+        }
+    }
+
+    fn set_update(&self, app: &AppHandle, stage: &str, percent: u8, error: &str) {
+        self.state.lock().unwrap().update = Some(Update {
+            stage: stage.into(),
+            percent,
+            error: error.into(),
+        });
+        self.emit_state(app);
+    }
+
+    /// Forget a finished or failed update (the dialog was closed).
+    pub fn clear_update(&self, app: &AppHandle) {
+        let mut s = self.state.lock().unwrap();
+        if s.update
+            .as_ref()
+            .is_some_and(|u| u.stage == "done" || u.stage == "failed")
+        {
+            s.update = None;
+        }
+        drop(s);
+        self.emit_state(app);
+    }
+
+    /// Flash the bundled firmware to the board (update dialog, Reinstall firmware). Runs on its
+    /// own thread; progress arrives in `State::update`.
+    pub fn start_update(self: &Arc<Self>, app: &AppHandle) -> Result<(), String> {
+        let port = {
+            let s = self.state.lock().unwrap();
+            if s.update
+                .as_ref()
+                .is_some_and(|u| u.stage == "writing" || u.stage == "restarting")
+            {
+                return Err("an update is already running".into());
+            }
+            s.board
+                .as_ref()
+                .map(|b| b.port.clone())
+                .or_else(|| s.silent.first().map(|x| x.port.clone()))
+                .ok_or("no board found")?
+        };
+        let dir = self
+            .fw_dir
+            .clone()
+            .ok_or("this app has no bundled firmware")?;
+        let img = crate::flash::load(&dir)?;
+        self.set_update(app, "writing", 0, "");
+        *self.update_started.lock().unwrap() = Some(Instant::now());
+        let (me, app) = (self.clone(), app.clone());
+        thread::Builder::new()
+            .name("fenix-flash".into())
+            .spawn(move || {
+                me.log(
+                    &app,
+                    Source::Pc,
+                    false,
+                    format!("Updating the board to fenixOS v{} on {port}", img.version),
+                );
+                me.link.pause(true);
+                thread::sleep(Duration::from_millis(500)); // the link thread closes the port
+                let mut last = 0u8;
+                let r = crate::flash::flash(&port, &img, &mut |f| {
+                    let pct = (f * 100.0).clamp(0.0, 100.0) as u8;
+                    if pct != last {
+                        last = pct;
+                        me.set_update(&app, "writing", pct, "");
+                    }
+                });
+                match r {
+                    Ok(()) => {
+                        me.log(
+                            &app,
+                            Source::Pc,
+                            false,
+                            "Firmware written; waiting for the board to restart",
+                        );
+                        me.set_update(&app, "restarting", 100, "");
+                    }
+                    Err(e) => {
+                        me.log(
+                            &app,
+                            Source::Pc,
+                            true,
+                            format!("Firmware update failed: {e}"),
+                        );
+                        me.set_update(&app, "failed", last, &e);
+                    }
+                }
+                me.link.pause(false);
+            })
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    fn emit_state(&self, app: &AppHandle) {
+        let snap = self.snapshot();
+        crate::tray::update(app, &snap);
+        if window_open(app) {
+            let _ = app.emit_to("main", "state", snap);
         }
     }
 
@@ -222,10 +336,7 @@ impl Engine {
             if changed {
                 let views = self.apps.lock().unwrap().views();
                 self.state.lock().unwrap().apps = views;
-                crate::tray::update(&app, &self.snapshot());
-                if window_open(&app) {
-                    let _ = app.emit_to("main", "state", self.snapshot());
-                }
+                self.emit_state(&app);
             }
         }
     }
@@ -234,6 +345,46 @@ impl Engine {
         let lines = std::mem::take(&mut self.apps.lock().unwrap().logs);
         for (source, problem, text) in lines {
             self.log(app, source, problem, text);
+        }
+    }
+
+    /// The board came back after a flash: check it now runs the bundled version.
+    fn finish_update(&self, app: &AppHandle, fw: &str) {
+        let mut s = self.state.lock().unwrap();
+        if !s.update.as_ref().is_some_and(|u| u.stage == "restarting") {
+            return;
+        }
+        let secs = self
+            .update_started
+            .lock()
+            .unwrap()
+            .map_or(0.0, |t| t.elapsed().as_secs_f32());
+        let ok = s.bundled_firmware.as_deref() == Some(fw);
+        let error = if ok {
+            String::new()
+        } else {
+            format!("the board still reports v{fw}")
+        };
+        s.update = Some(Update {
+            stage: if ok { "done" } else { "failed" }.into(),
+            percent: 100,
+            error: error.clone(),
+        });
+        drop(s);
+        if ok {
+            self.log(
+                app,
+                Source::Pc,
+                false,
+                format!("Board updated to fenixOS v{fw} in {secs:.0} s"),
+            );
+        } else {
+            self.log(
+                app,
+                Source::Pc,
+                true,
+                format!("Firmware update failed: {error}"),
+            );
         }
     }
 
@@ -252,7 +403,9 @@ impl Engine {
             Event::Connected { port, info } => {
                 let fw = format!("{}.{}.{}", info.fw.0, info.fw.1, info.fw.2);
                 let firmware_ok = fw == env!("CARGO_PKG_VERSION");
-                *self.connected_at.lock().unwrap() = Some((Instant::now(), info.uptime_s));
+                let now_ms = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_or(0, |d| d.as_millis() as u64);
                 {
                     let mut s = self.state.lock().unwrap();
                     s.status = Status::Connected;
@@ -271,7 +424,7 @@ impl Engine {
                             .map(|b| format!("{b:02x}"))
                             .collect::<Vec<_>>()
                             .join(":"),
-                        uptime_s: info.uptime_s as u64,
+                        booted_at_ms: now_ms.saturating_sub(info.uptime_s as u64 * 1000),
                         free_heap: info.free_heap,
                         min_heap: info.free_heap,
                         fps_x10: 0,
@@ -293,6 +446,7 @@ impl Engine {
                     ),
                 );
                 self.sync_time(app);
+                self.finish_update(app, &fw);
                 self.apps.lock().unwrap().board_connected(firmware_ok);
                 self.mirror.lock().unwrap().on = false;
                 true
@@ -308,10 +462,10 @@ impl Engine {
                     s.board = None;
                     was
                 };
-                *self.connected_at.lock().unwrap() = None;
                 if was {
                     // A restart is not a problem by itself: the next boot line says why it restarted.
-                    let problem = reason != "board restarted";
+                    // "paused": the link let go of the port for a firmware update.
+                    let problem = reason != "board restarted" && reason != "paused";
                     self.log(
                         app,
                         Source::Pc,

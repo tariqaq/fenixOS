@@ -6,6 +6,7 @@
 mod apps;
 mod config;
 mod engine;
+mod flash;
 mod logs;
 mod registry;
 mod sidecar;
@@ -121,6 +122,17 @@ fn mirror_stop(engine: tauri::State<Arc<Engine>>) {
 #[tauri::command]
 fn mirror_touch(engine: tauri::State<Arc<Engine>>, x: u16, y: u16, down: bool) {
     engine.send(fenix_proto::Msg::Touch { x, y, down });
+}
+
+/// Flash the bundled firmware (update dialog, Reinstall firmware).
+#[tauri::command]
+fn update_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) -> Result<(), String> {
+    engine.inner().start_update(&app)
+}
+
+#[tauri::command]
+fn clear_update(app: AppHandle, engine: tauri::State<Arc<Engine>>) {
+    engine.clear_update(&app);
 }
 
 /// One registry app for Add app.
@@ -266,7 +278,9 @@ fn main() {
             remove_app,
             mirror_frame,
             mirror_stop,
-            mirror_touch
+            mirror_touch,
+            update_board,
+            clear_update
         ])
         .setup(move |app| {
             // Reached only by the first instance: `--quit` with nothing running is a no-op.
