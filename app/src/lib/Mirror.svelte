@@ -1,12 +1,12 @@
 <script lang="ts">
-  // Live board screen (PcBoard, artboard 11). Polls the engine for frames at up to 10 fps while
-  // shown; the engine stops the board's stream on its own once polling ends. Clicks on the
-  // picture are sent to the board as touches.
+  // Live board screen (PcBoard, artboard 11). Off until the user starts it (P13): then it polls
+  // the engine for frames at up to 10 fps, and the engine stops the board's stream on its own
+  // once polling ends. Clicks on the picture are sent to the board as touches.
   import { onDestroy } from "svelte";
   import { mirrorFrame, mirrorStop, mirrorTouch } from "./api";
 
   let canvas: HTMLCanvasElement;
-  let live = $state(true);
+  let live = $state(false);
   let fps = $state(0);
   let size = $state({ w: 320, h: 240 });
   let version = 0;
@@ -98,11 +98,10 @@
     setTimeout(() => mirrorTouch(x, y, false), Math.max(0, 100 - (performance.now() - pressedAt)));
   }
 
-  poll();
   onDestroy(() => {
     alive = false;
     clearTimeout(timer);
-    mirrorStop();
+    if (live) mirrorStop();
   });
 </script>
 
@@ -118,12 +117,18 @@
         onpointerup={up}
         onpointercancel={up}
       ></canvas>
+      {#if !live}
+        <div class="off">
+          <p>The stream is off.</p>
+          <p class="fine">Start it to see the board's screen here.</p>
+        </div>
+      {/if}
     </div>
   </div>
   <div class="bar">
     <span class="chip">
       <span class="dot" class:off={!live}></span>
-      <span>{live ? `Live, ${Math.round(fps)} fps` : "Paused"}</span>
+      <span>{live ? `Live, ${Math.round(fps)} fps` : "Off"}</span>
     </span>
     <p>Mirrors the board screen as it is now.</p>
     <button type="button" onclick={toggle}>
@@ -157,10 +162,30 @@
     max-width: 660px;
   }
   .screen {
+    position: relative;
     border-radius: 10px;
     overflow: hidden;
     background: #000;
     margin: 0 auto;
+  }
+  .off {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
+    pointer-events: none;
+  }
+  .off p {
+    font-size: 15px;
+    color: var(--label);
+  }
+  .off .fine {
+    font-size: 13px;
+    color: var(--label-2);
   }
   canvas {
     display: block;

@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **plan written 2026-10-29, not started.** Progress is tracked in `tasks.md`, which mirrors the phases below.
+Status: **done; v0.1.0 released 2026-10-29.** Follow-ups after the release (P11 3D board screen, P12 build time, P13 mirror off by default) are in `tasks.md`, which mirrors the phases below.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.

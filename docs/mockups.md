@@ -28,7 +28,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 8 | PcDashboard | PC: app tiles with on/off switches, "+" (toggle: apps / empty) |
 | 9 | PcAppSettings | PC: one app's settings, back to Apps |
 | 10 | PcAddApp | PC: registry list, search, Add buttons |
-| 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware |
+| 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware. Since P13 the mirror starts off; Start stream turns it on |
 | 12 | PcUpdate | PC: version mismatch dialog and the progress state |
 | 13 | PcSettings | PC: start with Windows, port, updates, about (with "Show welcome again") |
 | 3c | SettingsHome | Board: Settings › Home screen, Tiles / Dock picker with previews |

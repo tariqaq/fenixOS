@@ -153,6 +153,10 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 3. Local builds capped at 4 cores' worth of CPU, normal priority (user request): `tools/capped.ps1` wraps any build command (checked: a 16-thread burner used 6.0 cores uncapped, 4.5 capped, the 0.5 being pwsh start-up before the cap); the app caps itself the same way (`cap_cpu` in `main.rs`)
   - [ ] 4. Verify: CI runs twice (cold, then warm cache) and compare step times; docs (toolchain, decisions)
 
+- [x] P13 Board page mirror off by default (user request 2026-10-29: "make it so board doesnt stream by default when the board menu is chosen, instead let the user manually toggle streaming"):
+  - [x] 1. `Mirror.svelte`: starts stopped (no poll, so the engine never asks the board to stream); the screen area says "The stream is off. Start it to see the board's screen here."; chip "Off"
+  - [x] 2. Checked over CDP (window minimized / off-screen): opening Board shows Off with no frames; Start stream gives "Live" and the board's picture; Stop stream back to Off. One early run right after quitting the installed app flipped back to Off by itself; not seen again in three runs (likely the stale WebView2 attach in `docs/toolchain.md` Gotchas). Docs: decisions, mockups, PLAN status line (was still "not started")
+
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
