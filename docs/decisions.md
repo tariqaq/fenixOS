@@ -109,3 +109,12 @@ Consequences:
 | Rotation setting UI (artboard shows a Rotation row with a chevron) | Cycle on tap / sub-page | **Sub-page** with the 4 orientations and a check mark |
 | Navbar on narrow (portrait) screens when back label and title collide | Truncate / drop the back label | **Drop the back label**, keep the chevron (iOS does the same) |
 | Settings › Storage and Host PC pages (no artboards) | — | Grouped info rows in the About style |
+| Package size cap (PLAN said 256 KB) | 256 KB, read in pieces / **64 KB, whole package in RAM** | **64 KB.** The board has ~125 KB free heap, and the package is read whole to check it and while the app is open. Assets other than the two tile icons count toward the 24 KB image budget, so real packages are a few KB |
+| Asset compression (PLAN said compressed) | Compress now / **raw in format 1** | **Raw.** With the 64 KB cap compression buys little; a later format version can add it |
+| RGB565 byte order in packages | Big-endian (screen order) / **little-endian** | **Little-endian**, LVGL's native order, so images draw straight from the package buffer |
+| App id length | 63 bytes / **48 bytes** | **48 bytes** of letters, digits, `.`, `-`, `_`: ids name files on LittleFS, whose names are ≤ 63 bytes |
+| Number of installed apps | Unlimited / **10** | **10** (`MAX_APPS`): APP_LIST fits one frame, and Home stays usable |
+| App open motion (DESIGN.md: scale 0.9 → 1 + fade from the tile) | Full-screen scale / **fade** | **Fade in.** A full-screen scale is a transformed layer every frame, far over the board budget; tile install / remove keep the scale + fade (small area) |
+| Store index (PLAN: "a small index") | Index file / **`.sha` next to each package** | **`<id>.sha`**; id and version are read from the package header for APP_LIST |
+| Bound values while an app is open | Only what is on screen / **cache per binding** | **Cache per binding** while the app is open (cleared on close), so rotation and host-state rebuilds keep the values |
+| `APP_ACK` after `APP_INSTALL_BEGIN` | Silent / **ack offset 0** | **Ack 0**: the PC knows the install started; a refused BEGIN gets `APP_RESULT` instead |

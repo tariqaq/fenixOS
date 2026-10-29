@@ -66,7 +66,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] fenix_apps (P5 started early): boot sweep, Home Tiles/Dock, Settings tree, Session sheet, Stream, LED
   - [x] main: init order; built (796 KB), flashed COM9; `fenix hello`, `fenix time`, `fenix shot` all work; Home PNG matches HomeA
   - [x] Remote touch message (TOUCH 0x13, P→B; spec, Rust, C++, vector 32) + `fenix tap` / `fenix swipe`
-  - [x] `tools/capture_screens.sh`: erases NVS, drives every system screen, saves PNGs; golden copies in `docs/screens/board/` (16 screens: landscape, portrait, Tiles, Dock)
+  - [x] `tools/capture_screens.sh`: erases NVS, drives every system screen, saves PNGs; golden copies in `docs/screens/board/` (landscape, portrait, Tiles, Dock; P6 added the sample app)
   - [x] Fixed on the way: non-clickable layout boxes (taps were lost), clickable scroll containers (swipes did not scroll), flex track centring (Dock sat left), screen swap double delete, "20%" label wrap, portrait navbar overlap (back label dropped)
   - Screenshots come from the real board over the link while nobody is at it; the PC simulator the user asked for is still planned (see P5)
   - [x] Perf pass: stale `board/sdkconfig` fixed (13 → 25 fps), 80-line bands (34.5 fps), stream throttled to the PC rate (29 fps while streaming), wake-from-dim activity bug fixed; `fenix bench`. Numbers in `docs/board-info.md` "Rendering speed"
@@ -77,16 +77,18 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Boot sweep line → fade to Home; Home Tiles + Dock (landscape + portrait); Settings (Display, Rotation, Home screen, Storage, Host PC, About); Session sheet; Stream (off / not streaming / on); auto-dim with first-touch wake; LED connect pulse; golden PNGs in `docs/screens/board/`
   - [x] Shut down → deep sleep: link goes silent; RTS reset wakes it (POWERON). Tap-wake: open item for the user
   - [x] Flipped rotations (2, 3): screenshots in `docs/screens/board/`
-  - [ ] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: come with P6
+  - [x] Host app screens (HostWaiting, HostOff) and app tiles fade in/out: done in P6
   - [ ] PC simulator (user asked in round 7): after P8, before release
 - [~] P6 App packages: `.fxp` spec + compiler, board runtime, atomic install/remove/reconcile, host states, `tools/sample-app` fixture
   - [x] Format 1 spec `docs/packages.md`; `crates/fenix-pkg` compiler + reader (`fenix-pkg build`/`inspect`, limits, 2 tests); `tools/sample-app/board` builds to 1643 B, 15 elements, 6 bindings
   - [x] C++ reader `board/components/fenix_pkg` (same checks as Rust; app ids capped at 48 bytes for LittleFS names; host test passes, survives every single-byte flip)
   - [x] Board store + install in the link task: APP_INSTALL_BEGIN/CHUNK/END (sha256 via mbedtls, `.tmp` then rename, `.sha`), real APP_LIST, APP_REMOVE, cleanup at mount; UART ISR in IRAM, RX buffer 8 KB, link stack 8 KB. Tested on COM9: install 0.13 s (1.6 KB) / 0.51 s (21 KB), reinstall, remove back to 8 KB used, unknown remove = code 6. Package cap lowered to 64 KB (board holds it in RAM); RGB565 assets now little-endian
-  - [ ] Board reader + LVGL builder `app_pkg.cpp`: bindings (BIND_SET), events (EVENT), APP_OPENED/APP_CLOSED, app tiles with fade in/out, HostWaiting/HostOff
+  - [x] Board runtime `app_pkg.cpp`: tiles (Tiles, Dock, portrait grid) with fade + scale in/out, app screen built from the package, bindings with a per-binding cache, events (tap, long press, switch, slider on release), APP_OPENED/APP_CLOSED, BOARD_STATE screen 5 + app id, HostWaiting (6a) / HostOff (6b), remove while open (6b for 2 s, then Home). Verified on COM9 with `fenix set`/`tap`/`swipe`/`host`
+  - [x] Fixed on the way: store mounted after `apps::start` (tiles now load at the boot → Home hand-over); a rebuilt Home kept the old clock state (clock stuck at `--:--`); Settings › Storage shows the real app count and names
   - [x] CLI: `fenix install <file.fxp>` (id/version from the package, rewind on stalled acks), `fenix remove <id>`, `fenix list`
-  - [ ] CLI: `fenix set <bind> <value>` (with the app runtime)
-  - [ ] Accept: install <= 5 s, remove leaves nothing, screenshots of the sample app in both orientations
+  - [x] CLI: `fenix set <file.fxp> <bind>=<value>...`, `fenix host <id> on|off`; `tap`/`swipe` print the board's replies
+  - [x] Golden screenshots refreshed with the sample installed (19 + 3 flipped in `docs/screens/board/`, new: `storage`, `app`, `app_host_off`); flipped-rotation shots are from before P6 (no app tile)
+  - [ ] Accept: install <= 5 s (done: 0.13 s / 0.51 s, ~1.6 s for 64 KB), remove leaves nothing (done: back to 8 KB), sample app in portrait (screenshot pending), stale sweep, close P6
 - [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"

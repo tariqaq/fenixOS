@@ -23,6 +23,7 @@ uint8_t current_screen() {
   if (t == boot_screen) return fnx::screen::BOOT;
   if (t == home_screen) return fnx::screen::HOME;
   if (t == stream_screen) return fnx::screen::STREAM;
+  if (t == app_screen) return fnx::screen::APP;
   return fnx::screen::SETTINGS;
 }
 
@@ -116,6 +117,7 @@ void on_link(const sys::LinkEvent& e) {
     default:
       break;
   }
+  app_on_link(e);
   if (e.type == sys::LinkEv::CONNECTED || e.type == sys::LinkEv::DISCONNECTED) {
     refresh_if_top(stream_screen);
     if (nav_top() != home_screen) refresh_if_top(settings_screen);
@@ -131,8 +133,12 @@ void stream_stop_local() {
 static uint8_t s_last_rot = 0xFF;
 
 void tick() {
-  if (nav_top() == boot_screen && esp_timer_get_time() >= s_boot_until) nav_root(home_screen, true);
+  if (nav_top() == boot_screen && esp_timer_get_time() >= s_boot_until) {
+    apps_reload();  // the store is mounted while the boot line plays (main.cpp)
+    nav_root(home_screen, true);
+  }
   if (nav_top() == home_screen) home_tick();
+  app_tick();
   if (s_shell.streaming && s_last_rot != rotation()) send_stream_info();
   s_last_rot = rotation();
   sys::BoardInfo b{};
@@ -142,6 +148,7 @@ void tick() {
   b.screen = current_screen();
   b.dimmed = dimmed();
   b.fps_x10 = fps_x10();
+  strlcpy(b.app_id, open_app_id(), sizeof b.app_id);
   sys::board_info_set(b);
 }
 

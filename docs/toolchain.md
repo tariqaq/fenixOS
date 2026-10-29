@@ -45,7 +45,8 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Design tokens: `python tools/gen_tokens.py` (writes `board/components/fenix_ui/include/fenix_tokens.h` and `app/src/lib/tokens.css`; `--check` in CI)
 - Firmware to the board: `pwsh -NoProfile -File board/idf.ps1 -p COM9 -b 460800 build flash`
 - Dev CLI (`cargo build -p fenix-cli`, then `target/debug/fenix.exe`): `ports`, `hello`, `logs [s]`, `time`, `reboot`, `tap <x> <y>`, `swipe <x1> <y1> <x2> <y2>`, `shot <png> [s]`, `bench [s] [nostream]` (slide fps, stream throughput), `list`, `install`, `remove`, `soak <min>`; `--port COMx`
-- Board screenshots: `bash tools/capture_screens.sh <dir>` erases the board's settings (NVS), then taps through every system screen and saves PNGs. Golden copies: `docs/screens/board/`
+- Board screenshots: `bash tools/capture_screens.sh <dir>` erases the board's settings (NVS), installs `tools/sample-app`, taps through every system screen and the sample app, saves PNGs, and removes the sample again. Golden copies: `docs/screens/board/`
+- App packages: `fenix-pkg build <dir> [-o out.fxp]`, `fenix-pkg inspect <file>`; on the board: `fenix install <file.fxp>`, `fenix list`, `fenix remove <id>`, `fenix set <file.fxp> <bind>=<value>...` (acts as the app's PC half), `fenix host <id> on|off`. `fenix tap` and `fenix swipe` print what the board sends back (EVENT, BOARD_STATE). C++ reader test: `pwsh board/components/fenix_pkg/test/run.ps1`
 
 More commands are added here as each phase lands.
 

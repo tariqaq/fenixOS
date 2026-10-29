@@ -160,16 +160,16 @@ docs/, pics/
 - **File (`.fxp`):**
   - Sections: header (magic, format ver, app id, version, min fenixOS), string table, element tree, bindings table, assets.
   - Element kinds: container (flex or grid, with separate landscape and portrait props), label, value label, button, icon button, switch, slider, image, icon glyph.
-  - Assets are A8 or RGB565 images, compressed.
+  - Assets are A8 or RGB565 images, raw in format 1 (corrected 2026-10-29: no compression; see `docs/packages.md`).
   - Fonts are the built-in Inter sizes only.
 - **Source and limits:**
   - Source format: `app.toml` + `layout.json`, compiled by `fenix-pkg build`.
-  - Limits checked at compile time and again on the board: 256 KB per package, element count, and an RAM estimate.
+  - Limits checked at compile time and again on the board: 64 KB per package (corrected 2026-10-29 from 256 KB: the board holds the whole package in RAM), element count, and an RAM estimate.
 - **Board runtime:**
   - One host app is open at a time.
   - Its LVGL objects are built from the package when it opens and freed when it closes.
   - Bindings update objects; touches on interactive elements send `EVENT`.
-- **Store:** LittleFS on the `apps` partition (~1.9 MB), `/apps/<id>.fxp` plus a small index. An install writes to a temp file, checks sha256 and renames it, so a broken install never leaves a half app.
+- **Store:** LittleFS on the `apps` partition (~1.9 MB), `/apps/<id>.fxp` plus `/apps/<id>.sha` (corrected 2026-10-29: no separate index). An install writes to a temp file, checks sha256 and renames it, so a broken install never leaves a half app.
 - **Host states:**
   - PC half running: the app works.
   - No PC link: "Waiting for host PC" (artboard 6a).

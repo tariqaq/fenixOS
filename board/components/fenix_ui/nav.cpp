@@ -24,10 +24,10 @@ void nav_root(Builder b, bool animate) {
   show(b, animate ? LV_SCREEN_LOAD_ANIM_FADE_IN : LV_SCREEN_LOAD_ANIM_NONE);
 }
 
-void nav_push(Builder b) {
+void nav_push(Builder b, bool fade) {
   if (s_depth >= MAX_DEPTH) return;
   s_stack[s_depth++] = b;
-  show(b, LV_SCREEN_LOAD_ANIM_MOVE_LEFT);
+  show(b, fade ? LV_SCREEN_LOAD_ANIM_FADE_IN : LV_SCREEN_LOAD_ANIM_MOVE_LEFT);
 }
 
 void nav_pop() {

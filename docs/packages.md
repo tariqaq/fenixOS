@@ -125,6 +125,20 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 - **Sizes:** `≥ 0` pixels, `-1` content, `0x40000000 | pct` percent.
 - Assets are stored raw in format 1 (no compression). Compression is a later format version.
 
+## Runtime on the board
+
+`board/components/fenix_apps/app_pkg.cpp`, artboards HostWaiting (6a) and HostOff (6b).
+
+- **Tiles:** Home shows the system apps, then installed apps sorted by id: tile colour, the 20 px icon (Tiles) or 26 px icon (Dock), tinted white. A new tile fades and scales in (0.8 → 1, 250 ms); a removed one fades and scales out. Landscape tiles and the Dock scroll sideways when they do not fit; the portrait grid shows two rows and scrolls.
+- **Open:** tapping a tile loads the whole package into RAM, fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
+- **Close:** back, or any other screen change, frees the package and objects and sends `APP_CLOSED`. `BOARD_STATE` reports screen 5 and the app id while it is open.
+- **States:** no PC link: 6a "Waiting for host PC". `HOST_STATE` off for this app: 6b "Turned off on host PC". Otherwise the layout.
+- **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. Values for other apps, or with no app open, are dropped.
+- **Events:** buttons send tap (1) and long press (2); switches send change (3) with 0/1; sliders send change (3) with the value on release. The board updates its cache for a bound control the user changed.
+- **Install / remove while open:** an update reloads the package in place. A remove returns Home at once, or after 2 s when 6b is showing (the PC's switch-off sends `HOST_STATE` off, then `APP_REMOVE`).
+- **Defaults:** button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`. Built-in widgets match the system screens (slider, capsule button).
+- Not testable over the link: 6a (connecting the CLI ends it). It is checked by code review until the PC simulator exists.
+
 ## Store on the board
 
 - LittleFS partition `apps` (~1.9 MB) at `/apps`: `<id>.fxp` and `<id>.sha` (32-byte sha256).

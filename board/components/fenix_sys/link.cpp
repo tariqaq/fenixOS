@@ -28,6 +28,7 @@ static constexpr int64_t INSTALL_TIMEOUT_US = 10000000;
 
 static SemaphoreHandle_t s_tx_lock;
 static QueueHandle_t s_events;
+static QueueHandle_t s_binds;
 static uint8_t s_seq;
 static volatile bool s_connected;
 static fnx::FrameDecoder s_dec;
@@ -115,6 +116,7 @@ static void post(LinkEv t, int32_t v = 0, const char* text = nullptr) {
 
 bool link_poll(LinkEvent* e) { return s_events && xQueueReceive(s_events, e, 0) == pdTRUE; }
 bool link_connected() { return s_connected; }
+bool bind_poll(BindValue* v) { return s_binds && xQueueReceive(s_binds, v, 0) == pdTRUE; }
 
 static volatile uint32_t s_remote;  // x:12 | y:12 | down:1, one word so reads are atomic
 
@@ -295,6 +297,18 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
     case fnx::ty::STREAM_SYNC:
       post(LinkEv::STREAM_SYNC);
       return;
+    case fnx::ty::BIND_SET: {
+      fnx::BindSet b{};
+      if (!fnx::read_bind_set(r, b)) return send_error(fnx::err::BAD_BODY, "bind");
+      BindValue v{};
+      v.bind = b.bind;
+      v.kind = b.kind;
+      v.i = b.i;
+      strlcpy(v.id, b.id, sizeof v.id);
+      strlcpy(v.text, b.text, sizeof v.text);
+      xQueueSend(s_binds, &v, 0);  // full queue: drop, the PC sends again on change
+      return;
+    }
     case fnx::ty::HOST_STATE: {
       uint8_t running = r.u8();
       char id[64];
@@ -331,6 +345,7 @@ static void link_task(void*) {
 void link_start() {
   s_tx_lock = xSemaphoreCreateMutex();
   s_events = xQueueCreate(16, sizeof(LinkEvent));
+  s_binds = xQueueCreate(16, sizeof(BindValue));
   uart_config_t c = {};
   c.baud_rate = fnx::BAUD;
   c.data_bits = UART_DATA_8_BITS;

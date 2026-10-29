@@ -85,6 +85,15 @@ void link_log(uint8_t level, const char* fmt, ...) __attribute__((format(printf,
 void link_send(uint8_t type, const uint8_t* body, size_t n);
 // Remote touch from the PC (TOUCH message). True while the PC holds a press.
 bool remote_touch(int16_t* x, int16_t* y);
+// Binding values from the PC half (BIND_SET), in arrival order. UI task.
+struct BindValue {
+  uint16_t bind;
+  uint8_t kind;  // 0 int, 1 bool, 2 text
+  int32_t i;
+  char id[64];
+  char text[256];
+};
+bool bind_poll(BindValue* v);
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
 

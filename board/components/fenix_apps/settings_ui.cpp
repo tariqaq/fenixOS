@@ -221,6 +221,14 @@ static void home_style_screen(lv_obj_t* scr) {
 
 // ---- Storage ----
 
+static const char* apps_count_text() {
+  static char t[16];
+  size_t n = app_tiles().size();
+  if (n == 0) return "No apps";
+  snprintf(t, sizeof t, n == 1 ? "%u app" : "%u apps", (unsigned)n);
+  return t;
+}
+
 static void storage_screen(lv_obj_t* scr) {
   navbar(scr, "Settings", "Storage");
   lv_obj_t* c = content(scr, 12);
@@ -231,7 +239,13 @@ static void storage_screen(lv_obj_t* scr) {
   snprintf(v, sizeof v, "%u KB of %u KB", (unsigned)used, (unsigned)total);
   info_row(g, "App storage", v);
   separator(g, 10);
-  info_row(g, "Installed apps", "None");
+  info_row(g, "Installed apps", apps_count_text());
+  if (app_tiles().empty()) return;
+  lv_obj_t* list = group(c);
+  for (size_t i = 0; i < app_tiles().size(); i++) {
+    if (i) separator(list, 10);
+    info_row(list, app_tiles()[i].name, "");
+  }
 }
 
 // ---- Host PC ----
@@ -300,7 +314,7 @@ void settings_screen(lv_obj_t* scr) {
   list_row(g, FX_ICON_SQUARES_FOUR, FX_COLOR_TILE_INDIGO, "Home screen",
            st.home_style == sys::HOME_DOCK ? "Dock" : "Tiles", true, push_cb, (void*)home_style_screen);
   separator(g, 44);
-  list_row(g, FX_ICON_HARD_DRIVES, FX_COLOR_TILE_GRAY, "Storage", "No apps", true, push_cb, (void*)storage_screen);
+  list_row(g, FX_ICON_HARD_DRIVES, FX_COLOR_TILE_GRAY, "Storage", apps_count_text(), true, push_cb, (void*)storage_screen);
   separator(g, 44);
   list_row(g, FX_ICON_DESKTOP_TOWER, FX_COLOR_TILE_TEAL, "Host PC", shell().connected ? "Connected" : "Not connected",
            true, push_cb, (void*)host_screen);

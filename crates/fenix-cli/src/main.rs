@@ -17,7 +17,7 @@ use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
-use fenix_proto::{app, Msg, Stats};
+use fenix_proto::{app, BindValue, Msg, Stats};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -83,6 +83,17 @@ fn main() {
             Some(id) => remove(opts, id),
             None => usage(),
         },
+        "set" if args.len() >= 3 => set(opts, Path::new(&args[1]), &args[2..]),
+        "host" => match (args.get(1), args.get(2).map(String::as_str)) {
+            (Some(id), Some("on" | "off")) => one_shot(
+                opts,
+                Msg::HostState {
+                    running: args[2] == "on",
+                    id: id.clone(),
+                },
+            ),
+            _ => usage(),
+        },
         "soak" => soak(opts, arg_u64(&args, 1, 60)),
         _ => usage(),
     };
@@ -90,7 +101,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|soak <min> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min> [--port COMx]");
     2
 }
 
@@ -193,7 +204,14 @@ fn tap(opts: LinkOptions, x: u16, y: u16) -> i32 {
     link.send(Msg::Touch { x, y, down: true });
     std::thread::sleep(Duration::from_millis(120));
     link.send(Msg::Touch { x, y, down: false });
-    std::thread::sleep(Duration::from_millis(300));
+    // Print what the tap caused (EVENT, BOARD_STATE, APP_OPENED, ...).
+    let end = Instant::now() + Duration::from_millis(400);
+    while Instant::now() < end {
+        match link.recv_event(Duration::from_millis(50)) {
+            Some(Event::Msg(Msg::Stats(_))) | Some(Event::Connected { .. }) | None => {}
+            Some(e) => print_event(&e),
+        }
+    }
     0
 }
 
@@ -222,10 +240,9 @@ fn swipe(opts: LinkOptions, a: (u16, u16), b: (u16, u16)) -> i32 {
     });
     let end = Instant::now() + Duration::from_millis(400);
     while Instant::now() < end {
-        if let Some(e) = link.recv_event(Duration::from_millis(50)) {
-            if matches!(e, Event::Msg(Msg::Log { .. })) {
-                print_event(&e);
-            }
+        match link.recv_event(Duration::from_millis(50)) {
+            Some(Event::Msg(Msg::Stats(_))) | Some(Event::Connected { .. }) | None => {}
+            Some(e) => print_event(&e),
         }
     }
     0
@@ -464,6 +481,62 @@ fn install(opts: LinkOptions, file: &Path) -> i32 {
     }
     eprintln!("timeout");
     1
+}
+
+/// Set bindings of an app like its PC half would (`cpu=42`, `on=true`, `cpu_text=42 %`), then
+/// print what the board sends back (EVENT, APP_OPENED, ...) for 3 s.
+fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
+    let pkg = match std::fs::read(file).map_err(|e| e.to_string()).and_then(|b| fenix_pkg::parse(&b)) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{}: {e}", file.display());
+            return 1;
+        }
+    };
+    let mut msgs = Vec::new();
+    for pair in pairs {
+        let Some((name, v)) = pair.split_once('=') else {
+            eprintln!("expected <bind>=<value>, got {pair}");
+            return 2;
+        };
+        let Some(bind) = pkg.bind_id(name) else {
+            eprintln!("no binding {name:?}; bindings: {:?}", pkg.bind_names());
+            return 2;
+        };
+        let value = match (v.parse::<i32>(), v) {
+            (Ok(n), _) => BindValue::Int(n),
+            (_, "true") => BindValue::Bool(true),
+            (_, "false") => BindValue::Bool(false),
+            _ => BindValue::Text(v.into()),
+        };
+        msgs.push(Msg::BindSet {
+            bind,
+            id: pkg.id().into(),
+            value,
+        });
+    }
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    for m in msgs {
+        link.send(m);
+    }
+    let end = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < end {
+        if let Some(e) = link.recv_event(Duration::from_millis(100)) {
+            match e {
+                Event::Msg(Msg::Event { elem, kind, value, .. }) => println!(
+                    "{} event {:?} kind {kind} value {value}",
+                    ts(),
+                    pkg.event_name(elem).unwrap_or("?")
+                ),
+                Event::Msg(Msg::Stats(_)) | Event::Connected { .. } => {}
+                e => print_event(&e),
+            }
+        }
+    }
+    0
 }
 
 fn remove(opts: LinkOptions, id: &str) -> i32 {
