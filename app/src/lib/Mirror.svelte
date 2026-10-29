@@ -1,7 +1,7 @@
 <script lang="ts">
-  // Live board screen (PcBoard, artboard 11). Off until the user starts it here or on the board's
-  // Stream app (P13, P14); `live` is the engine's `streaming`, which both sides keep in sync, and
-  // the stream keeps running when the page is left. While live it polls the engine for frames at
+  // Live board screen (PcBoard, artboard 11). Off until the user starts streaming in the board's
+  // Stream app (P13–P15); `live` is the engine's `streaming`, which the board keeps in sync. It can
+  // be stopped here, and keeps running when the page is left. While live it polls the engine for frames at
   // up to 10 fps. Clicks on the picture are sent to the board as touches.
   import { onDestroy } from "svelte";
   import { mirrorFrame, mirrorSet, mirrorTouch } from "./api";
@@ -69,7 +69,7 @@
       clearTimeout(timer);
     };
   });
-  const toggle = () => mirrorSet(!live);
+  const stop = () => mirrorSet(false);
 
   // Board coordinates of a pointer event on the scaled picture.
   function at(e: PointerEvent): [number, number] {
@@ -122,8 +122,8 @@
       ></canvas>
       {#if !live}
         <div class="off">
-          <p>The stream is off.</p>
-          <p class="fine">Start it to see the board's screen here.</p>
+          <p>Streaming is off.</p>
+          <p class="fine">On the board, open Stream and tap Start streaming.</p>
         </div>
       {/if}
     </div>
@@ -134,19 +134,14 @@
       <span>{live ? `Live, ${Math.round(fps)} fps` : "Off"}</span>
     </span>
     <p>Mirrors the board screen as it is now.</p>
-    <button type="button" onclick={toggle}>
-      {#if live}
+    {#if live}
+      <button type="button" onclick={stop}>
         <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"
           ><rect x="1" y="1" width="10" height="10" rx="2" fill="var(--danger)"></rect></svg
         >
         <span>Stop stream</span>
-      {:else}
-        <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12"
-          ><path d="M2 1 L11 6 L2 11 Z" fill="var(--success)"></path></svg
-        >
-        <span>Start stream</span>
-      {/if}
-    </button>
+      </button>
+    {/if}
   </div>
 </section>
 

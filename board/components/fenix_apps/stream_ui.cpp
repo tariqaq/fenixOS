@@ -41,7 +41,7 @@ void stream_screen(lv_obj_t* scr) {
   if (!sh.streaming) {
     lv_obj_t* c = centre_column(scr, 6, 24, 16);
     message(c, FX_ICON_SCREENCAST, "Not streaming",
-            "Start the stream here or on the Board page in fenixOS on your PC.");
+            "Show this screen on the Board page in fenixOS on your PC.");
     lv_obj_t* b = capsule(c, FX_ICON_SCREENCAST, &fx_icon_fill_14, "Start streaming", FX_COLOR_ACCENT_FILL, 36, start_cb,
                           nullptr);
     lv_obj_set_width(b, LV_PCT(100));

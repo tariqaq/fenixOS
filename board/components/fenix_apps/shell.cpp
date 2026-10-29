@@ -119,6 +119,7 @@ void on_link(const sys::LinkEvent& e) {
       stream_set(false, 0);
       break;
     case sys::LinkEv::STREAM_SYNC:
+      report_stream();  // the PC asks at every connection whether the board streams (P15)
       if (s_shell.streaming) {
         send_stream_info();
         stream_full_refresh();

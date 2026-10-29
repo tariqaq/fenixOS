@@ -17,7 +17,7 @@ Status: **v0.1.0.** Plan: `docs/PLAN.md`; progress: `tasks.md`.
 ## Install
 
 1. Download `fenixOS_<version>_x64-setup.exe` from the [latest release](https://github.com/tariqaq/fenixOS/releases/latest) and run it. It installs for your user only, so Windows does not ask for admin rights.
-2. The board's USB chip is a CH340. Windows usually installs its driver by itself; if the board does not show up as a COM port, install WCH's CH341SER driver. Use a current CH341SER: the 2011 driver that Windows often picks can crash Windows when a program closes the port mid-read.
+2. The board's USB chip is a CH340. Windows usually installs its driver by itself; if the board does not show up as a COM port, install WCH's CH341SER driver. Use a current CH341SER. Both the 2011 driver and the current one (4.0.2026.2) can crash Windows when a program reads the port with a timeout; fenixOS after v0.1.0 reads without one. Do not use fenixOS v0.1.0 on Windows.
 3. Start fenixOS. On the first run a welcome window asks you to plug in the board. A board without fenixOS gets it installed after one confirm (this erases what was on it); a board on an older fenixOS is offered the update. Then the dashboard opens.
 
 fenixOS lives in the tray and starts with Windows if you leave that on (Settings). It keeps the board's clock and firmware in step, and updates itself from the GitHub releases (Settings > Updates).

@@ -98,16 +98,53 @@ pub fn find_board_ports() -> Vec<String> {
         .collect()
 }
 
-/// Opens a port without resetting the ESP32: DTR/RTS both released.
+/// Opens a port without resetting the ESP32: DTR/RTS both released. Reads never wait: they
+/// return what the driver has, or `TimedOut` at once (see `no_wait_reads`). Never call
+/// `set_timeout` on the result; it would bring back the read timeout.
 pub fn open_port(name: &str, baud: u32) -> serialport::Result<Box<dyn SerialPort>> {
     let mut p = serialport::new(name, baud)
         .timeout(Duration::from_millis(20))
         .dtr_on_open(false)
-        .open()?;
+        .open_native()?;
     p.write_data_terminal_ready(false)?;
     p.write_request_to_send(false)?;
-    Ok(p)
+    no_wait_reads(&p)?;
+    Ok(Box::new(p))
 }
+
+/// The WCH CH340 driver (CH341S64.SYS, 3.3.2011.11 and 4.0.2026.2) blue-screens the PC in the
+/// code that arms a read timeout: it re-reads its current read request after another path has
+/// completed it (bugchecks 0x48 and 0xD1, `docs/board-info.md`). serialport's timeouts
+/// (interval and multiplier MAXDWORD, constant > 0: "wait for the first byte") take that path
+/// on every read. MAXDWORD, 0, 0 makes the driver return at once without a timer, so the link
+/// polls instead (`IDLE_POLL`). Writes get no timeout either: no flow control, so the UART
+/// always drains.
+#[cfg(windows)]
+fn no_wait_reads(p: &serialport::COMPort) -> serialport::Result<()> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Devices::Communication::{SetCommTimeouts, COMMTIMEOUTS};
+    let t = COMMTIMEOUTS {
+        ReadIntervalTimeout: u32::MAX,
+        ReadTotalTimeoutMultiplier: 0,
+        ReadTotalTimeoutConstant: 0,
+        WriteTotalTimeoutMultiplier: 0,
+        WriteTotalTimeoutConstant: 0,
+    };
+    if unsafe { SetCommTimeouts(p.as_raw_handle() as _, &t) } == 0 {
+        return Err(std::io::Error::last_os_error().into());
+    }
+    Ok(())
+}
+
+#[cfg(not(windows))]
+fn no_wait_reads(_: &serialport::TTYPort) -> serialport::Result<()> {
+    Ok(())
+}
+
+/// Sleep between reads that found nothing: short while bytes are flowing (stream, install),
+/// longer when the link is idle.
+const IDLE_POLL_BUSY: Duration = Duration::from_millis(2);
+const IDLE_POLL: Duration = Duration::from_millis(10);
 
 pub struct Link {
     tx: Sender<Msg>,
@@ -308,6 +345,9 @@ fn handshake(name: &str, opts: &LinkOptions) -> Result<Handshake, String> {
             Err(e) if e.kind() == std::io::ErrorKind::TimedOut => 0,
             Err(e) => return Err(e.to_string()),
         };
+        if n == 0 {
+            thread::sleep(IDLE_POLL_BUSY);
+        }
         if n > 0 && std::env::var("FENIX_DEBUG").is_ok() {
             eprintln!("hs {:02x?}", &buf[..n]);
         }
@@ -347,12 +387,11 @@ fn session(
     ctl: &Ctl,
 ) -> String {
     let (stop, paused) = (&*ctl.stop, &*ctl.paused);
-    // One thread does both directions. On Windows a blocking read and a write on
-    // the same (cloned) handle serialize, so a reader thread would stall writes
-    // for a whole read timeout. Instead: batch-write everything pending, then read
-    // with a short timeout (returns as soon as any byte arrives).
-    let _ = port.set_timeout(Duration::from_millis(15));
+    // One thread does both directions: batch-write everything pending, then read what
+    // has arrived (reads never wait, see `no_wait_reads`), and sleep briefly when
+    // nothing had.
     let start = Instant::now();
+    let mut last_byte = Instant::now();
     let mut seq = 0u8;
     let mut last_rx = Instant::now();
     let mut next_ping = Instant::now();
@@ -391,6 +430,12 @@ fn session(
             Err(e) if e.kind() == std::io::ErrorKind::TimedOut => 0,
             Err(e) => return format!("read: {e}"),
         };
+        if n > 0 {
+            last_byte = Instant::now();
+        } else if out.is_empty() {
+            let busy = last_byte.elapsed() < Duration::from_millis(100);
+            thread::sleep(if busy { IDLE_POLL_BUSY } else { IDLE_POLL });
+        }
         let mut pongs = vec![];
         let mut restarted = false;
         dec.push(&buf[..n], |p| {

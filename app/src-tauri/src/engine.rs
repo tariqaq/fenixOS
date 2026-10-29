@@ -163,9 +163,9 @@ impl Engine {
         self.link.send(m);
     }
 
-    /// Start or stop the board's stream from the Board page. The board reports the change back
-    /// (P14); the state flips now so the page does not wait for it (and for v0.1.0 boards,
-    /// which do not report).
+    /// Start or stop the board's stream from the PC (the Board page only stops it: the board's
+    /// Stream app starts it, P15). The board reports the change back (P14); the state flips now
+    /// so the page does not wait for it (and for v0.1.0 boards, which do not report).
     pub fn mirror_set(&self, app: &AppHandle, on: bool) {
         if self.state.lock().unwrap().status != Status::Connected {
             return;
@@ -500,10 +500,10 @@ impl Engine {
                 self.sync_time(app);
                 self.finish_update(app, &fw);
                 self.apps.lock().unwrap().board_connected(firmware_ok);
-                // Each session starts with the stream off, even when the board kept one running
-                // from an app that quit (P14).
-                self.link.send(Msg::StreamStop);
+                // Ask whether the board streams: it answers STREAM_START or STREAM_STOP (P15). It
+                // stops streaming after 3 s without the link, so this matters for quick reconnects.
                 self.state.lock().unwrap().streaming = false;
+                self.link.send(Msg::StreamSync);
                 true
             }
             Event::Disconnected { reason } => {

@@ -164,6 +164,18 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 4. Docs: `proto/spec.md` (directions), decisions, mockups (artboard 11 and the board Stream screen), PLAN stream row (corrected: no FRAME_END), new sim golden screen `stream_idle`. Change from plan: the PC sends STREAM_STOP at each connect instead of the board re-reporting (a repeated HELLO posts no CONNECTED on the board)
   - [x] 5. Flashed, tested over CDP with touches sent through the app (Board page open): board Start gives Live on the PC within 2 s; PC Stop gives Off and the board shows Start again; board Stop gives Off; PC Start gives Live; leaving the page keeps it streaming; quit while streaming and start again: Off, board stopped
 
+- [x] P16 BSOD #2 (2026-10-29 20:39, bugcheck 0xD1 in CH341S64+0x48e9, CH340 driver 4.0.2026.2, process fenixos.exe v0.1.0; dump analysis in `docs/tempcrashlogs/`). The driver update did not fix it. Cause found by disassembling the driver: its read-start routine (+0x4740) takes a timeout branch for our COMMTIMEOUTS (interval and multiplier MAXDWORD, constant 15 ms, set by serialport's `set_timeout`); there it re-reads its current read request under the cancel spin lock (+0x48e2) after another path has completed it and cleared the pointer, and reads `irp->Cancel` through NULL. Our link hit that path ~66 times a second. Plan:
+  - [x] 1. fenix-link: reads never wait (COMMTIMEOUTS MAXDWORD, 0, 0 via `SetCommTimeouts`; the driver then completes each read at once, no timer, no cancel routine), no write timeout, our own 2 ms / 10 ms sleep when nothing arrived; no `set_timeout` anywhere
+  - [x] 2. Tested: CLI handshake; `fenix bench 20` 39.9 / 43.6 KB/s with the sleep, 41.8 with none (within noise: the board limits the stream); CLI 1.2 % of one core streaming, app 0.5 %; app over CDP: connect, stream on/off both ways, quit and start
+  - [x] 3. Docs: board-info (crash 2, cause, fix; corrected: the driver update was not the fix), decisions, toolchain gotcha, README driver note
+  - [x] 4. The installed v0.1.0 app still has the old pattern: quit 2026-10-29 21:0x and not restarted; it stays closed until a release with this fix (needs the user's tag). espflash (install, probe) still uses serialport's timeouts, only while flashing
+
+- [x] P15 The board's Stream app is the only stream switch (user 2026-10-29: "the board section should ask user to enable streaming on board"). Cause of the desync the user saw: the installed app is v0.1.0, without P14. Plan:
+  - [x] 1. PC Board page: no Start button; off state says to turn streaming on in the board's Stream app; Stop stays while live
+  - [x] 2. Connect: the PC sends STREAM_SYNC instead of STREAM_STOP, and the board answers every STREAM_SYNC with its state (STREAM_START or STREAM_STOP). Tested: the board stops its stream after 3 s without the link, so after a normal app restart the stream is off; the answer only matters for quicker reconnects (not tested directly)
+  - [x] 3. Board Stream app text no longer mentions the PC Board page; sim golden screen
+  - [x] 4. Docs (spec, decisions, mockups), build, flash, test over CDP: off state has no button and says "On the board, open Stream and tap Start streaming."; board Start gives Live; PC Stop gives Off; board Stop gives Off. The installed app is not restarted (P16)
+
 ## Decisions
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").

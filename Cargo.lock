@@ -1229,6 +1229,7 @@ version = "0.1.0"
 dependencies = [
  "fenix-proto",
  "serialport",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]

@@ -8,3 +8,7 @@ license.workspace = true
 [dependencies]
 fenix-proto.workspace = true
 serialport = { version = "4.10.1", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+# SetCommTimeouts on the port handle (`no_wait_reads`); the version serialport already uses.
+windows-sys = { version = "0.52", features = ["Win32_Devices_Communication", "Win32_Foundation"] }

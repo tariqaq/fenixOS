@@ -92,9 +92,9 @@ payload = type:u8 ‖ seq:u8 ‖ body
 | Type | Name | Dir | Body |
 |---|---|---|---|
 | 0x40 | STREAM_START | both | fps:u8 (target, 1–30). P→B: start streaming. B→P (P14, after v0.1.0): the board reports that its stream is on, after a PC request or its own "Start streaming" button; the PC shows the stream as on |
-| 0x41 | STREAM_STOP | both | (empty). P→B: stop streaming; the PC also sends it at every new connection, so each session starts with the stream off. B→P (P14): the board reports that its stream is off (PC request, its own "Stop streaming" button, or a disconnect) |
+| 0x41 | STREAM_STOP | both | (empty). P→B: stop streaming. B→P (P14): the board reports that its stream is off (PC request, its own "Stop streaming" button, or a disconnect) |
 | 0x42 | STREAM_RECT | B→P | rect_id:u16 ‖ x:u16 ‖ y:u16 ‖ w:u16 ‖ h:u16 ‖ codec:u8 ‖ total:u32 ‖ offset:u32 ‖ data:bytes. One encoded rectangle may span several frames; the PC applies it when `offset + len(data) == total` |
-| 0x43 | STREAM_SYNC | P→B | (empty). The board redraws the whole screen, so the next rects cover everything |
+| 0x43 | STREAM_SYNC | P→B | (empty). The board redraws the whole screen, so the next rects cover everything. Since P15 the board also answers with its stream state (STREAM_START or STREAM_STOP); the PC sends it at every new connection |
 | 0x44 | STREAM_INFO | B→P | width:u16 ‖ height:u16 ‖ rotation:u8. Sent at stream start and on rotation change; the PC resizes its canvas |
 
 Pixel data is RGB565 **big-endian** (the LCD's byte order). Codecs:

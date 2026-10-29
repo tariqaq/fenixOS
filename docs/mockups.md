@@ -20,7 +20,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 3a | SettingsDisplay | Brightness, auto-dim level, dim after, rotation, calibrate touch |
 | 3b | SettingsAbout | Board, chip, CPU, memory free, flash, display |
 | 4 | Session | Shut down / Restart pop-up |
-| 5a | StreamOff | Stream app, no PC connected. Connected but not streaming: "Not streaming" with a "Start streaming" button (P14) |
+| 5a | StreamOff | Stream app, no PC connected. Connected but not streaming: "Not streaming" with a "Start streaming" button (P14); the board is where the stream is started (P15) |
 | 5b | StreamOn | Stream app, streaming at ~10 fps |
 | 6a | HostWaiting | Host app installed, waiting for the PC half |
 | 6b | HostOff | Host app switched off on the PC |
@@ -28,7 +28,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 8 | PcDashboard | PC: app tiles with on/off switches, "+" (toggle: apps / empty) |
 | 9 | PcAppSettings | PC: one app's settings, back to Apps |
 | 10 | PcAddApp | PC: registry list, search, Add buttons |
-| 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware. Since P13 the mirror starts off; Start stream turns it on. Since P14 it follows the board: starting or stopping on the board's Stream app shows here too |
+| 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware. Since P13 the mirror starts off; Start stream turns it on. Since P14 it follows the board. Since P15 it has no Start button: the off state says to start streaming in the board's Stream app; Stop stream shows while live |
 | 12 | PcUpdate | PC: version mismatch dialog and the progress state |
 | 13 | PcSettings | PC: start with Windows, port, updates, about (with "Show welcome again") |
 | 3c | SettingsHome | Board: Settings › Home screen, Tiles / Dock picker with previews |
