@@ -62,7 +62,7 @@
             onreinstall={() => (reinstall = true)}
           />
         {:else}
-          <Settings appVersion={snap.app_version} />
+          <Settings appVersion={snap.app_version} boardPort={snap.board?.port ?? null} />
         {/if}
       </main>
     </div>

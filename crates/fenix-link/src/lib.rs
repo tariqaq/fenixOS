@@ -42,7 +42,7 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub struct LinkOptions {
-    /// Force a port (e.g. "COM9"); None = auto-detect by USB VID:PID.
+    /// Force a port (e.g. "COM9"); None = auto-detect by USB VID:PID. `Link::set_port` changes it.
     pub port: Option<String>,
     pub baud: u32,
     pub heartbeat: Duration,
@@ -112,6 +112,8 @@ pub fn open_port(name: &str, baud: u32) -> serialport::Result<Box<dyn SerialPort
 pub struct Link {
     tx: Sender<Msg>,
     paused: Arc<AtomicBool>,
+    port: Arc<Mutex<Option<String>>>,
+    retarget: Arc<AtomicBool>,
     events: Mutex<Receiver<Event>>,
     stop: Arc<AtomicBool>,
     handle: Option<thread::JoinHandle<()>>,
@@ -123,14 +125,23 @@ impl Link {
         let (ev_tx, ev_rx) = mpsc::channel::<Event>();
         let stop = Arc::new(AtomicBool::new(false));
         let paused = Arc::new(AtomicBool::new(false));
-        let (st, pa) = (stop.clone(), paused.clone());
+        let port = Arc::new(Mutex::new(opts.port.clone()));
+        let retarget = Arc::new(AtomicBool::new(false));
+        let ctl = Ctl {
+            stop: stop.clone(),
+            paused: paused.clone(),
+            port: port.clone(),
+            retarget: retarget.clone(),
+        };
         let handle = thread::Builder::new()
             .name("fenix-link".into())
-            .spawn(move || manager(opts, rx_out, ev_tx, st, pa))
+            .spawn(move || manager(opts, rx_out, ev_tx, ctl))
             .expect("spawn link thread");
         Self {
             tx,
             paused,
+            port,
+            retarget,
             events: Mutex::new(ev_rx),
             stop,
             handle: Some(handle),
@@ -141,6 +152,15 @@ impl Link {
     /// link neither scans nor holds a port; an `Event::Paused` confirms the release.
     pub fn pause(&self, on: bool) {
         self.paused.store(on, Ordering::Relaxed);
+    }
+
+    /// Use only this port from now on, or `None` to find the board on any CH340 port. A session on
+    /// another port ends with the reason "port changed".
+    pub fn set_port(&self, port: Option<String>) {
+        if let Ok(mut p) = self.port.lock() {
+            *p = port;
+        }
+        self.retarget.store(true, Ordering::Relaxed);
     }
 
     /// Queue a message for the board. Dropped while disconnected.
@@ -174,13 +194,17 @@ impl Drop for Link {
     }
 }
 
-fn manager(
-    opts: LinkOptions,
-    rx_out: Receiver<Msg>,
-    ev: Sender<Event>,
+/// What the `Link` handle shares with its thread.
+struct Ctl {
     stop: Arc<AtomicBool>,
     paused: Arc<AtomicBool>,
-) {
+    port: Arc<Mutex<Option<String>>>,
+    /// Set by `set_port`; the session checks it and the manager clears it.
+    retarget: Arc<AtomicBool>,
+}
+
+fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl) {
+    let (stop, paused) = (&*ctl.stop, &*ctl.paused);
     let mut announced_search = false;
     let mut announced_pause = false;
     let mut unresponsive: std::collections::HashMap<String, String> = Default::default();
@@ -191,13 +215,15 @@ fn manager(
                 announced_pause = true;
             }
             while rx_out.try_recv().is_ok() {}
-            sleep_unless_stopped(Duration::from_millis(100), &stop);
+            sleep_unless_stopped(Duration::from_millis(100), stop);
             announced_search = false;
             continue;
         }
         announced_pause = false;
-        let candidates = match &opts.port {
-            Some(p) => vec![p.clone()],
+        ctl.retarget.store(false, Ordering::Relaxed);
+        let fixed = ctl.port.lock().map(|p| p.clone()).unwrap_or(None);
+        let candidates = match fixed {
+            Some(p) => vec![p],
             None => find_board_ports(),
         };
         let mut connected = false;
@@ -213,7 +239,7 @@ fn manager(
                     for m in early {
                         let _ = ev.send(Event::Msg(m));
                     }
-                    let reason = session(port, dec, &opts, &rx_out, &ev, &stop, &paused);
+                    let reason = session(port, dec, &opts, &rx_out, &ev, &ctl);
                     let _ = ev.send(Event::Disconnected { reason });
                     connected = true;
                     break;
@@ -237,7 +263,7 @@ fn manager(
             }
             // Drain queued messages so they don't pile up while offline.
             while rx_out.try_recv().is_ok() {}
-            sleep_unless_stopped(opts.rescan, &stop);
+            sleep_unless_stopped(opts.rescan, stop);
         }
     }
 }
@@ -307,9 +333,9 @@ fn session(
     opts: &LinkOptions,
     rx_out: &Receiver<Msg>,
     ev: &Sender<Event>,
-    stop: &AtomicBool,
-    paused: &AtomicBool,
+    ctl: &Ctl,
 ) -> String {
+    let (stop, paused) = (&*ctl.stop, &*ctl.paused);
     // One thread does both directions. On Windows a blocking read and a write on
     // the same (cloned) handle serialize, so a reader thread would stall writes
     // for a whole read timeout. Instead: batch-write everything pending, then read
@@ -325,6 +351,9 @@ fn session(
     loop {
         if stop.load(Ordering::Relaxed) {
             return "stopped".into();
+        }
+        if ctl.retarget.load(Ordering::Relaxed) {
+            return "port changed".into();
         }
         if paused.load(Ordering::Relaxed) {
             return "paused".into();

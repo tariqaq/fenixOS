@@ -119,6 +119,20 @@ export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirr
 export const mirrorFrame = (since: number) => invoke<ArrayBuffer>("mirror_frame", { since });
 export const updateBoard = () => invoke("update_board");
 export const clearUpdate = () => invoke("clear_update");
+export type PortItem = { name: string; product: string; board: boolean };
+export const listPorts = () => invoke<{ selected: string | null; ports: PortItem[] }>("list_ports");
+export const setPort = (port: string | null) => invoke("set_port", { port });
+export type AppUpdate = {
+  stage: "idle" | "checking" | "current" | "available" | "installing" | "failed";
+  version: string;
+  percent: number;
+  error: string;
+};
+export const getAppUpdate = () => invoke<AppUpdate>("get_app_update");
+export const checkAppUpdate = () => invoke<AppUpdate>("check_app_update");
+export const installAppUpdate = () => invoke("install_app_update");
+export const onAppUpdate = (cb: (u: AppUpdate) => void): Promise<UnlistenFn> =>
+  listen<AppUpdate>("app_update", (e) => cb(e.payload));
 export const listRegistry = () => invoke<RegistryApp[]>("list_registry");
 export const addApp = (id: string) => invoke("add_app", { id });
 export const setAppEnabled = (id: string, on: boolean) => invoke("set_app_enabled", { id, on });

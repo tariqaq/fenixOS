@@ -32,6 +32,14 @@
     "active": true,
     "targets": ["nsis"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
-    "resources": { "resources/firmware/*": "firmware/" }
+    "resources": { "resources/firmware/*": "firmware/" },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZFNzk3Qzg2MzVFMEQwNTIKUldSUzBPQTFobng1L3UyZWJYUFI0ZXVPcTJoVitGb1RiMkVGUFBxcFdLZUpySnFCWTg2Q2l2TkEK",
+      "endpoints": ["https://github.com/tariqaq/fenixOS/releases/latest/download/latest.json"],
+      "windows": { "installMode": "passive" }
+    }
   }
 }

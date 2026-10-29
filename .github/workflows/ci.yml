@@ -53,4 +53,5 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm exec svelte-check
           pnpm build
+      - run: python tools/licenses.py --check
       - run: cargo test --workspace

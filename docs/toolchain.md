@@ -23,7 +23,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 | LVGL | **9.5.0** | `board/main/idf_component.yml` | Newest 9.x with months of field use (9.6.0 is from 2026-09-16) |
 | joltwallet/littlefs | 1.23.1 | `board/main/idf_component.yml` | Latest |
 | tauri / tauri-build | 2.12.5 / 2.7.4 | `app/src-tauri/Cargo.toml` | Latest 2.x |
-| tauri-plugin-single-instance / autostart / updater / process | 2.5.5 / 2.7.0 / 2.14.1 / 2.4.0 | same | Latest |
+| tauri-plugin-single-instance / autostart / updater | 2.5.5 / 2.7.0 / 2.14.1 | same | Latest. No process plugin: the updater restarts through `AppHandle::restart` (Corrected 2026-10-29: the process plugin was listed but is not needed) |
 | espflash (library) | 4.6.0 | PC engine | Latest |
 | serialport | 4.10.1 | `crates/fenix-link` | Latest |
 | svelte / vite / @sveltejs/vite-plugin-svelte | 5.57.3 / 8.3.5 / 7.3.1 | `app/package.json` | Latest; same set as the PoC |
@@ -52,6 +52,8 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 
 - PC app: `cd app; pnpm install; pnpm tauri dev` (hot reload) or `pnpm tauri build --no-bundle` (release exe at `target/release/fenixos.exe`). Flags: `--tray` starts without a window (autostart uses it), `--quit` quits a running instance. Logs: `%LOCALAPPDATA%\fenixOS\logs\fenixos.log`
 - Bundle the board firmware into the PC app: `python tools/bundle_firmware.py` after `board/idf.ps1 build` (copies the bins named in `board/build/flasher_args.json` to `app/src-tauri/resources/firmware/` with `firmware.json`: version + offset/size/sha256 per file; refuses a build whose version differs from `VERSION`). The bins are git-ignored; release CI (P10) runs this before `tauri build`. The update dialog and Reinstall firmware flash exactly these
+- Open-source licenses list (Settings > About): `python tools/licenses.py` writes `app/src/lib/licenses.json` from `cargo tree` (Windows target, normal deps), the UI's runtime npm packages + the Svelte runtime, and the firmware libraries; `--check` runs in CI. Run it after any dependency change
+- Updater key: made with `pnpm tauri signer generate --ci -w %USERPROFILE%\.tauri\fenixos-updater.key` (no password). The private key stays there and, from P10, in the `TAURI_SIGNING_PRIVATE_KEY` Actions secret; never in git. The public key is in `app/src-tauri/tauri.conf.json` (`plugins.updater.pubkey`). `bundle.createUpdaterArtifacts` is on, so a bundled `pnpm tauri build` needs `TAURI_SIGNING_PRIVATE_KEY` (and an empty `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) set; `--no-bundle` does not
 - PC app footprint: `pwsh tools/measure_app.ps1 [-Seconds 10]` (private working set + CPU over `fenixos.exe` and its own WebView2 processes)
 
 More commands are added here as each phase lands.

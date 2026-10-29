@@ -290,6 +290,26 @@ impl Engine {
         f(&mut self.apps.lock().unwrap())
     }
 
+    /// Settings > Connection port: `None` finds the board on any CH340 port.
+    pub fn set_port(&self, app: &AppHandle, port: Option<String>) -> Result<(), String> {
+        self.with_apps(|a| {
+            a.cfg.port = port.clone();
+            a.cfg.save()
+        })
+        .map_err(|e| e.to_string())?;
+        self.link.set_port(port.clone());
+        let text = match &port {
+            Some(p) => format!("Connection port set to {p}"),
+            None => "Connection port set to Automatic".into(),
+        };
+        self.log(app, Source::Pc, false, text);
+        Ok(())
+    }
+
+    pub fn port_setting(&self) -> Option<String> {
+        self.with_apps(|a| a.cfg.port.clone())
+    }
+
     pub fn log(&self, app: &AppHandle, source: Source, problem: bool, text: impl Into<String>) {
         let line = self.logs.add(source, problem, text);
         if window_open(app) {
@@ -465,7 +485,11 @@ impl Engine {
                 if was {
                     // A restart is not a problem by itself: the next boot line says why it restarted.
                     // "paused": the link let go of the port for a firmware update.
-                    let problem = reason != "board restarted" && reason != "paused";
+                    // "port changed": Settings picked another connection port.
+                    let problem = !matches!(
+                        reason.as_str(),
+                        "board restarted" | "paused" | "port changed"
+                    );
                     self.log(
                         app,
                         Source::Pc,

@@ -11,6 +11,7 @@ mod logs;
 mod registry;
 mod sidecar;
 mod tray;
+mod update;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -85,6 +86,70 @@ fn set_autostart(app: AppHandle, on: bool) -> Result<bool, String> {
     let a = app.autolaunch();
     if on { a.enable() } else { a.disable() }.map_err(|e| e.to_string())?;
     a.is_enabled().map_err(|e| e.to_string())
+}
+
+/// One serial port for Settings > Connection port.
+#[derive(Serialize)]
+struct PortItem {
+    name: String,
+    product: String,
+    /// A CH340 (the board's USB chip): Automatic tries only these.
+    board: bool,
+}
+
+#[derive(Serialize)]
+struct Ports {
+    /// The saved choice; `None` is Automatic.
+    selected: Option<String>,
+    ports: Vec<PortItem>,
+}
+
+#[tauri::command]
+fn list_ports(engine: tauri::State<Arc<Engine>>) -> Ports {
+    let mut ports: Vec<PortItem> = fenix_link::list_ports()
+        .into_iter()
+        .map(|(p, board)| PortItem {
+            name: p.name,
+            product: p.product.unwrap_or_default(),
+            board,
+        })
+        .collect();
+    // COM9 after COM10 reads wrong in a menu: sort by the number.
+    ports.sort_by_key(|p| {
+        p.name
+            .trim_start_matches("COM")
+            .parse::<u32>()
+            .unwrap_or(u32::MAX)
+    });
+    Ports {
+        selected: engine.port_setting(),
+        ports,
+    }
+}
+
+#[tauri::command]
+fn set_port(
+    app: AppHandle,
+    engine: tauri::State<Arc<Engine>>,
+    port: Option<String>,
+) -> Result<(), String> {
+    engine.set_port(&app, port)
+}
+
+/// Settings > Updates: the last check (the app checks once at start).
+#[tauri::command]
+fn get_app_update(updates: tauri::State<update::Updates>) -> update::AppUpdate {
+    updates.0.lock().unwrap().clone()
+}
+
+#[tauri::command]
+async fn check_app_update(app: AppHandle) -> update::AppUpdate {
+    update::check(&app, false).await
+}
+
+#[tauri::command]
+async fn install_app_update(app: AppHandle) -> Result<(), String> {
+    update::install(&app).await
 }
 
 #[tauri::command]
@@ -258,6 +323,7 @@ fn main() {
                 open_window(app);
             }
         }))
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--tray"]),
@@ -280,7 +346,12 @@ fn main() {
             mirror_stop,
             mirror_touch,
             update_board,
-            clear_update
+            clear_update,
+            list_ports,
+            set_port,
+            get_app_update,
+            check_app_update,
+            install_app_update
         ])
         .setup(move |app| {
             // Reached only by the first instance: `--quit` with nothing running is a no-op.
@@ -289,7 +360,15 @@ fn main() {
             }
             let logs = logs::Logs::new(local_dir().join("logs"));
             let engine = Engine::start(app.handle().clone(), logs);
+            let check = engine.with_apps(|a| a.cfg.check_updates);
             app.manage(engine);
+            app.manage(update::Updates::new());
+            if check {
+                let h = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    update::check(&h, true).await;
+                });
+            }
             tray::create(app.handle())?;
             // Created last, so every command it calls finds the managed state (PoC gotcha).
             if !tray_only {
