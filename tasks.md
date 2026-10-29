@@ -90,7 +90,13 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] Golden screenshots refreshed with the sample installed (19 + 3 flipped in `docs/screens/board/`, new: `storage`, `app`, `app_host_off`); flipped-rotation shots are from before P6 (no app tile)
   - [x] Sample app in portrait (`app_portrait.png`); fixed on the way: `grow` in a content-sized parent squeezed cards to 0 px, so `grow` now applies only when the parent has a set size along its flow (`docs/packages.md`)
   - [x] Stale sweep (PLAN layout, board-info heap/image, tasks)
-- [ ] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
+- [~] P7 PC app shell: Tauri 2 + Svelte 5 scaffold, engine, tray, single instance, destroy webview, autostart, logs, finding-the-board, time sync
+  - [ ] 1. Scaffold `app/` (Svelte 5 + Vite + TS, `app/src-tauri` as a workspace member): local Inter + Phosphor, tokens CSS, custom title bar, sidebar (Apps, Board, Settings), routing; matches PcConnect / PcDashboard chrome
+  - [ ] 2. Engine (Rust, runs without a window): link manager on `fenix-link`, state store, time sync on connect + hourly, events to the UI only while a window exists
+  - [ ] 3. Tray (status, Open fenixOS, Quit; left click opens), single instance (second launch opens the window, `--quit` quits), window close destroys the webview, autostart setting (off by default)
+  - [ ] 4. Logs: rolling 3 × 1 MB in `%LOCALAPPDATA%enixOS\logs` incl. board LOG frames; log sheet (PcLogs)
+  - [ ] 5. Finding-the-board screen (PcConnect, artboard 7)
+  - [ ] 6. Accept: `tools/measure_app.ps1` (tray ≤ 35 MB, window ≤ 120 MB, cold start ≤ 1.5 s); connect / disconnect ≤ 2 s (board reboot over the link as the stand-in; a physical replug is an open item for the user)
 - [ ] P8 PC features (artboards 8–13 exactly): dashboard, app settings, add app + registry + permissions, sidecars + fenix-sdk + elevation, board page + mirror, update flow + espflash, settings
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"
 - [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
