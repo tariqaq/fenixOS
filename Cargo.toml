@@ -14,8 +14,9 @@ fenix-link = { path = "crates/fenix-link" }
 fenix-pkg = { path = "crates/fenix-pkg" }
 fenix-sdk = { path = "crates/fenix-sdk" }
 
-# Thin LTO and parallel codegen keep rebuilds quick (P12); a tag build in release.yml switches to
-# fat LTO with one codegen unit for the smallest shipped binary.
+# Thin LTO and parallel codegen keep rebuilds quick (P12). Fat LTO with one codegen unit made the
+# exe ~1 MB smaller but took ~10 min per rebuild, and a different profile per build kind splits
+# the CI caches, so every build uses this one.
 [profile.release]
 opt-level = "s"
 lto = "thin"
