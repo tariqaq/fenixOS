@@ -2,7 +2,8 @@
 # Drive the board through the system screens and the sample app (tools/sample-app) with
 # `fenix tap`/`swipe` and save a PNG of each with `fenix shot`. Starts and ends on Home (landscape, Tiles). Needs the board on the link.
 # Coordinates follow the layouts in board/components/fenix_apps.
-# Usage: tools/capture_screens.sh <out-dir>   (erases the board's settings first)
+# Usage: tools/capture_screens.sh <out-dir>   (erases the board's settings, touch calibration
+# included, first; quit the PC app before)
 set -e
 OUT=${1:-shots}
 F=${FENIX:-target/debug/fenix.exe}
@@ -14,9 +15,9 @@ up() { "$F" swipe 314 "$1" 314 "$2" >/dev/null; sleep 0.6; }
 back() { tap 30 16; }
 
 # Known start: erase the settings partition (nvs, see board/partitions.csv) so the board
-# boots with defaults (landscape, Tiles), then wait for the boot screen to finish.
-ESPTOOL_PY=${ESPTOOL_PY:-/c/Espressif/tools/python/v5.5.5/venv/Scripts/python.exe}
-"$ESPTOOL_PY" -m esptool --port "${PORT:-COM9}" erase_region 0x9000 0x6000 >/dev/null
+# boots with defaults (landscape, Tiles), then wait for the boot screen to finish. `fenix erase`,
+# not esptool: esptool's read timeouts take the CH340 driver's crash path (P23).
+"$F" erase 0x9000 0x6000 >/dev/null
 sleep 4
 "$F" time >/dev/null
 # The sample app gives Home a fourth tile and the app screens below.

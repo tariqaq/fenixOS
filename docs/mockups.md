@@ -16,8 +16,8 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 2b | HomeB | Home, landscape: clock + date, icon dock (second style, picked in Settings › Home screen) |
 | 2c | HomePortrait | Home, portrait 240×320 |
 | 2d | HomeNoTime | Home before the first PC time sync (`--:--`) |
-| 3 | Settings | Settings list: Display, Home screen (Tiles / Dock), Storage, Host PC, About |
-| 3a | SettingsDisplay | Brightness, auto-dim level, dim after, rotation, calibrate touch |
+| 3 | Settings | Settings list: Display, Home screen (Tiles / Dock), Storage, Host PC, About (P21 added a Debug switch at the end, no artboard) |
+| 3a | SettingsDisplay | Brightness, auto-dim level, dim after, rotation, calibrate touch (P21 added a Burn-in protection switch below them, no artboard) |
 | 3b | SettingsAbout | Board, chip, CPU, memory free, flash, display |
 | 4 | Session | Shut down / Restart pop-up |
 | 5a | StreamOff | Stream app, no PC connected. Connected but not streaming: "Not streaming" with a "Start streaming" button (P14); the board is where the stream is started (P15) |

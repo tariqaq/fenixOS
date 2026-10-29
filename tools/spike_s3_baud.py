@@ -12,7 +12,23 @@ SECS = float(sys.argv[1]) if len(sys.argv) > 1 else 180
 BAUDS = [460800, 921600, 1500000, 2000000]
 
 s = serial.Serial()
-s.port, s.baudrate, s.timeout = "COM9", 460800, 0.5
+# Timeout 0: reads never wait in the driver, `read` below polls instead. A read timeout takes the
+# CH340 driver's crash path (docs/board-info.md, P23).
+s.port, s.baudrate, s.timeout = "COM9", 460800, 0
+
+
+def read(n, wait=0.5, until=None):
+    out = b""
+    end = time.time() + wait
+    while len(out) < n and time.time() < end and not (until and out.endswith(until)):
+        b = s.read(n - len(out))
+        if b:
+            out += b
+        else:
+            time.sleep(0.002)
+    return out
+
+
 s.dtr = False
 s.rts = False
 s.open()
@@ -23,7 +39,7 @@ for baud in BAUDS:
     if baud != cur:
         s.write(f"BAUD {baud}\n".encode())
         s.flush()
-        ok = s.read_until(b"OK\n", 16)
+        ok = read(16, until=b"OK\n")
         time.sleep(0.05)
         s.baudrate = baud
         cur = baud
@@ -38,7 +54,7 @@ for baud in BAUDS:
         body = os.urandom(996)
         blk = body + zlib.crc32(body).to_bytes(4, "little")
         s.write(blk)
-        got = s.read(1000)
+        got = read(1000)
         if len(got) == 1000 and zlib.crc32(got[:996]).to_bytes(4, "little") == got[996:]:
             good += 1
         else:

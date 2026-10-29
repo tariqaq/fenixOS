@@ -3,6 +3,8 @@
 Usage: python tools/serial_read.py [seconds] [--reset] [--port COM9] [--baud 115200]
 --reset pulses EN through RTS (the CYD auto-reset circuit) before reading.
 The port is opened with DTR and RTS released, so opening alone does not reset the board.
+Reads never wait (timeout 0) and the loop polls: a read timeout takes the CH340 driver's crash
+path (docs/board-info.md, P23).
 """
 import argparse, sys, time
 
@@ -16,7 +18,7 @@ ap.add_argument("--baud", type=int, default=115200)
 a = ap.parse_args()
 
 s = serial.Serial()
-s.port, s.baudrate, s.timeout = a.port, a.baud, 0.2
+s.port, s.baudrate, s.timeout = a.port, a.baud, 0
 s.dtr = False
 s.rts = False
 s.open()
@@ -30,4 +32,6 @@ while time.time() < end:
     if data:
         sys.stdout.write(data.decode("utf-8", "replace"))
         sys.stdout.flush()
+    else:
+        time.sleep(0.01)
 s.close()

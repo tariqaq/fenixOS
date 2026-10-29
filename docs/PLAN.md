@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **done; v0.1.0 released 2026-10-29.** Follow-ups after the release (P11 3D board screen to P17 PC motion, P16 the CH340 crash fix; v0.1.1) are in `tasks.md`, which mirrors the phases below.
+Status: **done; v0.1.0 released 2026-10-29, now v0.1.3.** Follow-ups after the release (P11 to P24: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection) are in `tasks.md`, which mirrors the phases below.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.
@@ -113,7 +113,7 @@ docs/, pics/
 - **Clock:**
   - Sources: `TIME_SET` from the PC, on connect and hourly.
   - `TZ=MYT-8`.
-  - System time survives `esp_restart` and deep sleep. A "time valid" magic word in RTC no-init memory tells a real power-on (show `--:--`) from a soft reboot.
+  - System time survives `esp_restart` and sleep. A "time valid" magic word in RTC no-init memory tells a real power-on (show `--:--`) from a soft reboot.
 - **Backlight:**
   - LEDC PWM on GPIO21.
   - After the dim delay with no touch, it fades to the dim level.
@@ -186,7 +186,7 @@ docs/, pics/
 - **Link manager:**
   - Scans CH340 ports (VID 0x1A86, PID 0x7523) and does the `HELLO` handshake.
   - Reconnects, reconciles apps, sends time sync on connect and hourly.
-  - Single-thread serial I/O: batch write, then read with a 15 ms timeout (PoC gotcha).
+  - Single-thread serial I/O: batch write, then read. Corrected (P16): reads never wait (COMMTIMEOUTS `MAXDWORD, 0, 0`) and the link polls every 2 to 10 ms; a read timeout crashes the CH340 driver (`docs/board-info.md`).
   - Background scanning never resets a board.
 - **App manager:**
   - Installed apps in `%LOCALAPPDATA%\fenixOS\apps\<id>\<version>\`.
@@ -384,7 +384,7 @@ Accept: the board boots to the boot screen ≤ 1 s, then talks to `fenix hello`;
 1. Boot: wordmark, version, sweep line, smooth transition to Home.
 2. Home Tiles (2a), Dock (2b), portrait (2c), no time (2d); style switch live from Settings.
 3. Settings tree: Display, Home screen, Storage, Host PC, About (3, 3a, 3b + the P2 page).
-4. Session sheet (4): Shut down (fade, deep sleep, tap wake), Restart.
+4. Session sheet (4): Shut down (fade, sleep, tap wake; light sleep since P19), Restart.
 5. Stream (5a, 5b) and the stream encoder (§3.3).
 6. Motion per `DESIGN.md`: app open scale and fade, nav slide, sheet, tile fade.
 7. LED states; backlight auto-dim.

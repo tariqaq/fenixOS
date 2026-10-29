@@ -1,6 +1,6 @@
 # fenixOS tasks
 
-New project: an "OS of sorts" for the ESP32-2432S028R (CYD). Hand-over from the FenixDeck PoC is in `docs/POC-WRITEUP.md`. No code yet: the user decides what to build.
+fenixOS: an "OS of sorts" for the ESP32-2432S028R (CYD) and its Windows app. Plan: `docs/PLAN.md`; hand-over from the FenixDeck PoC: `docs/POC-WRITEUP.md`. Phases below, newest last.
 
 Legend: `[x]` done, `[~]` in progress, `[!]` blocked, `[ ]` to do.
 
@@ -212,7 +212,15 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 3. Move the flasher into crate `fenix-flash` (app and CLI share it); `fenix flash [dir] [--erase]` replaces `idf.ps1 flash` for this board
   - [x] 4. Tests: cargo test ok, licenses check (tools/licenses.py keeps patched third_party crates), `fenix flash`: unchanged image 8 s (all regions skipped), two forced full writes 22 s each, board booted v0.1.3 both times. App built with the patch (4-core cap, 32 s) and installed (`/S` from PowerShell, exit 0); its Reinstall firmware runs the same `fenix-flash` code, not clicked through in the app
   - [x] 5. Docs: board-info, toolchain (flash command, cache), README, PLAN, decisions, licenses list. Also CI: release cache shared from main (`shared-key: app`)
-- [ ] P24 Full docs sweep (user 2026-10-30): every `*.md`, code comments, CLI help, references checked against the code; fix stale text
+- [x] P24 Full docs sweep (user 2026-10-30): every `*.md`, code comments, CLI help, references checked against the code; fix stale text. Found and fixed:
+  - README: status v0.1.0, duplicate Build section, driver note (flashing), board bullet, repo layout (`third_party/`, flasher)
+  - PLAN: status line, link read timeout (P16), deep sleep (P19) in two places; ideas.md: Shut down (P19); tasks.md header ("No code yet"); mockups: P21 rows; toolchain: esptool only for reads
+  - `fenix` CLI help listed `open`/`close` (no such commands) and missed tap, swipe, bench, set, host; `install` takes only the file
+  - P23 follow-ups: `tools/capture_screens.sh` erased settings with esptool (crash path): now `fenix erase` (new); `tools/serial_read.py` and `tools/spike_s3_baud.py` read with pyserial timeouts: now timeout 0 and polling
+  - `docs/screens/board/display_scrolled.png` (no burn-in row) and `about.png` (old version) recaptured from the board with `fenix tap`/`shot` (not the capture script: it erases settings and calibration)
+  - Checked, no change: `docs/packages.md` (element kinds, icon sizes), `docs/sidecars.md` (messages), `proto/spec.md`, DESIGN.md, `docs/legacy/` and `docs/POC-WRITEUP.md` (historical, kept as written)
+
+- [ ] P25 Release v0.1.4: P23 crash-safe flashing in the app. Wait for CI on main (its rust job saves the shared `app` cache for the first time), then VERSION 0.1.4 and tag, so the release run shows whether it now builds warm
 
 ## Decisions
 

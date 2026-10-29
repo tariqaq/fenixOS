@@ -5,14 +5,19 @@
 //! fenix logs [secs]                print LOG / STATS / BOARD_STATE (default 30 s)
 //! fenix time                       send TIME_SET (now, UTC)
 //! fenix reboot                     ask the board to restart
+//! fenix tap <x> <y>                remote touch (screen coordinates)
+//! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
+//! fenix bench [secs] [nostream]    link throughput
 //! fenix list                       installed apps
-//! fenix install <file.fxp> <id> <version>   push a board package
+//! fenix install <file.fxp>         push a board package
 //! fenix remove <id>                remove an app
-//! fenix open <id> | close          (debug) ask nothing; apps open on the board
+//! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
+//! fenix host <id> on|off           tell the board an app's PC half runs or stopped
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
 //! fenix flash [dir] [--erase]      write the bundled firmware (default app/src-tauri/resources/
 //!                                  firmware, from tools/bundle_firmware.py); quit the app first
+//! fenix erase <offset> <size>      erase a flash region (0x9000 0x6000: settings); quit the app
 //! Common option: --port COMx (default: auto-detect).
 
 use std::path::Path;
@@ -98,13 +103,17 @@ fn main() {
         },
         "soak" => soak(opts, arg_u64(&args, 1, 60)),
         "flash" => flash(opts, &args[1..]),
+        "erase" => match (args.get(1).and_then(|v| num(v)), args.get(2).and_then(|v| num(v))) {
+            (Some(off), Some(size)) => erase(opts, off, size),
+            _ => usage(),
+        },
         _ => usage(),
     };
     std::process::exit(code);
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase] [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|erase <offset> <size> [--port COMx]");
     2
 }
 
@@ -116,10 +125,7 @@ fn flash(opts: LinkOptions, args: &[String]) -> i32 {
         .iter()
         .find(|a| !a.starts_with("--"))
         .map_or_else(|| Path::new("app/src-tauri/resources/firmware").to_path_buf(), Into::into);
-    let Some(port) = opts
-        .port
-        .or_else(|| fenix_link::find_board_ports().into_iter().next())
-    else {
+    let Some(port) = board_port(&opts) else {
         eprintln!("no board found (use --port COMx)");
         return 1;
     };
@@ -142,6 +148,37 @@ fn flash(opts: LinkOptions, args: &[String]) -> i32 {
     match r {
         Ok(()) => {
             println!("done; the board restarts");
+            0
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            1
+        }
+    }
+}
+
+/// A number in decimal or 0x hex.
+fn num(s: &str) -> Option<u32> {
+    match s.strip_prefix("0x") {
+        Some(h) => u32::from_str_radix(h, 16).ok(),
+        None => s.parse().ok(),
+    }
+}
+
+fn board_port(opts: &LinkOptions) -> Option<String> {
+    opts.port
+        .clone()
+        .or_else(|| fenix_link::find_board_ports().into_iter().next())
+}
+
+fn erase(opts: LinkOptions, offset: u32, size: u32) -> i32 {
+    let Some(port) = board_port(&opts) else {
+        eprintln!("no board found (use --port COMx)");
+        return 1;
+    };
+    match fenix_flash::erase(&port, offset, size) {
+        Ok(()) => {
+            println!("erased {size:#x} bytes at {offset:#x}; the board restarts");
             0
         }
         Err(e) => {

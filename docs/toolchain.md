@@ -12,7 +12,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 | Rust | 1.99.1 | rustup, MSVC target |
 | Node / pnpm | 24.13.1 / 12.15.0 | pnpm via `npm i -g pnpm` |
 | MSVC | VS 2022 Build Tools | C++ protocol host test, board simulator |
-| esptool | 5.6.0 | pip (system Python 3.14), for reads/backups |
+| esptool | 5.6.0 | pip (system Python 3.14), for reads/backups only: its read timeouts take the CH340 driver's crash path (P23); flash and erase with `fenix flash` / `fenix erase` |
 | Python | 3.14 | `tools/*.py` |
 
 ## Pinned libraries
@@ -40,13 +40,13 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `monitor`, `size`; not `flash`, see below). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
 - C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)
-- Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build -p COM9 -b 460800 build flash`, then `python tools/serial_read.py 30 --reset`
+- Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build -p COM9 -b 460800 build flash`, then `python tools/serial_read.py 30 --reset` (reads without a timeout since P23). Spike flashing still runs esptool, the CH340 crash path: only when a spike is really needed
 - Board fonts: `python tools/gen_fonts.py` (Inter + Phosphor via `lv_font_conv`)
 - Version check / sync: `python tools/version.py --check` / `python tools/version.py`
 - Design tokens: `python tools/gen_tokens.py` (writes `board/components/fenix_ui/include/fenix_tokens.h` and `app/src/lib/tokens.css`; `--check` in CI)
 - Firmware to the board: build, then `python tools/bundle_firmware.py`, quit the app, then `cargo run -q -p fenix-cli --release -- flash` (or `target/release/fenix.exe flash`). Corrected (P23): `idf.ps1 flash` runs esptool, whose read timeouts take the CH340 driver's crash path (`docs/board-info.md`); `fenix flash` uses the app's flasher (espflash on the patched serialport), writes only changed regions and resets the board. `--erase` wipes the whole flash first (settings and apps too). Spikes still flash with `idf.ps1` (their own images)
 - Dev CLI (`cargo build -p fenix-cli`, then `target/debug/fenix.exe`): `ports`, `hello`, `logs [s]`, `time`, `reboot`, `tap <x> <y>`, `swipe <x1> <y1> <x2> <y2>`, `shot <png> [s]`, `bench [s] [nostream]` (slide fps, stream throughput), `list`, `install`, `remove`, `soak <min>`; `--port COMx`
-- Board screenshots: `bash tools/capture_screens.sh <dir>` erases the board's settings (NVS), installs `tools/sample-app`, taps through every system screen and the sample app, saves PNGs, and removes the sample again. Golden copies: `docs/screens/board/`
+- Board screenshots: `bash tools/capture_screens.sh <dir>` (PC app closed) erases the board's settings (NVS, with `fenix erase`; touch calibration goes too), installs `tools/sample-app`, taps through every system screen and the sample app, saves PNGs, and removes the sample again. Golden copies: `docs/screens/board/`
 - Board simulator (`board/sim`, no board needed): the real `fenix_ui` + `fenix_apps` + `fenix_pkg` code and LVGL 9.5.0 built for Windows with MSVC, on stub IDF headers, `fx::hal` on a framebuffer and `fx::sys` with settings in memory, a clock fixed at Thursday 2026-10-29 08:35 (plus virtual time) and an app store in a folder of `.fxp` files. LVGL gets the board's own Kconfig values from `board/sim/lv_kconfig.h` (`python tools/sim_config.py` after a firmware build; `--check` runs in the board CI job). Time is virtual: it moves only when the script waits or the code calls `vTaskDelay`, so every run gives the same pixels.
   - Build: `pwsh board/sim/build.ps1` (vcvars64 + CMake + Ninja; output `board/sim/build/fenix_sim.exe`). LVGL comes from `board/managed_components` after a firmware build, else CMake fetches tag v9.5.0
   - Headless: `fenix_sim run <script> --out <dir> [--store <dir>]`. Script verbs (one per line, `#` comments): `tap x y`, `swipe x1 y1 x2 y2`, `wait ms`, `shot name`, `install file.fxp`, `remove id`, `set id name=value...`, `host id on|off`, `stream on fps|off`, `connect`, `disconnect`. Taps and swipes match `fenix tap`/`swipe` timing. It starts connected, with default settings and an empty store

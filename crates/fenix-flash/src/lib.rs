@@ -222,6 +222,18 @@ fn hex(b: &[u8]) -> String {
     b.iter().map(|x| format!("{x:02x}")).collect()
 }
 
+/// Erase `size` bytes at `offset` (e.g. the settings partition), then reset the board.
+pub fn erase(port: &str, offset: u32, size: u32) -> Result<(), String> {
+    let mut flasher = connect(port)?;
+    flasher
+        .erase_region(offset, size)
+        .map_err(|e| format!("erasing failed: {e}"))?;
+    flasher
+        .connection()
+        .reset_after(true, Chip::Esp32)
+        .map_err(|e| format!("reset failed: {e}"))
+}
+
 // espflash wants segment lengths in whole 4-byte words.
 fn padded(d: &[u8]) -> Vec<u8> {
     let mut v = d.to_vec();

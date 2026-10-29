@@ -117,7 +117,7 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
   - Declarative packages: layout, assets and bindings that the firmware's UI engine renders, with the logic on the PC. Smallest and safest.
   - A small script VM: Berry starts at ~4–10 KB RAM and is used on the ESP32 by Tasmota. Lua and wasm3 are heavier, MicroPython heavier still.
   - Native ELF loading: Espressif's `elf_loader` component. The code runs from scarce internal RAM, so it is the most complex option.
-- **C4. "Shut down" can't cut power.** The board has no power switch, and USB keeps it powered. Shut down = backlight off + deep sleep, woken by a touch (touch IRQ on GPIO36 can wake from deep sleep) or by the RST button. Reboot = software restart.
+- **C4. "Shut down" can't cut power.** The board has no power switch, and USB keeps it powered. Shut down = backlight off + deep sleep (corrected, P19: light sleep, see `docs/board-info.md`), woken by a touch (touch IRQ on GPIO36 can wake from deep sleep) or by the RST button. Reboot = software restart.
 - **C5. No vsync.** The LCD's TE pin is not wired, so tearing can only be minimized: partial redraws by DMA and capped fps. A full-screen push takes ~22 ms (about 45 fps max). Full-screen effects such as cross-fades redraw the whole screen, so they run slower than small animations.
 - **C6. Apple's fonts and SF Symbols can't be used.** Apple's license limits SF fonts to Apple platforms. It does not allow embedding them in a non-Apple app or firmware, nor even mock-ups of software for non-Apple systems. Use **Inter** (Google Fonts, OFL, designed in a similar spirit to SF Pro) or a similar open font. Icons need an open set too (for example Lucide, Phosphor, Material Symbols Rounded).
 - **C7. Private repo vs. central registry** (resolved: the repo is now public). This repo was private, so the PC app cannot read the registry from it without a GitHub token. Options: a token in the PC app, a separate public registry repo, or making this repo public.
@@ -153,7 +153,7 @@ Details and the options offered: `docs/decisions.md`.
 - Navigation: iOS-style **top nav bar** (`< Home`, centred title).
 - Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, Wi-Fi NTP later; no manual set. `--:--` until the first sync after power-up.
 - Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE/LZ); ~10 fps in normal use.
-- Shut down (C4): **deep sleep, tap to wake** (touch IRQ GPIO36) or RST.
+- Shut down (C4): **deep sleep, tap to wake** (touch IRQ GPIO36) or RST. Corrected (P19): light sleep, then a restart on the tap.
 - PC app: **Rust + Tauri 2 + Svelte 5**.
 - PC half of host apps (C10): **sidecar process** per app, started only while switched on, local pipe + typed API; trust via registry, pinned versions, checksums.
 - Registry (C7): **this repo is public**; the PC app reads the registry with no auth. Vendor files, flash images and the packing slip were scrubbed from history first.
