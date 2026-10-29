@@ -36,7 +36,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 
 ## Build commands
 
-- On this laptop, run builds through `pwsh -NoProfile -File tools/capped.ps1 <command>` (user request, P12): at most 4 cores' worth of CPU at normal priority for the command and every process it starts, and `CARGO_BUILD_JOBS=4`. Example: `pwsh -NoProfile -File tools/capped.ps1 pnpm -C app tauri build --no-bundle` (a one-file change rebuilds in about 1 min 31 s with thin LTO).
+- On this laptop, run builds through `pwsh -NoProfile -File tools/capped.ps1 <command>` (user request, P12): at most 4 cores' worth of CPU at normal priority for the command and every process it starts, and `CARGO_BUILD_JOBS=4`. Example: `pwsh -NoProfile -File tools/capped.ps1 pnpm -C app tauri build --no-bundle` (a one-file change rebuilds in about 45 s; the release profile has no LTO).
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `flash`, `monitor`, `size`). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
 - C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)

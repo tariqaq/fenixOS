@@ -14,11 +14,11 @@ fenix-link = { path = "crates/fenix-link" }
 fenix-pkg = { path = "crates/fenix-pkg" }
 fenix-sdk = { path = "crates/fenix-sdk" }
 
-# Thin LTO and parallel codegen keep rebuilds quick (P12). Fat LTO with one codegen unit made the
-# exe ~1 MB smaller but took ~10 min per rebuild, and a different profile per build kind splits
-# the CI caches, so every build uses this one.
+# No cross-crate LTO, parallel codegen: quick rebuilds (P12). Measured with a 4-core cap: fat LTO
+# with one codegen unit ~10 min per rebuild (exe 8.1 MB), thin LTO 1 min 31 s (9.14 MB), none
+# 45 s (9.13 MB). One profile for every build kind, so the CI caches are shared.
 [profile.release]
 opt-level = "s"
-lto = "thin"
+lto = false
 strip = true
 panic = "abort"
