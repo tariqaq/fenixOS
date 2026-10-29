@@ -221,7 +221,14 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - Checked, no change: `docs/packages.md` (element kinds, icon sizes), `docs/sidecars.md` (messages), `proto/spec.md`, DESIGN.md, `docs/legacy/` and `docs/POC-WRITEUP.md` (historical, kept as written)
 
 - [x] P26 Spikes and backups off esptool (user 2026-10-30: "yea sure"): `fenix flash <build dir>` (ESP-IDF `flasher_args.json`), `fenix write <offset> <file>`, `fenix read-flash <offset> <size> <file>` in fenix-flash / fenix-cli. Tested: partition table and the first 256 KB of the app read back identical to `board/build` (8 s, 13 s), `fenix flash board/build` (8 s, unchanged regions skipped), board back on v0.1.3. Docs: board-info (current state corrected: it said "flash fully erased"; restores use `fenix write`), toolchain, tooling. Left outside our control: third-party serial programs (driver bug)
-- [~] P25 Release v0.1.4: P23 crash-safe flashing in the app. Wait for CI on main (its rust job saves the shared `app` cache for the first time), then VERSION 0.1.4 and tag, so the release run shows whether it now builds warm
+- [x] P25 Release v0.1.4: P23 crash-safe flashing in the app. Run 40952355775 green: firmware 173 s, app 176 s (v0.1.3: 480 s). Warm at last: "Restored from cache key v0-rust-app-…-8e97cb42, full match", no crate compiled. Installed on this PC (`/S` from PowerShell, exit 0)
+- [~] P27 Task manager (user 2026-10-30: "add a new section to pc app, called task manager ... cpu core usages, ram usages, storage usages, disk usages, network usages, bluetooth usages, active processes/threads ... real-time ... polling to 1 second")
+  - [ ] 1. Board: FreeRTOS trace facility and run-time stats on (`sdkconfig.defaults`); link counts RX/TX bytes; `BoardInfo` carries backlight and panel rest
+  - [ ] 2. Protocol: SYSINFO_REQ 0x14 (P→B, empty) and SYSINFO 0x15 (B→P): run-time clock, CPU MHz, heap (total, free, minimum, largest block, DMA), flash (size, firmware image, app slot), apps storage, NVS entries, link bytes and frames, fps, backlight, flags (dimmed, resting, burn guard, streaming, Wi-Fi/BT built in), tasks (id, name, core, priority, state, run time, stack free). Optional, no proto bump. Rust msg.rs, C++ fenix_proto, spec.md, vectors (regen), C++ round-trip test
+  - [ ] 3. Board handler (`fenix_sys/sysinfo.cpp`): answers SYSINFO_REQ; raw counters only, the PC works out rates
+  - [ ] 4. PC engine: `sysinfo` command sends SYSINFO_REQ and returns the latest sample; an old board's ERROR unknown type marks it unsupported (requests stop until the next connect)
+  - [ ] 5. PC page "Task manager" (sidebar, after Board): polls every 1 s while open; per-core CPU charts (60 s), memory, storage, USB link rates, radios (Wi-Fi, Bluetooth: not in this firmware), display, threads table with CPU % and stack free
+  - [ ] 6. Build (4-core cap), flash with `fenix flash`, check on the board and in the app; docs (spec, board-info, README, PLAN), commit, push
 
 ## Decisions
 
