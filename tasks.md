@@ -110,7 +110,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
     - [x] b. Updates (verified: start-up check and "Check for updates" both say up to date, no release exists yet): `tauri-plugin-updater` 2.14.1 now (signing key made locally, kept outside git, `%USERPROFILE%\.tauri\fenixos-updater.key`; pubkey in `tauri.conf.json`; endpoint `releases/latest/download/latest.json`); "Check for updates" row + status; check once at start when `check_updates`; install + restart. Release CI signing stays P10
     - [x] c. About (licenses: 7 board, 4 web incl. the Svelte runtime, 293 Rust crates): Source code link, "Open-source licenses" sheet from `tools/licenses.py` (Rust crates + npm packages + firmware libraries + fonts/icons, `--check` in CI); "Show welcome again" row lands with P9 (needs the welcome flow)
     - [x] d. Verify in the app, docs (toolchain, decisions, PLAN), commit
-  - [ ] 8. Accept: full loop with the sample app from a local registry; a mismatched firmware gets updated from the dialog; mirror ≥ 10 fps on Home
+  - [x] 8. Accept (2026-10-29): full loop with the sample app from a local registry (add, permissions, download + check, board install 0.1 s, live CPU/memory, events both ways, settings, remove: steps 3–4); a v0.0.9 board updated from the dialog in 23 s, and the Sample app was still installed after both reflashes (the app store partition is not in the image); mirror 10 fps (the cap) while the Home dock scrolls, 9–10 sustained. Known limit: a fast-moving picture can show a torn frame, because the stream has no frame-end marker (would need proto 2; noted in `docs/decisions.md`)
+  - [ ] 9. P8 wrap-up: docs + stale sweep
 - [ ] P9 First-run experience: 3D board model, plug-in flow (3 s wait if already plugged), probe + first install, "Show welcome again"
 - [ ] P10 Release v0.1.0: CI release, updater key (secret), updater test, README, sweep, hardware pass
 
