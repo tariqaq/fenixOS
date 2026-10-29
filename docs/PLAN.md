@@ -205,7 +205,7 @@ docs/, pics/
   - `tauri-plugin-updater` reads `latest.json` from this repo's GitHub Releases, signed.
   - The private key lives outside git and as a GitHub Actions secret.
   - After an update, the app offers to flash the matching firmware.
-  - Wired in P8 (Settings > Updates, a quiet check at start); the key exists locally since P8, and P10 adds it to CI and tests a real release.
+  - Wired in P8 (Settings > Updates, a quiet check at start); the key exists locally since P8. P10 adds the release workflow (`.github/workflows/release.yml`), which signs with the Actions secret.
 - **Logs:** `%LOCALAPPDATA%\fenixOS\logs\`, rolling 3 × 1 MB, including board `LOG` frames.
 - **First-run window:** its own window and WebView2 data folder with the GPU on (S8), closed when the welcome ends; see §3.9.
 - **Plugins:** `tauri-plugin-single-instance` (a second launch opens the window; `--quit` quits the running one), `tauri-plugin-autostart` (off by default).
@@ -434,7 +434,7 @@ Accept: a smooth run on this laptop at the S8 numbers. A blank board (like today
 
 1. CI release on tag `v0.1.0`: board build, `tools/bundle_firmware.py` into app resources, signed Tauri NSIS installer (per-user, no UAC), `latest.json`.
 2. Updater key: made in P8 (private key in `%USERPROFILE%\.tauri\`, public key in `tauri.conf.json`); add the private key as the `TAURI_SIGNING_PRIVATE_KEY` Actions secret.
-3. Test the updater with a throwaway `v0.1.1-test` pre-release, then delete it.
+3. Test the updater with a throwaway `v0.1.1-test` pre-release, then delete it. (Corrected 2026-10-29: the endpoint is `releases/latest`, which never serves a pre-release. The test is a local build with VERSION 0.0.9 that must find, verify and install the real v0.1.0.)
 4. README: install, first run, build from source, how apps work. Docs and stale sweep across the repo.
 5. Do a final hardware pass: all screens, all rotations, a 1 h soak, the shut down / wake cycle.
 

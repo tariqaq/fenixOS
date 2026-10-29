@@ -132,7 +132,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [!] 3. Waits on 2 (signing needs the key). Dry run: `workflow_dispatch` builds everything without publishing (artifact upload only), so the tag is pushed only once the pipeline is green
   - [x] 4. (Done: status v0.1.0, board screenshots, install, how apps work, build + simulator) README for v0.1.0: install, first run, how apps work, build from source (+ simulator), screenshots from `docs/screens/`
   - [~] 5. (1 h soak running) Hardware pass: 1 h `fenix soak`, all screens via the simulator goldens + a board capture walk, rotations; shut down / wake stays an open item (needs a finger)
-  - [ ] 6. Sweep: docs, comments, CLI help, `tasks.md`; "in development" status lines
+  - [x] 6. (Done: toolchain P10 refs, PLAN P10.3 + updater note corrected, decisions logged, CLI help checked; repeat after the tag) Sweep: docs, comments, CLI help, `tasks.md`; "in development" status lines
   - [ ] 7. Tag `v0.1.0`, release CI publishes it; check the release assets (`fenixOS_0.1.0_x64-setup.exe`, `.sig`, `latest.json`)
   - [ ] 8. Updater test (corrects PLAN P10.3: the endpoint is `releases/latest`, which skips pre-releases, so a `v0.1.1-test` pre-release would never be offered): a local build with VERSION 0.0.9 (not committed) must find v0.1.0, download, verify the signature and install it
   - [ ] 9. Accept: clean install from the GitHub release (uninstall first, fresh config), erased board, OOTB to a working dashboard
