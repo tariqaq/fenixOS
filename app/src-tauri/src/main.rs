@@ -3,8 +3,12 @@
 //! `fenixos --quit` quits a running instance; `--tray` (autostart) starts without the window.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod apps;
+mod config;
 mod engine;
 mod logs;
+mod registry;
+mod sidecar;
 mod tray;
 
 use std::path::PathBuf;
@@ -13,8 +17,10 @@ use std::sync::Arc;
 use tauri::{AppHandle, Manager, RunEvent, WebviewWindowBuilder};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
+use apps::Cmd;
 use engine::{Engine, State};
 use logs::Source;
+use serde::Serialize;
 
 /// Show the main window, creating its webview if it was closed.
 pub fn open_window(app: &AppHandle) {
@@ -86,6 +92,105 @@ fn reboot_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) {
     engine.send(fenix_proto::Msg::Reboot);
 }
 
+/// One registry app for Add app.
+#[derive(Serialize)]
+struct RegistryItem {
+    #[serde(flatten)]
+    manifest: registry::Manifest,
+    /// This exact version is already added.
+    added: bool,
+}
+
+/// Read the registry (GitHub, or `FENIX_REGISTRY`). Slow: runs off the UI thread.
+#[tauri::command]
+async fn list_registry(app: AppHandle) -> Result<Vec<RegistryItem>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let engine = app.state::<Arc<Engine>>();
+        let (apps, bad) = registry::fetch(&registry::source())?;
+        for b in bad {
+            engine.log(
+                &app,
+                Source::Pc,
+                true,
+                format!("Registry entry skipped: {b}"),
+            );
+        }
+        *engine.registry.lock().unwrap() = apps.clone();
+        Ok(apps
+            .into_iter()
+            .map(|m| RegistryItem {
+                added: engine.with_apps(|a| a.is_installed(&m.id, &m.version)),
+                manifest: m,
+            })
+            .collect())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Download, check and add an app from the last registry read, then switch it on.
+#[tauri::command]
+async fn add_app(app: AppHandle, id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let engine = app.state::<Arc<Engine>>();
+        let m = engine
+            .registry
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|m| m.id == id)
+            .cloned()
+            .ok_or("not in the registry")?;
+        engine.log(
+            &app,
+            Source::Apps,
+            false,
+            format!("Downloading {} v{}", m.name, m.version),
+        );
+        if let Err(e) = apps::fetch_app(&registry::source(), &m) {
+            engine.log(
+                &app,
+                Source::Apps,
+                true,
+                format!("{} could not be added: {e}", m.name),
+            );
+            return Err(e);
+        }
+        engine.post(Cmd::Added {
+            manifest: Box::new(m),
+            enable: true,
+        });
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn set_app_enabled(engine: tauri::State<Arc<Engine>>, id: String, on: bool) {
+    engine.post(Cmd::SetEnabled { id, on });
+}
+
+#[tauri::command]
+fn set_app_setting(
+    engine: tauri::State<Arc<Engine>>,
+    id: String,
+    key: String,
+    value: serde_json::Value,
+) {
+    engine.post(Cmd::SetSetting { id, key, value });
+}
+
+#[tauri::command]
+fn app_button(engine: tauri::State<Arc<Engine>>, id: String, key: String) {
+    engine.post(Cmd::Button { id, key });
+}
+
+#[tauri::command]
+fn remove_app(engine: tauri::State<Arc<Engine>>, id: String) {
+    engine.post(Cmd::Remove { id });
+}
+
 /// Open an https link in the default browser (links never load inside the app window).
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
@@ -121,7 +226,13 @@ fn main() {
             get_autostart,
             set_autostart,
             reboot_board,
-            open_url
+            open_url,
+            list_registry,
+            add_app,
+            set_app_enabled,
+            set_app_setting,
+            app_button,
+            remove_app
         ])
         .setup(move |app| {
             // Reached only by the first instance: `--quit` with nothing running is a no-op.

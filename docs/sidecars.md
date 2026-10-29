@@ -13,7 +13,7 @@ An app's PC half is a Windows program that fenixOS starts while the app is switc
 - fenixOS waits 10 s for both connections. Then it sends `hello` and the current `settings`.
 - To stop the app, fenixOS sends `stop` and closes the pipes. The app must exit when it gets `stop` or when a read or write fails (the pipe closed). After 3 s fenixOS ends the process. An elevated process cannot be ended by fenixOS, so it must exit on its own; `fenix-sdk` does this for you.
 - Programs started without elevation run in a job object that ends them if fenixOS itself ends.
-- Crash or early exit while switched on: fenixOS restarts it after 1 s, 5 s and 15 s. After the third failure in 2 minutes it gives up and the tile shows "Stopped, see Logs".
+- Crash or early exit while switched on: fenixOS restarts it after 1 s, then 5 s, then 15 s. A fourth failure within 2 minutes stops the retries, and the tile shows "Stopped, see Logs" until the app is switched off and on again.
 - `pc.elevated: true` in the manifest: fenixOS starts the program through UAC (`runas`), so Windows asks each time the app starts. A declined prompt counts as a failed start, and fenixOS does not retry it.
 
 ## Messages

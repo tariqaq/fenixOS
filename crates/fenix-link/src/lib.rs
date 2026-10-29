@@ -465,8 +465,10 @@ impl StreamCanvas {
         let mut pix = Vec::with_capacity(h.w as usize * h.h as usize);
         match h.codec {
             fenix_proto::codec_id::RAW => pix.extend(
-                data.chunks_exact(2)
-                    .map(|c| u16::from_be_bytes([c[0], c[1]])),
+                data.as_chunks::<2>()
+                    .0
+                    .iter()
+                    .map(|c| u16::from_be_bytes(*c)),
             ),
             fenix_proto::codec_id::RLE16 => fenix_proto::rle16_decode(data, &mut pix).ok()?,
             _ => return None,

@@ -91,11 +91,9 @@ impl Cpu {
         let (idle, total) = system_times();
         let (di, dt) = (idle - self.idle, total - self.total);
         (self.idle, self.total) = (idle, total);
-        if dt == 0 {
-            0
-        } else {
-            (100 - di * 100 / dt) as i32
-        }
+        (di * 100)
+            .checked_div(dt)
+            .map_or(0, |idle| 100 - idle as i32)
     }
 }
 

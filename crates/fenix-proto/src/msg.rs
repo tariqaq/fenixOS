@@ -635,12 +635,15 @@ impl Msg {
 
 /// RLE16 stream codec (`proto/spec.md`): `count:u8 ‖ pixel:u16be` runs.
 pub fn rle16_decode(data: &[u8], out: &mut Vec<u16>) -> Result<(), FrameError> {
-    if data.len() % 3 != 0 {
+    let (runs, rest) = data.as_chunks::<3>();
+    if !rest.is_empty() {
         return Err(FrameError::BadBody("rle16 length"));
     }
-    for c in data.chunks_exact(3) {
-        let px = u16::from_be_bytes([c[1], c[2]]);
-        out.extend(std::iter::repeat(px).take(c[0] as usize));
+    for [n, hi, lo] in runs {
+        out.extend(std::iter::repeat_n(
+            u16::from_be_bytes([*hi, *lo]),
+            *n as usize,
+        ));
     }
     Ok(())
 }

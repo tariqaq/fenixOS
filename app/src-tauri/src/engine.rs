@@ -2,6 +2,7 @@
 //! fenixOS runs, with or without a window (PLAN §3.5). The UI only reads a snapshot and listens
 //! for `state` / `log` events, which are sent only while the window exists.
 
+use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -11,7 +12,9 @@ use fenix_proto::Msg;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
+use crate::apps::{AppView, Apps, Cmd};
 use crate::logs::{Logs, Source};
+use crate::registry::Manifest;
 
 const TIME_SYNC_EVERY: Duration = Duration::from_secs(3600);
 
@@ -55,6 +58,9 @@ pub struct State {
     pub board: Option<Board>,
     pub silent: Vec<Silent>,
     pub app_version: String,
+    /// Board firmware equals this app's version (PLAN §3.8); false while searching.
+    pub firmware_ok: bool,
+    pub apps: Vec<AppView>,
 }
 
 pub struct Engine {
@@ -62,20 +68,38 @@ pub struct Engine {
     pub logs: Logs,
     link: Link,
     connected_at: Mutex<Option<(Instant, u32)>>,
+    apps: Mutex<Apps>,
+    inbox: Mutex<Sender<Cmd>>,
+    inbox_rx: Mutex<Option<Receiver<Cmd>>>,
+    /// The registry as last read by Add app.
+    pub registry: Mutex<Vec<Manifest>>,
 }
 
 impl Engine {
     pub fn start(app: AppHandle, logs: Logs) -> Arc<Engine> {
+        let (tx, rx) = mpsc::channel();
+        let cfg = crate::config::Config::load();
+        let link = Link::spawn(LinkOptions {
+            port: cfg.port.clone(),
+            ..LinkOptions::default()
+        });
+        let apps = Apps::new(link.sender(), tx.clone());
         let engine = Arc::new(Engine {
             state: Mutex::new(State {
                 status: Status::Searching,
                 board: None,
                 silent: Vec::new(),
                 app_version: env!("CARGO_PKG_VERSION").into(),
+                firmware_ok: false,
+                apps: apps.views(),
             }),
             logs,
-            link: Link::spawn(LinkOptions::default()),
+            link,
             connected_at: Mutex::new(None),
+            apps: Mutex::new(apps),
+            inbox: Mutex::new(tx),
+            inbox_rx: Mutex::new(Some(rx)),
+            registry: Mutex::new(Vec::new()),
         });
         engine.log(
             &app,
@@ -103,6 +127,16 @@ impl Engine {
         self.link.send(m);
     }
 
+    /// Hand a change to the engine thread.
+    pub fn post(&self, c: Cmd) {
+        let _ = self.inbox.lock().unwrap().send(c);
+    }
+
+    /// Read something from the app manager (config, installed versions).
+    pub fn with_apps<T>(&self, f: impl FnOnce(&mut Apps) -> T) -> T {
+        f(&mut self.apps.lock().unwrap())
+    }
+
     pub fn log(&self, app: &AppHandle, source: Source, problem: bool, text: impl Into<String>) {
         let line = self.logs.add(source, problem, text);
         if window_open(app) {
@@ -112,23 +146,48 @@ impl Engine {
 
     fn run(self: Arc<Self>, app: AppHandle) {
         let mut next_sync = Instant::now() + TIME_SYNC_EVERY;
+        let inbox = self
+            .inbox_rx
+            .lock()
+            .unwrap()
+            .take()
+            .expect("engine runs once");
         loop {
-            let ev = self.link.recv_event(Duration::from_millis(500));
-            let changed = match ev {
-                Some(e) => self.handle(&app, e),
-                None => false,
+            let mut changed = false;
+            while let Ok(c) = inbox.try_recv() {
+                changed |= self.apps.lock().unwrap().command(c);
+            }
+            // Poll fast only while an install streams chunks; otherwise stay mostly asleep.
+            let wait = if self.apps.lock().unwrap().busy() {
+                5
+            } else {
+                100
             };
+            if let Some(e) = self.link.recv_event(Duration::from_millis(wait)) {
+                changed |= self.handle(&app, e);
+            }
+            changed |= self.apps.lock().unwrap().tick();
+            self.flush_app_logs(&app);
             if self.state.lock().unwrap().status == Status::Connected && Instant::now() >= next_sync
             {
                 next_sync = Instant::now() + TIME_SYNC_EVERY;
                 self.sync_time(&app);
             }
             if changed {
+                let views = self.apps.lock().unwrap().views();
+                self.state.lock().unwrap().apps = views;
                 crate::tray::update(&app, &self.snapshot());
                 if window_open(&app) {
                     let _ = app.emit_to("main", "state", self.snapshot());
                 }
             }
+        }
+    }
+
+    fn flush_app_logs(&self, app: &AppHandle) {
+        let lines = std::mem::take(&mut self.apps.lock().unwrap().logs);
+        for (source, problem, text) in lines {
+            self.log(app, source, problem, text);
         }
     }
 
@@ -146,10 +205,12 @@ impl Engine {
         match e {
             Event::Connected { port, info } => {
                 let fw = format!("{}.{}.{}", info.fw.0, info.fw.1, info.fw.2);
+                let firmware_ok = fw == env!("CARGO_PKG_VERSION");
                 *self.connected_at.lock().unwrap() = Some((Instant::now(), info.uptime_s));
                 {
                     let mut s = self.state.lock().unwrap();
                     s.status = Status::Connected;
+                    s.firmware_ok = firmware_ok;
                     s.silent.clear();
                     s.board = Some(Board {
                         port: port.clone(),
@@ -186,13 +247,16 @@ impl Engine {
                     ),
                 );
                 self.sync_time(app);
+                self.apps.lock().unwrap().board_connected(firmware_ok);
                 true
             }
             Event::Disconnected { reason } => {
+                self.apps.lock().unwrap().board_disconnected();
                 let was = {
                     let mut s = self.state.lock().unwrap();
                     let was = s.status == Status::Connected;
                     s.status = Status::Searching;
+                    s.firmware_ok = false;
                     s.board = None;
                     was
                 };
@@ -258,6 +322,7 @@ impl Engine {
                 self.log(app, Source::Board, true, format!("Error {code}: {text}"));
                 false
             }
+            Event::Msg(m) => self.apps.lock().unwrap().board_msg(&m),
             _ => false,
         }
     }
