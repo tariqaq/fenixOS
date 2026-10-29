@@ -17,6 +17,7 @@ extern "C" void app_main(void) {
   fx::apps::start();
   fx::ui::step();  // draw the boot screen before the backlight comes up
   fx::ui::backlight_config(st.brightness, st.dim_level, st.dim_after_s);
+  fx::ui::burn_guard(st.burn_guard);
 
   fx::hal::led_init();
   fx::sys::clock_init();

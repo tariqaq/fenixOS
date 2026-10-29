@@ -1,3 +1,5 @@
+#include <stddef.h>
+
 #include "fenix_sys.h"
 #include "nvs.h"
 #include "nvs_flash.h"
@@ -20,9 +22,11 @@ void nvs_start() {
   }
   nvs_handle_t h;
   if (nvs_open("fenix", NVS_READONLY, &h) != ESP_OK) return;
+  // A blob from older firmware is shorter (fields are only appended): the rest keeps its defaults.
+  static constexpr size_t OLDEST = offsetof(Blob, s) + offsetof(Settings, burn_guard);
   Blob b;
   size_t n = sizeof b;
-  if (nvs_get_blob(h, "settings", &b, &n) == ESP_OK && n == sizeof b && b.version == BLOB_VERSION) s_settings = b.s;
+  if (nvs_get_blob(h, "settings", &b, &n) == ESP_OK && n >= OLDEST && b.version == BLOB_VERSION) s_settings = b.s;
   nvs_close(h);
   if (s_settings.brightness < 16) s_settings.brightness = 16;
   s_settings.rotation &= 3;

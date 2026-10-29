@@ -1,4 +1,4 @@
-// Settings tree: Display (+ Rotation), Home screen, Storage, Host PC, About.
+// Settings tree: Display (+ Rotation), Home screen, Storage, Host PC, About, Debug.
 // Artboards Settings, SettingsDisplay, SettingsHome, SettingsAbout.
 #include <stdio.h>
 
@@ -66,6 +66,22 @@ static void calibrate_cb(lv_event_t*) {
   lv_obj_invalidate(lv_screen_active());
 }
 
+// Burn-in protection is locked on; Settings > Debug unlocks its switch (user 2026-10-29).
+static void burn_cb(lv_event_t* e) {
+  bool on = lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED);
+  sys::settings().burn_guard = on;
+  burn_guard(on);
+  sys::settings_save();
+}
+
+static lv_obj_t* note(lv_obj_t* parent, const char* s) {
+  lv_obj_t* n = text(parent, s, &fx_font_caption, FX_COLOR_LABEL_2);
+  lv_obj_set_width(n, LV_PCT(100));
+  lv_obj_set_style_pad_hor(n, 4, 0);
+  lv_obj_set_style_text_line_space(n, 2, 0);
+  return n;
+}
+
 static lv_obj_t* slider_block(lv_obj_t* g, const char* label, int pad_bottom) {
   lv_obj_t* b = column(g, 4);
   lv_obj_set_width(b, LV_PCT(100));
@@ -122,6 +138,14 @@ static void display_screen(lv_obj_t* scr) {
   row = list_row(g, nullptr, 0, "Calibrate touch", nullptr, false, calibrate_cb, nullptr);
   lv_obj_set_style_text_color(lv_obj_get_child(row, 0), col(FX_COLOR_ACCENT), 0);
   lv_obj_move_to_index(text(row, FX_ICON_HAND_TAP, &fx_icon_fill_18, FX_COLOR_ACCENT), 0);
+
+  g = group(c);
+  lv_obj_t* sw = switch_row(g, nullptr, 0, "Burn-in protection", st.burn_guard, st.debug, burn_cb, nullptr);
+  lv_obj_move_to_index(text(lv_obj_get_parent(sw), FX_ICON_MONITOR, &fx_icon_fill_18, FX_COLOR_LABEL), 0);
+  note(c, st.debug ? "Moves the picture by a pixel every minute and turns the screen off after 10 minutes "
+                     "without a touch."
+                   : "Moves the picture by a pixel every minute and turns the screen off after 10 minutes "
+                     "without a touch. Turn on Debug in Settings to change this.");
 }
 
 // ---- Rotation ----
@@ -211,12 +235,8 @@ static void home_style_screen(lv_obj_t* scr) {
   uint8_t cur = sys::settings().home_style;
   style_card(r, sys::HOME_TILES, cur == sys::HOME_TILES);
   style_card(r, sys::HOME_DOCK, cur == sys::HOME_DOCK);
-  lv_obj_t* note = text(c, "Tiles show big app tiles under the clock. Dock keeps the clock large with small icons below.",
-                        &fx_font_caption, FX_COLOR_LABEL_2);
-  lv_obj_set_width(note, LV_PCT(100));
-  lv_obj_set_style_pad_hor(note, 4, 0);
-  lv_obj_set_style_text_align(note, LV_TEXT_ALIGN_CENTER, 0);
-  lv_obj_set_style_text_line_space(note, 2, 0);
+  lv_obj_t* n = note(c, "Tiles show big app tiles under the clock. Dock keeps the clock large with small icons below.");
+  lv_obj_set_style_text_align(n, LV_TEXT_ALIGN_CENTER, 0);
 }
 
 // ---- Storage ----
@@ -303,6 +323,17 @@ static void about_screen(lv_obj_t* scr) {
 
 static void push_cb(lv_event_t* e) { nav_push((Builder)lv_event_get_user_data(e)); }
 
+// Debug off locks burn-in protection on again.
+static void debug_cb(lv_event_t* e) {
+  sys::Settings& s = sys::settings();
+  s.debug = lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED);
+  if (!s.debug && !s.burn_guard) {
+    s.burn_guard = 1;
+    burn_guard(true);
+  }
+  sys::settings_save();
+}
+
 void settings_screen(lv_obj_t* scr) {
   const sys::Settings& st = sys::settings();
   navbar(scr, "Home", "Settings");
@@ -322,6 +353,8 @@ void settings_screen(lv_obj_t* scr) {
   char v[40];
   snprintf(v, sizeof v, "v%s", esp_app_get_description()->version);
   list_row(g, FX_ICON_INFO, FX_COLOR_TILE_GRAY, "About", v, true, push_cb, (void*)about_screen);
+  g = group(c);
+  switch_row(g, FX_ICON_WARNING, FX_COLOR_TILE_ORANGE, "Debug", st.debug, true, debug_cb, nullptr);
 }
 
 }  // namespace fx::apps

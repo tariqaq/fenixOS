@@ -18,7 +18,7 @@ Board firmware (fenixOS v0.1.0):
 - Boot screen: name, version, a grey track with a white line sweeping left to right. Home is built while it plays, then a smooth transition to Home.
 - Home: time and date (MYT, UTC+8), `--:--` until the first PC time sync. Two styles, **Tiles** and **Dock**, chosen in Settings › Home screen. Works in all 4 rotations.
 - System apps:
-  - **Settings:** Display (rotation, brightness, auto-dim level, dim after, touch calibration), Home screen (Tiles / Dock), Storage, Host PC, About.
+  - **Settings:** Display (rotation, brightness, auto-dim level, dim after, touch calibration, burn-in protection), Home screen (Tiles / Dock), Storage, Host PC, About, Debug (P21: unlocks the burn-in protection switch).
   - **Session:** pop-up with Shut down (sleep, tap to wake) and Restart.
   - **Stream:** link status; streams the screen to the PC at ~10 fps.
 - Installed host apps: declarative packages on LittleFS; tiles fade in and out on install and remove. Host states: working, waiting for PC, turned off on PC.
@@ -107,7 +107,7 @@ docs/, pics/
   - Top nav bar (`< Home`, centred title).
   - App open = scale and fade from the tile; push and pop = slide.
   - Session is a sheet over the current screen.
-- **Settings store:** NVS. Rotation, brightness, dim level, dim delay, touch calibration, home style.
+- **Settings store:** NVS. Rotation, brightness, dim level, dim delay, touch calibration, home style, burn-in protection, debug. New fields are appended, so an older, shorter blob still loads.
 - **Clock:**
   - Sources: `TIME_SET` from the PC, on connect and hourly.
   - `TZ=MYT-8`.

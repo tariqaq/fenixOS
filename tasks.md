@@ -191,7 +191,15 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 2. Build, flash, user checks: LED dark while shut down, tap wakes, time kept. Confirmed by the user 2026-10-29: LED off while shut down, one green connect pulse after the wake, then off
   - [x] 3. Docs: board-info (corrected LED cause), decisions (Shut down), PLAN, comments
 
-- [~] P20 Release v0.1.2 (user 2026-10-29: "push it then ... i permit u at all times"): the P19 LED fix in a release. VERSION 0.1.2, tag v0.1.2, watch the run, install the release
+- [x] P20 Release v0.1.2 (user 2026-10-29: "push it then ... i permit u at all times"): the P19 LED fix in a release. VERSION 0.1.2, tag v0.1.2, watch the run, install the release. Run 40886405161 green (firmware 148 s, app 454 s: still cold, 343 crates compiled, because this was the first release under the new `.cargo/config.toml` key; it saved the `app` cache, 455 MB, so the next release should be warm). Installed `fenixOS_0.1.2_x64-setup.exe` (fenixos.exe 0.1.2; Git Bash mangled `/S`, so the user clicked through the dialogs, app data kept), app started
+
+- [~] P21 Burn-in protection (user 2026-10-29: "moderate level of screen burn in right where the clock is"). The panel is a TN LCD: this is image retention (static picture, DC bias on the liquid crystal), usually fading with rest, not OLED-style burn-in. Plan:
+  - [x] 1. Pixel shift (ui_core): every 60 s the whole picture moves 1 px along a 5x5 walk (+-2 px, 25 min cycle); flush offsets the pushes, clears the uncovered strip, touch is shifted back; the stream stays unshifted
+  - [x] 2. Screen rest: 10 min without a touch puts the panel to sleep (ILI9341 SLPIN, backlight off); a tap wakes it and is swallowed like the dim wake
+  - [x] 3. Settings: `burn_guard` (default on) and `debug` (default off), appended to the NVS blob (older, shorter blobs still load)
+  - [x] 4. UI: Display gets a "Burn-in protection" switch, greyed out and locked on unless Settings > Debug (new group at the bottom) is on; Debug off turns protection back on. Switch widget moves to fenix_ui (`toggle`), app_pkg uses it
+  - [~] 5. Sim (protection off there: the shift would move the goldens), goldens, firmware build, flash, check on the board. Done: sim taps moved (Rotation and About sit higher after the scroll), goldens display_scrolled and settings_portrait updated, new settings_debug (23 goldens); firmware built and flashed. Waiting: the user checks the shift, the rest and the lock on the board
+  - [x] 6. Docs: board-info (retention finding), decisions, PLAN, DESIGN if needed
 
 ## Decisions
 

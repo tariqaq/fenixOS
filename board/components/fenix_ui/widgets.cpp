@@ -195,6 +195,49 @@ lv_obj_t* slider(lv_obj_t* parent, int min, int max, int value) {
   return s;
 }
 
+lv_obj_t* toggle(lv_obj_t* parent, bool on) {
+  lv_obj_t* s = lv_switch_create(parent);
+  lv_obj_remove_style_all(s);
+  lv_obj_set_size(s, 44, 26);
+  lv_obj_set_style_bg_color(s, col(FX_COLOR_SURFACE_3), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(s, col(FX_COLOR_SUCCESS), (lv_style_selector_t)LV_PART_INDICATOR | LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(s, LV_OPA_COVER, (lv_style_selector_t)LV_PART_INDICATOR | LV_STATE_CHECKED);
+  lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+  lv_obj_set_style_bg_color(s, lv_color_white(), LV_PART_KNOB);
+  lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_KNOB);
+  lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_KNOB);
+  lv_obj_set_style_pad_all(s, -2, LV_PART_KNOB);
+  lv_obj_set_style_anim_duration(s, FX_MOTION_FAST_MS, 0);
+  if (on) lv_obj_add_state(s, LV_STATE_CHECKED);
+  return s;
+}
+
+lv_obj_t* switch_row(lv_obj_t* g, const char* icon, uint32_t icon_bg, const char* label, bool on, bool enabled,
+                     lv_event_cb_t cb, void* ud) {
+  lv_obj_t* r = rowbox(g, 10);
+  lv_obj_set_size(r, LV_PCT(100), FX_ROW);
+  lv_obj_set_style_pad_hor(r, 10, 0);
+  if (icon) {
+    lv_obj_t* sq = box(r);
+    lv_obj_set_size(sq, 24, 24);
+    lv_obj_set_style_radius(sq, 6, 0);
+    lv_obj_set_style_bg_color(sq, col(icon_bg), 0);
+    lv_obj_set_style_bg_opa(sq, LV_OPA_COVER, 0);
+    lv_obj_center(text(sq, icon, &fx_icon_fill_15, FX_COLOR_LABEL));
+  }
+  lv_obj_t* l = text(r, label, &fx_font_body, enabled ? FX_COLOR_LABEL : FX_COLOR_LABEL_2);
+  lv_obj_set_flex_grow(l, 1);
+  lv_obj_t* s = toggle(r, on);
+  if (!enabled) {
+    lv_obj_add_state(s, LV_STATE_DISABLED);
+    lv_obj_set_style_opa(s, LV_OPA_40, LV_STATE_DISABLED);
+  }
+  if (cb) lv_obj_add_event_cb(s, cb, LV_EVENT_VALUE_CHANGED, ud);
+  return s;
+}
+
 // ---- Segmented ----
 
 struct SegState {

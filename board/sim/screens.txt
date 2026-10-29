@@ -14,7 +14,7 @@ tap 160 60
 shot display
 swipe 314 200 314 100
 shot display_scrolled
-tap 160 155
+tap 160 56                                # Rotation (scrolled)
 shot rotation
 tap 160 101                               # Portrait
 shot rotation_portrait
@@ -46,7 +46,9 @@ tap 160 101                               # Home style
 tap 90 100                                # Tiles
 tap 30 16
 swipe 314 220 314 40
-tap 160 208
+tap 276 209                               # Debug on
+shot settings_debug
+tap 160 152
 shot about                                # scrolled to the end
 tap 30 16
 tap 160 142

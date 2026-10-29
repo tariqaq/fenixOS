@@ -81,9 +81,17 @@ void display_push(int x, int y, int w, int h, const void* px) {
   int W = sim::width(), H = sim::height();
   for (int j = 0; j < h; j++)
     for (int i = 0; i < w; i++, p += 2)
-      if (x + i < W && y + j < H) sim::s_px[(size_t)(y + j) * W + x + i] = (uint16_t)(p[0] << 8 | p[1]);
+      if (x + i >= 0 && y + j >= 0 && x + i < W && y + j < H)
+        sim::s_px[(size_t)(y + j) * W + x + i] = (uint16_t)(p[0] << 8 | p[1]);
 }
 void display_wait() {}
+void display_fill(int x, int y, int w, int h) {
+  int W = sim::width(), H = sim::height();
+  for (int j = y; j < y + h; j++)
+    for (int i = x; i < x + w; i++)
+      if (i >= 0 && j >= 0 && i < W && j < H) sim::s_px[(size_t)j * W + i] = 0;
+}
+void display_sleep(bool) {}
 int display_selftest() { return 0; }
 void display_set_spi_hz(uint32_t) {}
 void backlight_set(uint8_t level) { sim::s_bl = level; }

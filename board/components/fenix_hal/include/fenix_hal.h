@@ -14,6 +14,10 @@ int display_height();
 // Push an RGB565 big-endian (byte-swapped) block by DMA. Waits for the previous transfer first.
 void display_push(int x, int y, int w, int h, const void* px);
 void display_wait();
+// Fill a block with black (the strip a pixel shift uncovers).
+void display_fill(int x, int y, int w, int h);
+// Panel sleep (ILI9341 SLPIN / SLPOUT): the panel stops driving the picture; its memory is kept.
+void display_sleep(bool on);
 // Write colour bars, read them back over MISO and count wrong pixels (bus check).
 int display_selftest();
 // SPI write clock in Hz (default 40 MHz; set before display_init). A dev knob: nothing calls it.

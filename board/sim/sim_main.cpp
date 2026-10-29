@@ -35,6 +35,7 @@ static void boot() {
   apps::start();
   ui::step();
   ui::backlight_config(st.brightness, st.dim_level, st.dim_after_s);
+  ui::burn_guard(false);  // the pixel shift would move the golden screens (the setting shows on)
   hal::led_init();
   sys::clock_init();
   sys::store_mount();

@@ -309,25 +309,6 @@ static void elem_cb(lv_event_t* e) {
   }
 }
 
-static lv_obj_t* make_switch(lv_obj_t* parent, bool on) {
-  lv_obj_t* s = lv_switch_create(parent);
-  lv_obj_remove_style_all(s);
-  lv_obj_set_size(s, 44, 26);
-  lv_obj_set_style_bg_color(s, col(FX_COLOR_SURFACE_3), LV_PART_MAIN);
-  lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_MAIN);
-  lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_MAIN);
-  lv_obj_set_style_bg_color(s, col(FX_COLOR_SUCCESS), (lv_style_selector_t)LV_PART_INDICATOR | LV_STATE_CHECKED);
-  lv_obj_set_style_bg_opa(s, LV_OPA_COVER, (lv_style_selector_t)LV_PART_INDICATOR | LV_STATE_CHECKED);
-  lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(s, lv_color_white(), LV_PART_KNOB);
-  lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_KNOB);
-  lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_KNOB);
-  lv_obj_set_style_pad_all(s, -2, LV_PART_KNOB);
-  lv_obj_set_style_anim_duration(s, FX_MOTION_FAST_MS, 0);
-  if (on) lv_obj_add_state(s, LV_STATE_CHECKED);
-  return s;
-}
-
 // `grow` shares the parent's free space along its flow. A parent sized to its content has none,
 // and LVGL would squeeze the element to 0 (a row turned column in portrait), so it only applies
 // when the parent has a set size along its flow. The root's parent is the app body (fixed).
@@ -395,7 +376,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
       break;
     }
     case fpkg::kind::SWITCH:
-      o = make_switch(parent, get(fpkg::key::VALUE, 0) != 0);
+      o = toggle(parent, get(fpkg::key::VALUE, 0) != 0);
       break;
     case fpkg::kind::SLIDER:
       o = slider(parent, get(fpkg::key::MIN, 0), get(fpkg::key::MAX, 100), get(fpkg::key::VALUE, 0));

@@ -1,4 +1,5 @@
-// LVGL glue: display (2 DMA bands, RGB565 swapped), touch, backlight dimming, stream hook, fps.
+// LVGL glue: display (2 DMA bands, RGB565 swapped), touch, backlight dimming, burn-in
+// protection, stream hook, fps.
 // Choices from spike S1 and P4 profiling (docs/board-info.md): 320x80 bands, no LVGL OS layer,
 // 16 ms refresh.
 #include "esp_heap_caps.h"
@@ -55,9 +56,13 @@ static void refr_start_cb(lv_event_t*) {
   if (s_stream_frame) s_last_stream_frame = now;
 }
 
+// Pixel shift offset (burn-in protection): the panel shows the picture moved by this much.
+static int s_dx, s_dy;
+
 static void flush_cb(lv_display_t* d, const lv_area_t* a, uint8_t* px) {
   int w = lv_area_get_width(a), h = lv_area_get_height(a);
-  hal::display_push(a->x1, a->y1, w, h, px);
+  hal::display_push(a->x1 + s_dx, a->y1 + s_dy, w, h, px);  // LovyanGFX clips the edge
+  // The stream gets the picture unshifted.
   if (s_stream && !(s_stream_frame && sys::stream_rect(a->x1, a->y1, w, h, px))) mark_stale(a);
   if (lv_display_flush_is_last(d)) {
     int64_t now = esp_timer_get_time();
@@ -83,7 +88,7 @@ static void bl_exec(void*, int32_t v) {
   hal::backlight_set(v);
 }
 
-static void bl_fade(int to, uint32_t ms) {
+static void bl_fade(int to, uint32_t ms, lv_anim_completed_cb_t done = nullptr) {
   lv_anim_delete(&s_bl_now, bl_exec);
   if (s_bl_now < 0) s_bl_now = 0;
   lv_anim_t a;
@@ -93,6 +98,7 @@ static void bl_fade(int to, uint32_t ms) {
   lv_anim_set_values(&a, s_bl_now, to);
   lv_anim_set_duration(&a, ms);
   lv_anim_set_path_cb(&a, lv_anim_path_ease_in_out);
+  if (done) lv_anim_set_completed_cb(&a, done);
   lv_anim_start(&a);
 }
 
@@ -108,7 +114,69 @@ void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s) {
   bl_fade(s_dimmed ? dim_target() : s_level, FX_MOTION_FAST_MS);
 }
 
-bool dimmed() { return s_dimmed; }
+// ---- Burn-in protection (P21) ----
+// The panel is a TN LCD: a picture held for hours leaves a faint ghost (image retention), seen
+// where the Home clock sits (2026-10-29). The picture walks 1 px every SHIFT_S over a 5 x 5
+// square (+-2 px; there and back, so every step is 1 px), and after REST_S without a touch the
+// backlight fades out and the panel sleeps, so it stops driving the picture at all.
+static constexpr uint32_t SHIFT_S = 60, REST_S = 600;
+static constexpr int WALK = 25, WALK_CENTRE = 12;
+static bool s_guard, s_rest, s_panel_asleep;
+static int s_walk = WALK_CENTRE;
+static int64_t s_shift_at;
+
+static void shift_set(int dx, int dy) {
+  if (dx == s_dx && dy == s_dy) return;
+  s_dx = dx;
+  s_dy = dy;
+  // The picture now covers [dx, W + dx) x [dy, H + dy): blank the strip it left.
+  int W = width(), H = height();
+  if (dx > 0) hal::display_fill(0, 0, dx, H);
+  if (dx < 0) hal::display_fill(W + dx, 0, -dx, H);
+  if (dy > 0) hal::display_fill(0, 0, W, dy);
+  if (dy < 0) hal::display_fill(0, H + dy, W, -dy);
+  lv_obj_invalidate(lv_screen_active());
+}
+
+// Step `i` of the walk, 0..2 * (WALK - 1): rows of 5 left to right, then right to left, and back.
+static void shift_walk(int i) {
+  int k = i < WALK ? i : 2 * (WALK - 1) - i;
+  int row = k / 5, c = k % 5;
+  shift_set((row & 1 ? 4 - c : c) - 2, row - 2);
+}
+
+static void panel_sleep(lv_anim_t*) {
+  if (!s_rest || s_panel_asleep) return;
+  hal::display_sleep(true);
+  s_panel_asleep = true;
+}
+
+static void rest_set(bool on) {
+  s_rest = on;
+  if (on) {
+    bl_fade(0, FX_MOTION_SLOW_MS, panel_sleep);  // sleep once dark, so the blank panel never shows
+    return;
+  }
+  if (s_panel_asleep) {
+    hal::display_sleep(false);
+    s_panel_asleep = false;
+    lv_obj_invalidate(lv_screen_active());
+  }
+}
+
+void burn_guard(bool on) {
+  s_guard = on;
+  s_shift_at = esp_timer_get_time();
+  if (on) return;
+  if (s_rest) {
+    rest_set(false);
+    bl_fade(s_dimmed ? dim_target() : s_level, FX_MOTION_FAST_MS);
+  }
+  s_walk = WALK_CENTRE;
+  shift_set(0, 0);
+}
+
+bool dimmed() { return s_dimmed || s_rest; }
 
 void backlight_fade_out() {
   bl_fade(0, FX_MOTION_SLOW_MS);
@@ -121,14 +189,22 @@ void backlight_fade_out() {
 }
 
 // ---- Touch ----
-// The first touch while dimmed only wakes the screen: it is swallowed until released.
+// The first touch while dimmed (or resting) only wakes the screen: it is swallowed until released.
 static bool s_swallow;
 
 static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
   int16_t x, y;
-  bool down = hal::touch_read(&x, &y) || sys::remote_touch(&x, &y);
-  if (down && s_dimmed) {
+  bool down = hal::touch_read(&x, &y);
+  if (down) {
+    // The panel shows the picture shifted; the PC's touches (below) are in picture coordinates.
+    x = LV_CLAMP(0, x - s_dx, width() - 1);
+    y = LV_CLAMP(0, y - s_dy, height() - 1);
+  } else {
+    down = sys::remote_touch(&x, &y);
+  }
+  if (down && (s_dimmed || s_rest)) {
     s_dimmed = false;
+    if (s_rest) rest_set(false);
     s_swallow = true;
     lv_display_trigger_activity(s_disp);  // a swallowed press does not count as activity
     bl_fade(s_level, FX_MOTION_FAST_MS);
@@ -187,6 +263,8 @@ void set_rotation(uint8_t r) {
   s_rot = r;
   hal::display_wait();
   hal::display_set_rotation(r);
+  s_dx = s_dy = 0;  // the new picture covers the whole panel; the walk goes on from the centre
+  s_walk = WALK_CENTRE;
   lv_display_set_resolution(s_disp, hal::display_width(), hal::display_height());
   nav_rebuild();
   lv_obj_invalidate(lv_screen_active());
@@ -221,9 +299,17 @@ uint32_t step() {
     }
   }
   // Auto-dim.
-  if (!s_dimmed && s_dim_after_s && lv_display_get_inactive_time(s_disp) > s_dim_after_s * 1000u) {
+  uint32_t idle_ms = lv_display_get_inactive_time(s_disp);
+  if (!s_dimmed && s_dim_after_s && idle_ms > s_dim_after_s * 1000u) {
     s_dimmed = true;
     bl_fade(dim_target(), FX_MOTION_SLOW_MS);
+  }
+  // Burn-in protection: rest after REST_S idle; otherwise shift every SHIFT_S.
+  if (s_guard && !s_rest && idle_ms > REST_S * 1000u) rest_set(true);
+  if (s_guard && !s_rest && now - s_shift_at >= SHIFT_S * 1000000LL) {
+    s_shift_at = now;
+    s_walk = (s_walk + 1) % (2 * (WALK - 1));
+    shift_walk(s_walk);
   }
   if (now - s_fps_t0 >= 1000000) {
     s_hist_n[s_fps_i] = s_int_n;

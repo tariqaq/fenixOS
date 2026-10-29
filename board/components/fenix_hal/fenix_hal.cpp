@@ -3,6 +3,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 #include "esp_attr.h"
+#include "esp_rom_sys.h"
 #include "esp_rom_gpio.h"
 #include "esp_sleep.h"
 #include "esp_system.h"
@@ -40,6 +41,17 @@ void display_push(int x, int y, int w, int h, const void* px) {
 }
 
 void display_wait() { lcd.waitDMA(); }
+
+void display_fill(int x, int y, int w, int h) {
+  lcd.waitDMA();
+  lcd.fillRect(x, y, w, h, 0);
+}
+
+void display_sleep(bool on) {
+  lcd.waitDMA();
+  lcd.getPanel()->setSleep(on);  // not lcd.sleep(): that also drives LovyanGFX's backlight
+  if (!on) esp_rom_delay_us(5000);  // ILI9341: 5 ms after SLPOUT before the next command
+}
 
 void display_set_spi_hz(uint32_t hz) { lcd.set_spi_hz(hz); }
 

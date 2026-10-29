@@ -30,7 +30,7 @@ shot home
 tap 58 200; shot settings
 tap 160 60; shot display
 up 200 100; shot display_scrolled
-tap 160 155; shot rotation
+tap 160 56; shot rotation
 tap 160 101                          # Portrait
 shot rotation_portrait
 back; back; back; shot home_portrait
@@ -49,7 +49,7 @@ back; back; shot home_dock
 tap 52 185                           # Settings (dock of 4: system apps + sample)
 tap 160 101; tap 90 100              # Tiles
 back
-up 220 40; tap 160 208; shot about     # scrolled to the end
+up 220 40; tap 160 152; shot about     # scrolled to the end
 back
 tap 160 142; shot storage
 back

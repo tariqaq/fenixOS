@@ -19,6 +19,9 @@ struct Settings {
   uint8_t home_style = HOME_TILES;
   uint8_t cal_valid = 0;
   uint16_t cal[8] = {};
+  // New fields go at the end: an older, shorter blob then loads with them at their defaults.
+  uint8_t burn_guard = 1;  // burn-in protection (P21); can be turned off only with debug on
+  uint8_t debug = 0;       // Settings > Debug: unlocks switches meant for development
 };
 void nvs_start();
 Settings& settings();

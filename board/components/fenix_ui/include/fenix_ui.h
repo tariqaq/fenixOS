@@ -25,6 +25,9 @@ void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s);
 bool dimmed();
 // Fade the backlight to 0 (blocking, ~FX_MOTION_SLOW_MS).
 void backlight_fade_out();
+// Burn-in protection (P21): the picture moves 1 px every minute within +-2 px, and the panel
+// sleeps after 10 minutes without a touch (dimmed() is then true; a tap wakes it).
+void burn_guard(bool on);
 
 // Stream hook: when on, frames are sent to the PC at up to `fps` (the PC's STREAM_START rate).
 void stream_enable(bool on, uint8_t fps);
@@ -62,6 +65,12 @@ lv_obj_t* info_row(lv_obj_t* group, const char* label, const char* value);
 lv_obj_t* capsule(lv_obj_t* parent, const char* icon, const lv_font_t* icon_font, const char* label, uint32_t bg,
                   int h, lv_event_cb_t cb, void* ud);
 lv_obj_t* slider(lv_obj_t* parent, int min, int max, int value);
+// On/off switch, 44 x 26.
+lv_obj_t* toggle(lv_obj_t* parent, bool on);
+// 40 px row: optional 24 px icon square, label, switch (returned; `cb` gets LV_EVENT_VALUE_CHANGED).
+// A disabled row is greyed out and its switch ignores taps.
+lv_obj_t* switch_row(lv_obj_t* group, const char* icon, uint32_t icon_bg, const char* label, bool on, bool enabled,
+                     lv_event_cb_t cb, void* ud);
 // Segmented control. `cb` gets LV_EVENT_VALUE_CHANGED with the new index as the event param
 // (`(int)(intptr_t)lv_event_get_param(e)`).
 lv_obj_t* segmented(lv_obj_t* parent, const char* const* opts, int n, int selected, lv_event_cb_t cb);
