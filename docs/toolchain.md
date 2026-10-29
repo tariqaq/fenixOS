@@ -66,6 +66,9 @@ More commands are added here as each phase lands.
 
 - **`board/sdkconfig` does not pick up later edits to `sdkconfig.defaults`** (2026-10-29). IDF applies defaults only when `sdkconfig` is created. After changing `sdkconfig.defaults`, delete `board/sdkconfig` (it is git-ignored) and build again. A stale one cost half the UI frame rate (`docs/board-info.md`, Rendering speed).
 
+- **Tauri IPC needs `connect-src ipc: http://ipc.localhost` in a custom CSP** (2026-10-29). Without it the webview cannot reach the IPC custom protocol and Tauri silently falls back to `postMessage`: plain commands still work, but a binary `tauri::ipc::Response` arrives as a plain array instead of an `ArrayBuffer` (the board mirror stayed black). Fixed in `app/src-tauri/tauri.conf.json`.
+- **Python on Windows writes CRLF in text mode** (2026-10-29). Edit scripts must open files with `newline="\n"`, or git warns about CRLF. A path like `\fenixOS` in a non-raw Python string turns `\f` into a form feed: use raw strings.
+
 From the FenixDeck PoC unless dated; still valid for fenixOS.
 
 

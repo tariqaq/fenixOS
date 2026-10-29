@@ -1,7 +1,8 @@
 <script lang="ts">
-  // Artboard 11 (PcBoard): facts and actions. The live mirror and "Reinstall firmware" come in P8;
-  // the Logs row opens the log sheet (artboard 16).
+  // Artboard 11 (PcBoard): live mirror, facts and actions. The Logs row opens the log sheet
+  // (artboard 16); "Reinstall firmware" opens the update dialog (artboard 12).
   import Icon from "../lib/Icon.svelte";
+  import Mirror from "../lib/Mirror.svelte";
   import { rebootBoard, uptime, type Board } from "../lib/api";
 
   let { board, appVersion, onlogs }: { board: Board; appVersion: string; onlogs: () => void } = $props();
@@ -23,6 +24,7 @@
 <div class="wrap">
   <h1>Board</h1>
   <div class="cols">
+    <Mirror />
     <div class="side">
       <div class="group">
         <div class="row"><p>Connection</p><p class="value">USB, {board.port}</p></div>

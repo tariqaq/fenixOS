@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use fenix_link::{Event, Link, LinkOptions};
+use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
 use fenix_proto::Msg;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
@@ -17,6 +17,19 @@ use crate::logs::{Logs, Source};
 use crate::registry::Manifest;
 
 const TIME_SYNC_EVERY: Duration = Duration::from_secs(3600);
+const MIRROR_FPS: u8 = 10;
+/// The mirror stops when the Board page has not asked for a frame for this long (page left,
+/// window closed).
+const MIRROR_IDLE: Duration = Duration::from_secs(2);
+
+/// Live copy of the board screen for the Board page (artboard 11).
+pub struct Mirror {
+    pub canvas: StreamCanvas,
+    /// Bumped on every completed rectangle; the UI asks "anything newer than N?".
+    pub version: u64,
+    on: bool,
+    last_poll: Instant,
+}
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -73,6 +86,7 @@ pub struct Engine {
     inbox_rx: Mutex<Option<Receiver<Cmd>>>,
     /// The registry as last read by Add app.
     pub registry: Mutex<Vec<Manifest>>,
+    pub mirror: Mutex<Mirror>,
 }
 
 impl Engine {
@@ -100,6 +114,12 @@ impl Engine {
             inbox: Mutex::new(tx),
             inbox_rx: Mutex::new(Some(rx)),
             registry: Mutex::new(Vec::new()),
+            mirror: Mutex::new(Mirror {
+                canvas: StreamCanvas::default(),
+                version: 0,
+                on: false,
+                last_poll: Instant::now(),
+            }),
         });
         engine.log(
             &app,
@@ -125,6 +145,25 @@ impl Engine {
 
     pub fn send(&self, m: Msg) {
         self.link.send(m);
+    }
+
+    /// The Board page asks for the mirror; this starts the stream on first use.
+    pub fn mirror_poll(&self) {
+        let mut m = self.mirror.lock().unwrap();
+        m.last_poll = Instant::now();
+        if !m.on && self.state.lock().unwrap().status == Status::Connected {
+            m.on = true;
+            self.link.send(Msg::StreamStart { fps: MIRROR_FPS });
+            self.link.send(Msg::StreamSync);
+        }
+    }
+
+    pub fn mirror_stop(&self) {
+        let mut m = self.mirror.lock().unwrap();
+        if m.on {
+            m.on = false;
+            self.link.send(Msg::StreamStop);
+        }
     }
 
     /// Hand a change to the engine thread.
@@ -167,6 +206,13 @@ impl Engine {
                 changed |= self.handle(&app, e);
             }
             changed |= self.apps.lock().unwrap().tick();
+            let idle = {
+                let m = self.mirror.lock().unwrap();
+                m.on && m.last_poll.elapsed() > MIRROR_IDLE
+            };
+            if idle {
+                self.mirror_stop();
+            }
             self.flush_app_logs(&app);
             if self.state.lock().unwrap().status == Status::Connected && Instant::now() >= next_sync
             {
@@ -248,10 +294,12 @@ impl Engine {
                 );
                 self.sync_time(app);
                 self.apps.lock().unwrap().board_connected(firmware_ok);
+                self.mirror.lock().unwrap().on = false;
                 true
             }
             Event::Disconnected { reason } => {
                 self.apps.lock().unwrap().board_disconnected();
+                self.mirror.lock().unwrap().on = false;
                 let was = {
                     let mut s = self.state.lock().unwrap();
                     let was = s.status == Status::Connected;
@@ -320,6 +368,13 @@ impl Engine {
             }
             Event::Msg(Msg::Error { code, text }) => {
                 self.log(app, Source::Board, true, format!("Error {code}: {text}"));
+                false
+            }
+            Event::Msg(m @ (Msg::StreamInfo { .. } | Msg::StreamRect(_))) => {
+                let mut mi = self.mirror.lock().unwrap();
+                if mi.canvas.apply(&m).is_some() {
+                    mi.version += 1;
+                }
                 false
             }
             Event::Msg(m) => self.apps.lock().unwrap().board_msg(&m),

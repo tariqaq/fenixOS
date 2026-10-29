@@ -92,6 +92,37 @@ fn reboot_board(app: AppHandle, engine: tauri::State<Arc<Engine>>) {
     engine.send(fenix_proto::Msg::Reboot);
 }
 
+/// The board screen for the Board page: a 16-byte header (version u64, width u16, height u16,
+/// 4 bytes 0), then RGB565 pixels (little-endian) only when newer than `since`.
+#[tauri::command]
+fn mirror_frame(engine: tauri::State<Arc<Engine>>, since: u64) -> tauri::ipc::Response {
+    engine.mirror_poll();
+    let m = engine.mirror.lock().unwrap();
+    let c = &m.canvas;
+    let mut out = Vec::with_capacity(16 + c.px.len() * 2);
+    out.extend_from_slice(&m.version.to_le_bytes());
+    out.extend_from_slice(&c.width.to_le_bytes());
+    out.extend_from_slice(&c.height.to_le_bytes());
+    out.extend_from_slice(&[0; 4]);
+    if m.version != since {
+        for p in &c.px {
+            out.extend_from_slice(&p.to_le_bytes());
+        }
+    }
+    tauri::ipc::Response::new(out)
+}
+
+#[tauri::command]
+fn mirror_stop(engine: tauri::State<Arc<Engine>>) {
+    engine.mirror_stop();
+}
+
+/// A click on the mirror, in board screen coordinates.
+#[tauri::command]
+fn mirror_touch(engine: tauri::State<Arc<Engine>>, x: u16, y: u16, down: bool) {
+    engine.send(fenix_proto::Msg::Touch { x, y, down });
+}
+
 /// One registry app for Add app.
 #[derive(Serialize)]
 struct RegistryItem {
@@ -232,7 +263,10 @@ fn main() {
             set_app_enabled,
             set_app_setting,
             app_button,
-            remove_app
+            remove_app,
+            mirror_frame,
+            mirror_stop,
+            mirror_touch
         ])
         .setup(move |app| {
             // Reached only by the first instance: `--quit` with nothing running is a no-op.

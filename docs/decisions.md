@@ -125,3 +125,7 @@ Consequences:
 | Sidecar pipe (PLAN: one named pipe per app) | One duplex pipe / **two one-way pipes** | **`<base>.down` + `<base>.up`**: a blocking read and a write on one synchronous handle wait for each other on Windows (the serial-port gotcha), so each direction gets its own pipe. Any language can still use plain file I/O |
 | Sidecar start argument | Environment variable / **command-line argument** | **`--fenix-pipe <base>`**: an elevated start through UAC does not inherit the caller's environment |
 | Public registry content in v0.1 | Ship the fixture / **empty** | **Empty** (`registry/index.json` has no apps): the test fixture is served from a local registry (`FENIX_REGISTRY`), per PLAN §1.2 |
+| After Add app | Leave off / **switch on** | **Switch on**: adding is the intent to use it; the dashboard switch turns it off again |
+| Apps on the board that the PC does not have switched on | Keep / **remove** | **Remove** at reconcile: the PC is the source of truth (PLAN §3.5). Apps put on by `fenix install` during development are removed when the app connects |
+| Mirror fps chip | Board rects per second / **pictures shown** | **New pictures the PC showed per second** (max 10): the stream has no frame marker, and a frame is many rects |
+| Clicks on the mirror | View only / **touches** | **Touches** (`TOUCH` messages): a press is held ≥ 100 ms because the board keeps only the latest touch state |

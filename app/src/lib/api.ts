@@ -110,6 +110,10 @@ export const openLogFolder = () => invoke("open_log_folder");
 export const getAutostart = () => invoke<boolean>("get_autostart");
 export const setAutostart = (on: boolean) => invoke<boolean>("set_autostart", { on });
 export const rebootBoard = () => invoke("reboot_board");
+export const mirrorStop = () => invoke("mirror_stop");
+export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirror_touch", { x, y, down });
+/** Raw frame from the engine (see `mirror_frame` in main.rs). */
+export const mirrorFrame = (since: number) => invoke<ArrayBuffer>("mirror_frame", { since });
 export const listRegistry = () => invoke<RegistryApp[]>("list_registry");
 export const addApp = (id: string) => invoke("add_app", { id });
 export const setAppEnabled = (id: string, on: boolean) => invoke("set_app_enabled", { id, on });
