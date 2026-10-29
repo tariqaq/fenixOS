@@ -18,7 +18,6 @@ const KEEP: usize = 2000;
 pub enum Source {
     Pc,
     Board,
-    #[allow(dead_code)] // app sidecars log here (P8)
     Apps,
 }
 

@@ -199,7 +199,7 @@ docs/, pics/
   - A manifest may mark the PC half `elevated`. fenixOS then starts it with `ShellExecuteW("runas")` on a worker thread (PoC gotcha: never block `setup` on UAC), so Windows asks each time the app starts.
   - The rest of fenixOS never runs elevated.
 - **Flasher:**
-  - `espflash` library. It resets into the bootloader through DTR/RTS and writes the merged image bundled in the app resources.
+  - `espflash` library. It resets into the bootloader through DTR/RTS and writes the firmware bundled in the app resources (bootloader, partition table and app bins from `tools/bundle_firmware.py`, each sha256-checked; only changed regions are written). Corrected 2026-10-29: separate bins, not one merged image, so unchanged regions can be skipped.
   - Used for the version-mismatch update, "Reinstall firmware" and the OOTB first install.
 - **Updater:**
   - `tauri-plugin-updater` reads `latest.json` from this repo's GitHub Releases, signed.
@@ -431,7 +431,7 @@ Accept: a smooth run on this laptop at the S8 numbers. A blank board (like today
 
 ### P10. Release v0.1.0
 
-1. CI release on tag `v0.1.0`: board build, merged image into app resources, signed Tauri NSIS installer (per-user, no UAC), `latest.json`.
+1. CI release on tag `v0.1.0`: board build, `tools/bundle_firmware.py` into app resources, signed Tauri NSIS installer (per-user, no UAC), `latest.json`.
 2. Updater key: made in P8 (private key in `%USERPROFILE%\.tauri\`, public key in `tauri.conf.json`); add the private key as the `TAURI_SIGNING_PRIVATE_KEY` Actions secret.
 3. Test the updater with a throwaway `v0.1.1-test` pre-release, then delete it.
 4. README: install, first run, build from source, how apps work. Docs and stale sweep across the repo.
