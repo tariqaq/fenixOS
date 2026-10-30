@@ -64,8 +64,8 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
   - [x] 1. Done: 88.7 KB to 6.7 KB. `tasks.md`: done phases P0-P40 (verbatim) to `docs/legacy/tasks-history.md`; here one line per done phase, open items kept whole (P21, P34 step 5 and 9, P37 steps 5 and 6), Decisions without the superseded entries
   - [x] 2. Done: README (Wi-Fi in the board line, images in the element list, "CH340 note above"), AGENTS (cores line, history pointer), legacy README (history file). CLAUDE.md is the one-line import. `README.md`, `AGENTS.md`, `CLAUDE.md`
   - [x] 3. Done: board type table matches `tools/gen_fonts.py` weights; icon sizes and the full icon map; unused `bluetooth` glyph dropped from the icon fonts (P38 leftover; firmware build in P42). `DESIGN.md` (tokens against `design/tokens.json`, `tools/gen_tokens.py` output, board `fenix_ui` and app CSS)
-  - [ ] 4. `proto/spec.md` (message table against `fenix_proto.h` and `msg.rs`)
-  - [ ] 5. `docs/PLAN.md` (status lines, partitions, limits, task table against code)
+  - [x] 4. Done: every type ID matches `msg.rs` and `fenix_proto.h` (script check); reserved Bluetooth values right. `proto/spec.md` (message table against `fenix_proto.h` and `msg.rs`)
+  - [x] 5. Done: marked as the v0.1.0 plan as built; Wi-Fi, NTP, Bluetooth, SNTP, element kinds, Wi-Fi fallback corrected. `docs/PLAN.md` (status lines, partitions, limits, task table against code)
   - [ ] 6. `docs/decisions.md` (Corrected notes still true; superseded rows marked)
   - [ ] 7. `docs/board-info.md` (heap and image numbers: latest first, old ones marked history)
   - [ ] 8. `docs/packages.md`, `docs/registry.md`, `docs/sidecars.md` (against `crates/fenix-pkg`, `tools/registry.py`, `app/src-tauri`)

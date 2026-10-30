@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **done; v0.1.0 released 2026-10-29, now v0.1.12.** Follow-ups after the release (P11 to P40: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, P37 fixes for taps and the stream over Wi-Fi, Bluetooth tried in P33 and removed in P38, app packages read in pieces and link buffers trimmed in P39 and P40) are in `tasks.md`, which mirrors the phases below.
+Status: **done; v0.1.0 released 2026-10-29, now v0.1.12.** Follow-ups after the release (P11 to P40: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, P37 fixes for taps and the stream over Wi-Fi, Bluetooth tried in P33 and removed in P38, app packages read in pieces and link buffers trimmed in P39 and P40) are in `tasks.md` (done ones in full: `docs/legacy/tasks-history.md`). This file is the v0.1.0 plan as built, with Corrected notes where later phases changed it; measured numbers live in `docs/board-info.md`.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.
@@ -47,7 +47,7 @@ PC app (fenixOS v0.1.0, Windows):
 
 ### 1.2 Not in v0.1
 
-SD card, Wi-Fi, NTP, Bluetooth, LDR auto-brightness, sounds, developer overlay, factory reset, manual time set, on-board OTA, other time zones, macOS or Linux PC app, enforced sandboxing of sidecars (C10: trust comes from the registry), Authenticode code signing, any real extra app (extra apps live in their own repos; this repo only has a test fixture app).
+SD card, Wi-Fi and NTP (both came in P34), Bluetooth (tried in P33, removed in P38), LDR auto-brightness, sounds, developer overlay, factory reset, manual time set, on-board OTA, other time zones, macOS or Linux PC app, enforced sandboxing of sidecars (C10: trust comes from the registry), Authenticode code signing, any real extra app (extra apps live in their own repos; this repo only has a test fixture app).
 
 ## 2. Repo layout
 
@@ -112,7 +112,7 @@ docs/, pics/
   - Session is a sheet over the current screen.
 - **Settings store:** NVS. Rotation, brightness, dim level, dim delay, touch calibration, home style, burn-in protection, debug. New fields are appended, so an older, shorter blob still loads.
 - **Clock:**
-  - Sources: `TIME_SET` from the PC, on connect and hourly.
+  - Sources: `TIME_SET` from the PC, on connect and hourly; SNTP in Wi-Fi mode (P34).
   - `TZ=MYT-8`.
   - System time survives `esp_restart` and sleep. A "time valid" magic word in RTC no-init memory tells a real power-on (show `--:--`) from a soft reboot.
 - **Backlight:**
@@ -162,7 +162,7 @@ docs/, pics/
 
 - **File (`.fxp`):**
   - Sections: header (magic, format ver, app id, version, min fenixOS), string table, element tree, bindings table, assets.
-  - Element kinds: container (flex or grid, with separate landscape and portrait props), label, value label, button, icon button, switch, slider, image, icon glyph.
+  - Element kinds: box (flex, with separate landscape and portrait props), label, button (text or icon), switch, slider, bar, image, icon. Corrected: the shipped list is in `docs/packages.md`.
   - Assets are A8 or RGB565 images, raw in format 1 (corrected 2026-10-29: no compression; see `docs/packages.md`).
   - Fonts are the built-in Inter sizes only.
 - **Source and limits:**
@@ -185,7 +185,7 @@ docs/, pics/
 ### 3.5 PC engine (Rust, always running while fenixOS runs)
 
 - **Link manager:**
-  - Scans CH340 ports (VID 0x1A86, PID 0x7523) and does the `HELLO` handshake.
+  - Scans CH340 ports (VID 0x1A86, PID 0x7523) and does the `HELLO` handshake; with no USB board it tries the board over Wi-Fi at `fenixos.local` (P34).
   - Reconnects, reconciles apps, sends time sync on connect and hourly.
   - Single-thread serial I/O: batch write, then read. Corrected (P16): reads never wait (COMMTIMEOUTS `MAXDWORD, 0, 0`) and the link polls every 2 to 10 ms; a read timeout crashes the CH340 driver (`docs/board-info.md`).
   - Background scanning never resets a board.
@@ -269,7 +269,7 @@ Shown on the first launch, and again from PC Settings › Show welcome again. Cr
 
 ## 4. Budgets and targets
 
-All numbers are targets to measure, not facts. Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
+All numbers are targets to measure, not facts (latest measured: 82 KB free at boot in Wi-Fi mode, v0.1.12). Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
 
 ### 4.1 Board RAM (~260 KB heap at start, no PSRAM)
 
