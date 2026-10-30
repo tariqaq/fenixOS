@@ -240,7 +240,13 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 3. Cut fenixOS RAM, each step measured. Done: draw bands 80 to 40 lines (slide fps remeasured 25.6 at 80, 24.9 at 48, 24.0 at 40, 20.7 at 20), UART TX ring 16 to 8 KB, UI (`main`) to core 1 (no fps change). Normal firmware: 118 to 166-172 KB free. Was: cut fenixOS RAM, each step measured (free heap and slide fps; gate PLAN: >= 25 fps slides, >= 60 KB free with Home): LVGL draw bands (2 x 51 KB now), UART buffers, task stacks, whatever `size-components` shows
   - [x] 4. Flash: with both radios the image is 1.60 MB, 76% of the 2 MB slot; no partition change needed now. Was: firmware slot use with radios; partition table only if needed (apps area is mostly empty; SD card later)
   - [x] 5. Docs (board-info, PLAN, decisions, toolchain), commit, push; released v0.1.6 (run 41028426116: firmware 182 s, app 149 s), app installed, board flashed: 179 KB free at boot (was ~120), UI load now on core 1
-  - [ ] 6. Close the gap to 60 KB with both radios: user to choose (see the reply on 2026-10-30)
+  - [x] 6. Close the gap to 60 KB with both radios. User chose (2026-10-30): one radio at a time, so the gap does not apply; follow-up is P30
+- [~] P30 Radios research (user 2026-10-30): one radio at a time with a warning popup; Bluetooth Classic and BLE both, at best speed; Wi-Fi at best latency and speed; fps caps (24 overall, 10 for the system UI) to free RAM?; smaller flash use; design-language check. Research and plan only, then stand by
+  - [ ] 1. Measure: flash use by component, display flush path (DMA overlap?), SPI clock
+  - [ ] 2. Probe build: Bluedroid (Classic + BLE) and Wi-Fi with IRAM speed options on, in one image: does it link, IRAM, flash size
+  - [ ] 3. Web: Bluedroid dual-mode RAM, Wi-Fi throughput settings and RAM, SPP/A2DP speeds, ILI9341 SPI clock on this board, controller memory release rules
+  - [ ] 4. Design-language audit (board and PC): hard-coded colours, sizes, motion outside DESIGN.md
+  - [ ] 5. Questions to the user, then the P31+ plan in this file
 
 ## Decisions
 
