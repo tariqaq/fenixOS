@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #ifdef _WIN32
 #include <windows.h>
+#undef ERROR  // wingdi.h; clashes with fnx::ty::ERROR (fenix_sys.h includes fenix_proto.h)
 #endif
 
 #include "esp_system.h"

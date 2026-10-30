@@ -36,6 +36,9 @@ if ($all -gt $Cores) {
   if (-not $ok) { Write-Warning "CPU cap not applied (error $([Runtime.InteropServices.Marshal]::GetLastWin32Error()))" }
 }
 $env:CARGO_BUILD_JOBS = "$Cores"
-$exe, $rest = $Command
+# Always an array: with one argument, `$exe, $rest = $Command` left a string, and `@rest` passed
+# only its first character (`python tools/x.py` ran `python t`).
+$exe = $Command[0]
+$rest = @($Command | Select-Object -Skip 1)
 & $exe @rest
 exit $LASTEXITCODE
