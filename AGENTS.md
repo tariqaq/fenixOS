@@ -58,7 +58,7 @@ What CI runs; run the parts your change touches:
 - `python tools/version.py --check`, `tools/gen_tokens.py --check`, `tools/registry.py --check`, `tools/licenses.py --check`
 - `cargo test --workspace`
 - `pnpm -C app exec svelte-check`, `pnpm -C app build`
-- Firmware: `pwsh -NoProfile -File board/idf.ps1 build`; simulator screens: `board/sim/build.ps1`, then `python tools/sim_shots.py`
+- Firmware: `pwsh -NoProfile -File board/idf.ps1 build`; after any `sdkconfig` LVGL change, `python tools/sim_config.py` (CI checks it); simulator screens: `board/sim/build.ps1`, then `python tools/sim_shots.py`
 - On this laptop, wrap builds in `pwsh -NoProfile -File tools/capped.ps1 <command>` (4-core cap, normal priority; `FENIX_CORES` overrides it when the user allows more, see `tasks.md` Decisions), one build at a time. All cores only when the user asks, for that build only.
 
 ## Resuming a session
