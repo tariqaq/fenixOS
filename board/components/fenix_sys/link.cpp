@@ -1,4 +1,4 @@
-// PC link on UART0 (CH340C), or over the radio (SPP, TCP) through a remote transport;
+// PC link on UART0 (CH340C), or over Wi-Fi (TCP) through a remote transport;
 // protocol in proto/spec.md.
 #include <stdarg.h>
 #include <stdio.h>
@@ -37,7 +37,7 @@ static volatile bool s_connected;
 static volatile uint32_t s_rx_bytes, s_tx_bytes;  // for SYSINFO; wrap at 2^32
 static fnx::FrameDecoder s_dec;
 static uint8_t s_wire[fnx::MAX_WIRE];
-static uint8_t s_payload[fnx::MAX_PAYLOAD];  // under s_tx_lock: senders on small stacks (Wi-Fi, lwIP, Bluetooth tasks)
+static uint8_t s_payload[fnx::MAX_PAYLOAD];  // under s_tx_lock: senders on small stacks (Wi-Fi, lwIP tasks)
 
 // Remote transport: decoder and RX buffer exist only once a radio registers one.
 enum : uint8_t { VIA_UART = 0, VIA_REMOTE = 1 };
@@ -159,7 +159,6 @@ bool remote_touch(int16_t* x, int16_t* y) {
 uint32_t link_rx_frames() { return s_dec.frames + (s_rdec ? s_rdec->frames : 0); }
 uint32_t link_rx_errors() { return s_dec.errors + (s_rdec ? s_rdec->errors : 0); }
 const char* link_remote_name() { return s_connected && s_via == VIA_REMOTE && s_rl ? s_rl->name : nullptr; }
-bool link_can_stream() { return !(s_connected && s_via == VIA_REMOTE && s_rl && !s_rl->stream); }
 
 void link_remote_start(const RemoteLink* t, size_t rx_buf) {
   if (s_rl) return;
@@ -382,7 +381,6 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
     }
     case fnx::ty::STREAM_START: {
       uint8_t fps = r.u8();
-      if (!link_can_stream()) return send_error(fnx::err::UNAVAILABLE, "no stream over Bluetooth");
       post(LinkEv::STREAM_START, fps ? fps : 10);
       return;
     }

@@ -318,14 +318,12 @@ void home_tick() {
   int radio = ri.mode << 16 | ri.state << 8 | (uint8_t)ri.rssi;
   if (radio != s_shown_radio) {
     s_shown_radio = radio;
-    bool on = ri.mode != fnx::radio::OFF;
+    bool on = ri.mode == fnx::radio::WIFI;
     bool up = ri.state == fnx::radio_state::CONNECTED;
-    const char* icon = FX_ICON_BLUETOOTH;
-    if (ri.mode == fnx::radio::WIFI)
-      icon = !up              ? FX_ICON_WIFI_NONE
-             : ri.rssi >= -60 ? FX_ICON_WIFI_HIGH
-             : ri.rssi >= -75 ? FX_ICON_WIFI_MEDIUM
-                              : FX_ICON_WIFI_LOW;
+    const char* icon = !up              ? FX_ICON_WIFI_NONE
+                       : ri.rssi >= -60 ? FX_ICON_WIFI_HIGH
+                       : ri.rssi >= -75 ? FX_ICON_WIFI_MEDIUM
+                                        : FX_ICON_WIFI_LOW;
     lv_label_set_text(s_radio_icon, on ? icon : "");
     lv_obj_set_style_text_color(s_radio_icon, col(up ? FX_COLOR_LABEL : FX_COLOR_LABEL_2), 0);
     if (on) lv_obj_remove_flag(s_radio_icon, LV_OBJ_FLAG_HIDDEN);

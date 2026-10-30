@@ -18,8 +18,6 @@ import magnifyingGlass from "@phosphor-icons/core/assets/bold/magnifying-glass-b
 import check from "@phosphor-icons/core/assets/bold/check-bold.svg?raw";
 import pulse from "@phosphor-icons/core/assets/fill/pulse-fill.svg?raw";
 import wifiSlash from "@phosphor-icons/core/assets/fill/wifi-slash-fill.svg?raw";
-import bluetoothSlash from "@phosphor-icons/core/assets/fill/bluetooth-slash-fill.svg?raw";
-import bluetooth from "@phosphor-icons/core/assets/fill/bluetooth-fill.svg?raw";
 import wifiHigh from "@phosphor-icons/core/assets/fill/wifi-high-fill.svg?raw";
 import wifiMedium from "@phosphor-icons/core/assets/fill/wifi-medium-fill.svg?raw";
 import wifiLow from "@phosphor-icons/core/assets/fill/wifi-low-fill.svg?raw";
@@ -44,8 +42,6 @@ export const icons = {
   check,
   pulse,
   "wifi-slash": wifiSlash,
-  "bluetooth-slash": bluetoothSlash,
-  bluetooth,
   "wifi-high": wifiHigh,
   "wifi-medium": wifiMedium,
   "wifi-low": wifiLow,

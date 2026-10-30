@@ -59,7 +59,7 @@ shot host
 tap 30 16
 tap 160 224                               # Wireless
 shot wireless
-tap 160 101                               # Bluetooth: restart pop-up
+tap 160 101                               # Wi-Fi: restart pop-up
 shot wireless_switch
 tap 160 214                               # Cancel
 tap 30 16

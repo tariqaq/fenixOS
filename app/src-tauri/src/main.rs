@@ -278,7 +278,7 @@ fn sysinfo(engine: tauri::State<Arc<Engine>>) -> engine::SysinfoView {
     engine.sysinfo()
 }
 
-/// Switch the board's radio (P32): 0 off, 1 Bluetooth, 2 Wi-Fi. The board restarts.
+/// Switch the board's radio (P32): 0 off, 2 Wi-Fi. The board restarts.
 #[tauri::command]
 fn set_radio(app: AppHandle, engine: tauri::State<Arc<Engine>>, mode: u8) {
     engine.radio_set(&app, mode);

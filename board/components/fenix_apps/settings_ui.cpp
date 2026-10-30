@@ -290,9 +290,7 @@ static void host_screen(lv_obj_t* scr) {
   lv_obj_set_style_pad_hor(note, 4, 0);
 }
 
-// ---- Wireless (P32) ----
-
-static const char* const RADIO_NAMES[] = {"Off", "Bluetooth", "Wi-Fi"};
+// ---- Wireless (P32; Bluetooth removed in P38): Wi-Fi or off ----
 
 static const char* radio_status(const sys::RadioInfo& r) {
   switch (r.state) {
@@ -301,7 +299,7 @@ static const char* radio_status(const sys::RadioInfo& r) {
     case fnx::radio_state::STARTING:
       return "Starting";
     case fnx::radio_state::READY:
-      return r.mode == fnx::radio::BLUETOOTH ? "Discoverable" : "No network set";
+      return "No network set";
     case fnx::radio_state::CONNECTING:
       return "Connecting";
     case fnx::radio_state::CONNECTED:
@@ -324,23 +322,15 @@ static void radio_restart_cb(lv_event_t*) {
 
 static void radio_cancel_cb(lv_event_t*) { sheet_close(); }
 
-// One radio at a time, and switching restarts: confirm first (user 2026-10-30: warning popup).
+// Switching restarts: confirm first (user 2026-10-30: warning popup).
 static void radio_pick_cb(lv_event_t* e) {
   uint8_t m = (uint8_t)(intptr_t)lv_event_get_user_data(e);
   uint8_t cur = sys::radio_info().mode;
   if (m == cur) return;
   s_radio_pick = m;
-  char title[32], sub[96];
-  if (m == fnx::radio::OFF) {
-    snprintf(title, sizeof title, "Turn %s off?", RADIO_NAMES[cur]);
-    snprintf(sub, sizeof sub, "fenixOS restarts to turn %s off.", RADIO_NAMES[cur]);
-  } else {
-    snprintf(title, sizeof title, "Switch to %s?", RADIO_NAMES[m]);
-    if (cur == fnx::radio::OFF) snprintf(sub, sizeof sub, "fenixOS restarts to turn %s on.", RADIO_NAMES[m]);
-    else
-      snprintf(sub, sizeof sub, "fenixOS restarts to switch. Only one radio runs at a time, so %s turns off.",
-               RADIO_NAMES[cur]);
-  }
+  bool on = m == fnx::radio::WIFI;
+  const char* title = on ? "Turn Wi-Fi on?" : "Turn Wi-Fi off?";
+  const char* sub = on ? "fenixOS restarts to turn Wi-Fi on." : "fenixOS restarts to turn Wi-Fi off.";
   lv_obj_t* sh = sheet_open();
   lv_obj_t* head = column(sh, 2);
   lv_obj_set_width(head, LV_PCT(100));
@@ -435,41 +425,33 @@ static void wireless_screen(lv_obj_t* scr) {
   navbar(scr, "Settings", "Wireless");
   lv_obj_t* c = content(scr, 12);
   lv_obj_t* g = group(c);
-  static const char* const icons[] = {FX_ICON_WIFI_NONE, FX_ICON_BLUETOOTH, FX_ICON_WIFI_HIGH};
-  static const uint32_t bgs[] = {FX_COLOR_TILE_GRAY, FX_COLOR_TILE_BLUE, FX_COLOR_TILE_BLUE};
-  for (int i = 0; i < 3; i++) {
+  static const uint8_t modes[] = {fnx::radio::OFF, fnx::radio::WIFI};
+  static const char* const names[] = {"Off", "Wi-Fi"};
+  static const char* const icons[] = {FX_ICON_WIFI_NONE, FX_ICON_WIFI_HIGH};
+  static const uint32_t bgs[] = {FX_COLOR_TILE_GRAY, FX_COLOR_TILE_BLUE};
+  for (int i = 0; i < 2; i++) {
     if (i) separator(g, 44);
-    lv_obj_t* row = list_row(g, icons[i], bgs[i], RADIO_NAMES[i], nullptr, false, radio_pick_cb, (void*)(intptr_t)i);
-    if (i == ri.mode) text(row, FX_ICON_CHECK, &fx_icon_bold_14, FX_COLOR_ACCENT);
+    lv_obj_t* row = list_row(g, icons[i], bgs[i], names[i], nullptr, false, radio_pick_cb, (void*)(intptr_t)modes[i]);
+    if (modes[i] == ri.mode) text(row, FX_ICON_CHECK, &fx_icon_bold_14, FX_COLOR_ACCENT);
   }
-  const char* tip = "Only one radio runs at a time. Switching restarts fenixOS.";
-  if (ri.mode != fnx::radio::OFF) {
+  const char* tip = "Switching restarts fenixOS.";
+  if (ri.mode == fnx::radio::WIFI) {
     g = group(c);
     info_row(g, "Status", radio_status(ri));
     char v[40];
-    if (ri.mode == fnx::radio::BLUETOOTH) {
+    char net[fnx::SSID_LEN];
+    bool saved = sys::radio_saved_network(net, sizeof net);
+    separator(g, 10);
+    info_row(g, "Network", saved ? net : "None");
+    if (ri.state == fnx::radio_state::CONNECTED) {
       separator(g, 10);
-      info_row(g, "Name", "fenixOS");
-      if (ri.state == fnx::radio_state::CONNECTED) {
-        separator(g, 10);
-        info_row(g, "Connected to", ri.name);
-      }
-      tip = "Pair with \"fenixOS\" from your PC or phone. Switching restarts fenixOS.";
-    } else {
-      char net[fnx::SSID_LEN];
-      bool saved = sys::radio_saved_network(net, sizeof net);
+      snprintf(v, sizeof v, "%u.%u.%u.%u", ri.ip[0], ri.ip[1], ri.ip[2], ri.ip[3]);
+      info_row(g, "IP address", v);
       separator(g, 10);
-      info_row(g, "Network", saved ? net : "None");
-      if (ri.state == fnx::radio_state::CONNECTED) {
-        separator(g, 10);
-        snprintf(v, sizeof v, "%u.%u.%u.%u", ri.ip[0], ri.ip[1], ri.ip[2], ri.ip[3]);
-        info_row(g, "IP address", v);
-        separator(g, 10);
-        snprintf(v, sizeof v, "%d dBm", ri.rssi);
-        info_row(g, "Signal", v);
-      }
-      if (!saved) tip = "Add a network in fenixOS on your PC: Settings, Wireless. Switching restarts fenixOS.";
+      snprintf(v, sizeof v, "%d dBm", ri.rssi);
+      info_row(g, "Signal", v);
     }
+    if (!saved) tip = "Add a network in fenixOS on your PC: Settings, Wireless. Switching restarts fenixOS.";
   }
   note(c, tip);
   if (ri.mode == fnx::radio::WIFI) {
@@ -554,8 +536,8 @@ void settings_screen(lv_obj_t* scr) {
   list_row(g, FX_ICON_DESKTOP_TOWER, FX_COLOR_TILE_TEAL, "Host PC", shell().connected ? "Connected" : "Not connected",
            true, push_cb, (void*)host_screen);
   separator(g, 44);
-  list_row(g, FX_ICON_WIFI_HIGH, FX_COLOR_TILE_BLUE, "Wireless", RADIO_NAMES[sys::radio_info().mode], true, push_cb,
-           (void*)wireless_screen);
+  const char* radio = sys::radio_info().mode == fnx::radio::WIFI ? "Wi-Fi" : "Off";
+  list_row(g, FX_ICON_WIFI_HIGH, FX_COLOR_TILE_BLUE, "Wireless", radio, true, push_cb, (void*)wireless_screen);
   g = group(c);
   char v[40];
   snprintf(v, sizeof v, "v%s", esp_app_get_description()->version);

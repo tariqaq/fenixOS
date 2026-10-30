@@ -51,7 +51,7 @@ pub mod err {
     pub const BUSY: u8 = 4;
     /// PING before HELLO: the board restarted and the PC must handshake again.
     pub const NO_SESSION: u8 = 5;
-    /// Not over this transport: STREAM_START over Bluetooth (too little heap).
+    /// Reserved: was STREAM_START over Bluetooth (Bluetooth removed in P38).
     pub const UNAVAILABLE: u8 = 6;
 }
 
@@ -125,7 +125,7 @@ pub mod sysflag {
     pub const STREAMING: u8 = 8;
     /// Wi-Fi is running (before P32: built in; no firmware set it).
     pub const WIFI: u8 = 16;
-    /// Bluetooth is running (before P32: built in).
+    /// Reserved: Bluetooth was running (removed in P38; firmware 0.1.8 to 0.1.10 set it).
     pub const BLUETOOTH: u8 = 32;
 }
 
@@ -205,9 +205,11 @@ pub struct StreamRect {
     pub data: Vec<u8>,
 }
 
-/// `RADIO_STATE` / `RADIO_SET` modes: one radio at a time, switched by a restart.
+/// `RADIO_STATE` / `RADIO_SET` modes, switched by a restart.
 pub mod radio {
     pub const OFF: u8 = 0;
+    /// Reserved: Bluetooth, removed in P38 (firmware 0.1.8 to 0.1.10 report it; newer boards
+    /// boot a saved 1 as Wi-Fi or off and ignore RADIO_SET 1).
     pub const BLUETOOTH: u8 = 1;
     pub const WIFI: u8 = 2;
 }
@@ -216,7 +218,7 @@ pub mod radio {
 pub mod radio_state {
     pub const OFF: u8 = 0;
     pub const STARTING: u8 = 1;
-    /// Bluetooth: discoverable, nothing connected. Wi-Fi: no network set.
+    /// Wi-Fi: no network set.
     pub const READY: u8 = 2;
     pub const CONNECTING: u8 = 3;
     pub const CONNECTED: u8 = 4;
@@ -255,7 +257,7 @@ pub struct RadioState {
     pub rssi: i8,
     /// Wi-Fi IPv4 address, all zero when none.
     pub ip: [u8; 4],
-    /// Wi-Fi network name, or the connected Bluetooth peer.
+    /// Wi-Fi network name.
     pub name: String,
 }
 

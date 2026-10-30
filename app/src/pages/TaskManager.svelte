@@ -221,11 +221,10 @@
       <section class="card">
         <div class="title">
           <h2>Wireless</h2>
-          <p class="sub">One radio runs at a time; change it in Settings</p>
+          <p class="sub">Change it in Settings</p>
         </div>
         <div class="facts">
           <p class="radio"><Icon name={flags & 16 ? "wifi-high" : "wifi-slash"} size={16} color="var(--label-2)" />Wi-Fi<span>{flags & 16 ? "On" : "Off"}</span></p>
-          <p class="radio"><Icon name={flags & 32 ? "bluetooth" : "bluetooth-slash"} size={16} color="var(--label-2)" />Bluetooth<span>{flags & 32 ? "On" : "Off"}</span></p>
         </div>
       </section>
 

@@ -30,7 +30,7 @@ constexpr uint8_t STREAM_START = 0x40, STREAM_STOP = 0x41, STREAM_RECT = 0x42, S
 
 namespace err {
 constexpr uint8_t PROTO_MISMATCH = 1, UNKNOWN_TYPE = 2, BAD_BODY = 3, BUSY = 4, NO_SESSION = 5,
-                  UNAVAILABLE = 6;  // not over this transport (stream over Bluetooth)
+                  UNAVAILABLE = 6;  // reserved: was STREAM_START over Bluetooth (removed in P38)
 }
 namespace app {
 constexpr uint8_t OP_INSTALL = 1, OP_REMOVE = 2;
@@ -158,12 +158,12 @@ struct TaskInfo {
 bool read_task_info(Reader& r, TaskInfo& t);
 void write_task_info(Writer& w, const TaskInfo& t);
 
-// Radios (P32): one at a time, switched by a restart.
+// Radio (P32): switched by a restart. BLUETOOTH is reserved since P38 (no board runs it).
 namespace radio {
 constexpr uint8_t OFF = 0, BLUETOOTH = 1, WIFI = 2;
 }
 namespace radio_state {
-// READY: Bluetooth discoverable with nothing connected; Wi-Fi with no network set.
+// READY: Wi-Fi with no network set.
 constexpr uint8_t OFF = 0, STARTING = 1, READY = 2, CONNECTING = 3, CONNECTED = 4, FAILED = 5;
 }
 namespace wifi_auth {
@@ -178,7 +178,7 @@ struct RadioState {
   uint8_t mode, state;
   int8_t rssi;     // dBm, 0 unknown
   uint8_t ip[4];   // all zero: none
-  char name[SSID_LEN];  // Wi-Fi network, or the Bluetooth peer
+  char name[SSID_LEN];  // Wi-Fi network
 };
 bool read_radio_state(Reader& r, RadioState& s);
 void write_radio_state(Writer& w, const RadioState& s);

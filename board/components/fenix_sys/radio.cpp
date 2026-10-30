@@ -1,35 +1,28 @@
-// Radio manager (P32): one radio at a time. The mode (Settings > Wireless, or RADIO_SET from
-// the PC) is saved and applied at boot; switching restarts, because Bluetooth memory handed
-// back to the heap (esp_bt_mem_release) returns only on reboot. Off and Wi-Fi release it first:
-// +44 KB (docs/board-info.md "Radios one at a time").
+// Radio manager (P32): Wi-Fi or off. The mode (Settings > Wireless, or RADIO_SET from the PC)
+// is saved and applied at boot; switching restarts, so Wi-Fi's memory is never half set up.
+// Bluetooth was removed in P38 (docs/decisions.md): mode 1 is reserved, and a board that saved
+// it boots as Wi-Fi with a saved network, else off.
 //
-// Bluetooth: Classic SPP server "fenixOS" (Just Works pairing), the PC link over it (P33), and
-// the BLE status service (ble.cpp).
 // Wi-Fi: station at full speed (power save off), the network saved in NVS in plaintext
 // (user choice: no encryption anywhere), reconnect with backoff, scans for the PC and the UI;
 // its services (PC link over TCP, time) are in net.cpp.
 //
-// State changes come from the Bluetooth and Wi-Fi tasks; the state is copied under a spinlock
-// and sent to the PC as RADIO_STATE. Nothing here calls LVGL.
+// State changes come from the Wi-Fi tasks; the state is copied under a spinlock and sent to the
+// PC as RADIO_STATE. Nothing here calls LVGL.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <algorithm>
 
-#include "esp_bt.h"
-#include "esp_bt_main.h"
 #include "esp_event.h"
-#include "esp_gap_bt_api.h"
 #include "esp_netif.h"
-#include "esp_spp_api.h"
 #include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "fenix_proto.h"
 #include "fenix_sys.h"
 #include "freertos/FreeRTOS.h"
-#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "nvs.h"
 
@@ -79,11 +72,10 @@ void radio_report() {
 }
 
 void radio_switch(uint8_t mode) {
-  if (mode > fnx::radio::WIFI || mode == settings().radio) return;
+  if ((mode != fnx::radio::OFF && mode != fnx::radio::WIFI) || mode == settings().radio) return;
   settings().radio = mode;
   settings_save();
-  link_log(3, "radio: switching to %s, restarting",
-           mode == fnx::radio::WIFI ? "Wi-Fi" : mode == fnx::radio::BLUETOOTH ? "Bluetooth" : "off");
+  link_log(3, "radio: switching %s, restarting", mode == fnx::radio::WIFI ? "to Wi-Fi" : "off");
   vTaskDelay(pdMS_TO_TICKS(150));  // let the log leave
   esp_restart();
 }
@@ -119,120 +111,6 @@ static void creds_save() {
 bool radio_saved_network(char* out, size_t cap) {
   strlcpy(out, s_ssid, cap);
   return s_ssid[0] != 0;
-}
-
-// ---- Bluetooth ----
-
-static void bda_text(const uint8_t* a, char* out, size_t cap) {
-  snprintf(out, cap, "%02X:%02X:%02X:%02X:%02X:%02X", a[0], a[1], a[2], a[3], a[4], a[5]);
-}
-
-static void gap_bt_cb(esp_bt_gap_cb_event_t e, esp_bt_gap_cb_param_t* p) {
-  if (e == ESP_BT_GAP_CFM_REQ_EVT) esp_bt_gap_ssp_confirm_reply(p->cfm_req.bda, true);
-  if (e == ESP_BT_GAP_PIN_REQ_EVT) {  // legacy pairing (old hosts): fixed PIN
-    esp_bt_pin_code_t pin = {'0', '0', '0', '0'};
-    esp_bt_gap_pin_reply(p->pin_req.bda, true, 4, pin);
-  }
-}
-
-// PC link over SPP. Bluedroid copies and queues every write without a limit, so at most
-// SPP_PENDING writes are in flight and none while RFCOMM reports congestion.
-static constexpr int SPP_PENDING = 6;
-static volatile uint32_t s_spp;  // open connection, 0 = none
-static volatile int s_spp_pending;
-static volatile bool s_spp_cong;
-static SemaphoreHandle_t s_spp_room;  // given on every write completion or congestion change
-
-static bool spp_write(const uint8_t* d, size_t n) {
-  int64_t end = esp_timer_get_time() + 500000;
-  while (s_spp && (s_spp_cong || s_spp_pending >= SPP_PENDING)) {
-    xSemaphoreTake(s_spp_room, pdMS_TO_TICKS(20));
-    if (esp_timer_get_time() > end) return false;
-  }
-  uint32_t h = s_spp;
-  if (!h) return false;
-  portENTER_CRITICAL(&s_mux);
-  s_spp_pending = s_spp_pending + 1;
-  portEXIT_CRITICAL(&s_mux);
-  if (esp_spp_write(h, n, (uint8_t*)d) == ESP_OK) return true;
-  portENTER_CRITICAL(&s_mux);
-  s_spp_pending = s_spp_pending - 1;
-  portEXIT_CRITICAL(&s_mux);
-  return false;
-}
-
-static size_t spp_tx_free() {
-  if (!s_spp || s_spp_cong) return 0;
-  return (SPP_PENDING - s_spp_pending) * fnx::MAX_WIRE;
-}
-
-// No stream: a stream over SPP took the heap from ~21 KB to 7.9 KB and then the board panicked (P33).
-static const RemoteLink SPP_LINK = {"Bluetooth", spp_write, spp_tx_free, false};
-
-static void spp_room() {
-  if (s_spp_room) xSemaphoreGive(s_spp_room);
-}
-
-static void spp_cb(esp_spp_cb_event_t e, esp_spp_cb_param_t* p) {
-  switch (e) {
-    case ESP_SPP_INIT_EVT:
-      esp_spp_start_srv(ESP_SPP_SEC_AUTHENTICATE, ESP_SPP_ROLE_SLAVE, 0, "fenixOS");
-      break;
-    case ESP_SPP_START_EVT:
-      set_state(p->start.status == ESP_SPP_SUCCESS ? fnx::radio_state::READY : fnx::radio_state::FAILED, "");
-      break;
-    case ESP_SPP_SRV_OPEN_EVT: {
-      char a[18];
-      bda_text(p->srv_open.rem_bda, a, sizeof a);
-      s_spp_pending = 0;
-      s_spp_cong = false;
-      s_spp = p->srv_open.handle;
-      set_state(fnx::radio_state::CONNECTED, a);
-      break;
-    }
-    case ESP_SPP_CLOSE_EVT:
-      s_spp = 0;
-      spp_room();
-      link_remote_closed();
-      set_state(fnx::radio_state::READY, "");
-      break;
-    case ESP_SPP_DATA_IND_EVT:
-      link_remote_rx(p->data_ind.data, p->data_ind.len);
-      break;
-    case ESP_SPP_WRITE_EVT:
-      portENTER_CRITICAL(&s_mux);
-      if (s_spp_pending > 0) s_spp_pending = s_spp_pending - 1;
-      portEXIT_CRITICAL(&s_mux);
-      s_spp_cong = p->write.cong;
-      spp_room();
-      break;
-    case ESP_SPP_CONG_EVT:
-      s_spp_cong = p->cong.cong;
-      spp_room();
-      break;
-    default:
-      break;
-  }
-}
-
-static bool bt_start() {
-  esp_bt_controller_config_t c = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
-  if (esp_bt_controller_init(&c) != ESP_OK || esp_bt_controller_enable(ESP_BT_MODE_BTDM) != ESP_OK) return false;
-  if (esp_bluedroid_init() != ESP_OK || esp_bluedroid_enable() != ESP_OK) return false;
-  esp_bt_gap_set_device_name("fenixOS");
-  esp_bt_gap_register_callback(gap_bt_cb);
-  esp_bt_io_cap_t io = ESP_BT_IO_CAP_NONE;  // Just Works: the board has no keypad
-  esp_bt_gap_set_security_param(ESP_BT_SP_IOCAP_MODE, &io, sizeof io);
-  esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
-  s_spp_room = xSemaphoreCreateBinary();
-  // The PC keeps 4 KB of install chunks in flight; with framing that overflowed 4 KB, and a full
-  // buffer blocks BTC_TASK, which also confirms our writes: the board's ACKs then timed out (P37).
-  link_remote_start(&SPP_LINK, 6144);
-  esp_spp_register_callback(spp_cb);
-  esp_spp_cfg_t sc = {.mode = ESP_SPP_MODE_CB, .enable_l2cap_ertm = true, .tx_buffer_size = 0};
-  if (esp_spp_enhanced_init(&sc) != ESP_OK) return false;
-  ble_start();
-  return true;
 }
 
 // ---- Wi-Fi ----
@@ -448,14 +326,18 @@ void radio_reconnect() {
 
 void radio_start() {
   creds_load();
-  uint8_t mode = settings().radio <= fnx::radio::WIFI ? settings().radio : fnx::radio::OFF;
+  uint8_t mode = settings().radio;
+  if (mode != fnx::radio::OFF && mode != fnx::radio::WIFI) {
+    // Bluetooth (removed in P38) or an unknown value: Wi-Fi if a network is saved, else off.
+    mode = s_ssid[0] ? fnx::radio::WIFI : fnx::radio::OFF;
+    settings().radio = mode;
+    settings_save();
+  }
   portENTER_CRITICAL(&s_mux);
   s_st.mode = mode;
   s_st.state = mode == fnx::radio::OFF ? fnx::radio_state::OFF : fnx::radio_state::STARTING;
   portEXIT_CRITICAL(&s_mux);
-  if (mode != fnx::radio::BLUETOOTH) esp_bt_mem_release(ESP_BT_MODE_BTDM);
-  bool ok = mode == fnx::radio::BLUETOOTH ? bt_start() : mode == fnx::radio::WIFI ? wifi_start() : true;
-  if (!ok) set_state(fnx::radio_state::FAILED, "");
+  if (mode == fnx::radio::WIFI && !wifi_start()) set_state(fnx::radio_state::FAILED, "");
 }
 
 }  // namespace fx::sys

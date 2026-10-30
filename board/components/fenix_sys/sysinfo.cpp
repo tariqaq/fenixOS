@@ -69,7 +69,6 @@ void sysinfo_write(fnx::Writer& w) {
   RadioInfo ri = radio_info();
   bool on = ri.state != fnx::radio_state::OFF && ri.state != fnx::radio_state::FAILED;
   if (on && ri.mode == fnx::radio::WIFI) s.flags |= fnx::sysflag::WIFI;
-  if (on && ri.mode == fnx::radio::BLUETOOTH) s.flags |= fnx::sysflag::BLUETOOTH;
 
   // The run-time clock (esp_timer, µs) also stamps the sample. 0 tasks when the table is full.
   configRUN_TIME_COUNTER_TYPE now = 0;

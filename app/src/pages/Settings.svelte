@@ -105,8 +105,10 @@
     else await checkAppUpdate();
   }
 
-  // Wireless: one radio at a time; switching restarts the board (user 2026-10-30).
-  const RADIOS = ["Off", "Bluetooth", "Wi-Fi"];
+  // Wireless: Wi-Fi or off; switching restarts the board (user 2026-10-30). Bluetooth (mode 1)
+  // was removed in P38: firmware 0.1.8 to 0.1.10 may still report it, so it keeps a name.
+  const RADIO_NAMES = ["Off", "Bluetooth", "Wi-Fi"];
+  const RADIO_CHOICES = [0, 2];
   const AUTH = ["Open", "WEP", "WPA", "WPA2", "WPA/WPA2", "Enterprise", "WPA3", "WPA2/WPA3", "Other"];
   let pendingRadio = $state<number | null>(null);
   const radioStatus = $derived.by(() => {
@@ -273,19 +275,18 @@
     </div>
   {:else}
     <div class="group" role="radiogroup" aria-label="Board radio">
-      {#each RADIOS as name, i (name)}
-        <button type="button" class="row plain" role="radio" aria-checked={radio.mode === i} onclick={() => pickRadio(i)}>
-          <span class="tick">{#if radio.mode === i}<Icon name="check" size={14} color="var(--accent)" />{/if}</span>
-          <span>{name}</span>
-          {#if radio.mode === i && radioStatus}<span class="value">{radioStatus}</span>{/if}
+      {#each RADIO_CHOICES as m (m)}
+        <button type="button" class="row plain" role="radio" aria-checked={radio.mode === m} onclick={() => pickRadio(m)}>
+          <span class="tick">{#if radio.mode === m}<Icon name="check" size={14} color="var(--accent)" />{/if}</span>
+          <span>{RADIO_NAMES[m]}</span>
+          {#if radio.mode === m && radioStatus}<span class="value">{radioStatus}</span>{/if}
         </button>
       {/each}
     </div>
     {#if pendingRadio !== null}
       <div class="group confirm">
         <p>
-          The board restarts to {pendingRadio === 0 ? `turn ${RADIOS[radio.mode]} off` : `switch to ${RADIOS[pendingRadio]}`}.
-          {#if radio.mode !== 0 && pendingRadio !== 0}Only one radio runs at a time, so {RADIOS[radio.mode]} turns off.{/if}
+          The board restarts to {pendingRadio === 0 ? `turn ${RADIO_NAMES[radio.mode]} off` : `turn ${RADIO_NAMES[pendingRadio]} on`}.
         </p>
         <div class="actions">
           <button type="button" class="secondary" onclick={() => (pendingRadio = null)}>Cancel</button>
@@ -294,7 +295,7 @@
       </div>
     {/if}
   {/if}
-  <p class="note">One radio runs at a time. Switching restarts the board.</p>
+  <p class="note">Switching restarts the board.</p>
 
   <h2 class="section-title">Wi-Fi network</h2>
   <div class="group">

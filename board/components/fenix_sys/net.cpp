@@ -69,7 +69,7 @@ static void tcp_tx_task(void*) {
   }
 }
 
-static const RemoteLink TCP_LINK = {"Wi-Fi", tcp_write, tcp_tx_free, true};
+static const RemoteLink TCP_LINK = {"Wi-Fi", tcp_write, tcp_tx_free};
 
 static void tcp_task(void*) {
   int ls = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);

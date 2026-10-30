@@ -77,9 +77,7 @@ pub struct PortInfo {
     pub product: Option<String>,
 }
 
-/// All serial ports; `board` = matches the CH340 VID:PID. Ports that are not USB (on Windows a
-/// paired board's Bluetooth COM port, P33) come with VID:PID 0 and are never `board`: Automatic
-/// does not try them, but they can be picked.
+/// USB serial ports; `board` = matches the CH340 VID:PID.
 pub fn list_ports() -> Vec<(PortInfo, bool)> {
     serialport::available_ports()
         .unwrap_or_default()
@@ -93,15 +91,6 @@ pub fn list_ports() -> Vec<(PortInfo, bool)> {
                     product: u.product,
                 },
                 u.vid == USB_VID && u.pid == USB_PID,
-            )),
-            SerialPortType::BluetoothPort | SerialPortType::Unknown => Some((
-                PortInfo {
-                    name: p.port_name,
-                    vid: 0,
-                    pid: 0,
-                    product: Some("Bluetooth or other serial port".into()),
-                },
-                false,
             )),
             _ => None,
         })

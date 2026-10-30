@@ -24,7 +24,7 @@ export interface Board {
   radio: RadioState | null;
 }
 
-/** RADIO_STATE (proto/spec.md). mode: 0 off, 1 Bluetooth, 2 Wi-Fi. state: 0 off, 1 starting,
+/** RADIO_STATE (proto/spec.md). mode: 0 off, 2 Wi-Fi (1 was Bluetooth, removed in P38). state: 0 off, 1 starting,
  *  2 ready, 3 connecting, 4 connected, 5 failed. */
 export interface RadioState {
   mode: number;
@@ -198,7 +198,7 @@ export interface Sysinfo {
   rx_errors: number;
   fps_x10: number;
   backlight: number;
-  /** 1 dimmed, 2 panel resting, 4 burn-in protection, 8 streaming, 16 Wi-Fi, 32 Bluetooth. */
+  /** 1 dimmed, 2 panel resting, 4 burn-in protection, 8 streaming, 16 Wi-Fi (32 was Bluetooth, removed in P38). */
   flags: number;
   tasks: TaskInfo[];
 }

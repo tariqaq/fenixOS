@@ -208,7 +208,7 @@ impl Engine {
 
     /// Switch the board's radio; it saves the mode and restarts (P32).
     pub fn radio_set(&self, app: &AppHandle, mode: u8) {
-        let name = ["off", "Bluetooth", "Wi-Fi"].get(mode as usize).copied().unwrap_or("?");
+        let name = if mode == fenix_proto::radio::WIFI { "Wi-Fi" } else { "off" };
         self.log(app, Source::Pc, false, format!("Asked the board to switch its radio to {name} (it restarts)"));
         self.link.send(Msg::RadioSet(mode));
     }

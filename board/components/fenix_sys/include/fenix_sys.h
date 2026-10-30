@@ -104,29 +104,27 @@ struct BindValue {
 bool bind_poll(BindValue* v);
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
-// Remote transports (P33 SPP, P34 TCP): one radio runs per boot, so at most one exists. The
-// transport moves bytes; the link task decodes and frames. A session belongs to the transport
-// that opened it (HELLO); the other one gets ERROR busy until it ends.
+// Remote transport (P34 TCP; SPP until P38): at most one exists. The transport moves bytes; the
+// link task decodes and frames. A session belongs to the transport that opened it (HELLO); USB
+// gets ERROR busy while a Wi-Fi session is open, and the other way round.
 struct RemoteLink {
-  const char* name;                           // "Bluetooth", "Wi-Fi"
+  const char* name;                           // "Wi-Fi"
   bool (*write)(const uint8_t* d, size_t n);  // one whole frame or none; may block briefly
   size_t (*tx_free)();                        // room for frames without blocking
-  bool stream;  // carries the screen stream (Bluetooth: no, too little heap)
 };
 void link_remote_start(const RemoteLink* t, size_t rx_buf);  // once, from radio_start
 void link_remote_rx(const uint8_t* d, size_t n);             // transport task; waits while full
 void link_remote_closed();                                   // the peer went away
-const char* link_remote_name();  // the session's radio ("Wi-Fi", "Bluetooth"), or nullptr on USB
-bool link_can_stream();          // false while the session runs over a transport without stream
+const char* link_remote_name();  // the session's radio ("Wi-Fi"), or nullptr on USB
 
-// ---- Radios (P32): one at a time; switching saves the mode and restarts ----
+// ---- Radio (P32): Wi-Fi or off; switching saves the mode and restarts ----
 struct RadioInfo {
   uint8_t mode, state;  // fnx::radio, fnx::radio_state
   int8_t rssi;
   uint8_t ip[4];
-  char name[fnx::SSID_LEN];  // Wi-Fi network or Bluetooth peer
+  char name[fnx::SSID_LEN];  // Wi-Fi network
 };
-void radio_start();  // boot, after nvs_start: starts the saved radio, frees Bluetooth memory otherwise
+void radio_start();  // boot, after nvs_start: starts Wi-Fi when that is the saved mode
 RadioInfo radio_info();
 void radio_report();              // RADIO_STATE to the PC
 void radio_switch(uint8_t mode);  // saves and restarts (no return) unless the mode is unchanged
@@ -140,10 +138,6 @@ bool radio_saved_network(char* out, size_t cap);
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
 void web_start();  // phone page on port 80, status only (web.cpp)
-// The board's state as JSON (web.cpp): version, uptime, heap, apps, PC link, time, date,
-// weather; `net` adds SSID, signal and address. Length, or 0 when `cap` is too small.
-size_t status_json(char* out, size_t cap, bool net);
-void ble_start();  // Bluetooth mode: the BLE status service (ble.cpp), once Bluedroid runs
 // Weather (P34): Open-Meteo every 15 min in Wi-Fi mode, for the place set from the PC.
 struct Weather {
   bool valid;

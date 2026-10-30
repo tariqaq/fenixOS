@@ -179,7 +179,19 @@ Consequences:
 | Radios at once (P30, user: "only one radio at a time") | Both at once / one at a time, live switch / **one at a time, restart to switch** | **Restart to switch**, with a warning popup first. Releasing Bluetooth memory (`esp_bt_mem_release`) is one-way until a reboot |
 | Bluetooth uses (P30) | SPP serial / BLE phone app / A2DP audio / HID | **SPP serial and BLE for a phone**; no A2DP, no HID. The phone side is deferred: later a Web Bluetooth page (user: "skip this for now ... later we can do smtg like this") |
 | Stream over Bluetooth (P33) | Allow it / cap its rate / **refuse it** | **Refuse:** STREAM_START over SPP gets `ERROR` 6 (unavailable), an additive code, so proto stays 1. A stream gave ~1 KB/s and took the heap to 7.9 KB before a panic; Bluetooth mode has ~20 KB free. USB and Wi-Fi stream |
+| Bluetooth at all (P38, user 2026-10-31: "nuke bluetooth incl BLE all togther") | Keep SPP and BLE / BLE-only link (NimBLE, passkey) / **remove Bluetooth** | **Removed**: Bluetooth mode left 19-24 KB free, Windows took 2-46 s to open its COM port and often failed, a stream ran at ~1 KB/s. Without Bluedroid: image 1.53 to 1.12 MB, Wi-Fi heap 63.9 to 71.8 KB at boot, IRAM 131 to 112 KB with FreeRTOS and heap code back in IRAM (fps 24.3 to 25.5). Mode 1, SYSINFO flag 32 and ERROR 6 stay reserved (no proto bump); a board that saved mode 1 boots as Wi-Fi with a saved network, else off |
 | Wi-Fi uses (P30) | PC link / internet (time, weather) / phone web page / OTA updates | **All four.** OTA only after the SD card arrives (user: "this particular ota feature will only be done later when i can get an sdcard in") |
 | Wi-Fi credentials (P30) | PC app / on-board keyboard / both | **Both**: PC app first, on-board keyboard later. Stored in plaintext, no encryption anywhere (user: "i dont want any enceyption to be used wjth overhead on perf") |
 | Weather source (P30) | **Open-Meteo** / skip / other | **Open-Meteo**: no account or key |
 | Frame rate (P30, user asked about 24 / 10 fps caps to free RAM) | Caps / **keep the UI smooth** | **Smooth.** Caps free no RAM: the draw bands have a fixed size |
+
+## 2026-11-01: overnight run (choices made on the user's behalf; the user was asleep)
+
+| Question | Options | Choice |
+|---|---|---|
+| Hallmark skill on edits to existing screens | Run a Hallmark build / **follow DESIGN.md** | **DESIGN.md**: Hallmark's own pre-flight treats a root `DESIGN.md` as a locked system and says changes to an existing design are done in the project's system, not as a Hallmark build |
+| Non-USB COM ports in the port menu after P38 (P37 had listed them for the Bluetooth link) | Keep listing them / **USB only again** | **USB only**: with no Bluetooth link, the 6 other COM ports on this PC (paired devices) could never answer, so they were noise. The CLI's 60 s wait for them went too |
+| IRAM placement after P38 | Keep FreeRTOS, heap and ringbuf code in flash and SRAM1 as IRAM / **IDF defaults** | **Defaults**: Bluedroid was why they moved (P30). Back in IRAM: 112 of 128 KB used, heap unchanged, fps 24.3 to 25.5 |
+| `esp_timer` stack after P38 | 3072 / **2560** | **2560**: 3072 was for the BLE status JSON; 1840 B free at 2560 after Wi-Fi and stream benches |
+| Bluetooth glyph in the board icon font | Drop / **keep** | **Keep**: every icon is app API (P31 step 4) |
+| PC Settings with a board on old firmware reporting mode 1 | Hide it / **show no tick, keep its name for messages** | **No tick**: the choices are Off and Wi-Fi; "Bluetooth" still names mode 1 in the status and confirm text |

@@ -55,8 +55,9 @@ static const char* const DAYS[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "
 static const char* const MONTHS[] = {"January", "February", "March",     "April",   "May",      "June",
                                      "July",    "August",   "September", "October", "November", "December"};
 
-// Shared with the BLE status characteristic (ble.cpp). `net` adds the Wi-Fi fields.
-size_t status_json(char* b, size_t cap, bool net) {
+// The board's state as JSON: version, uptime, heap, apps, PC link, time, date, weather, network.
+// Length, or 0 when `cap` is too small.
+static size_t status_json(char* b, size_t cap) {
   char t[8] = "", d[40] = "", wx[48] = "";
   struct tm tm;
   if (clock_local(&tm)) {
@@ -77,20 +78,18 @@ size_t status_json(char* b, size_t cap, bool net) {
                    (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT), (unsigned long)used,
                    link_connected() ? "true" : "false", t, d, wx);
   if (n < 0 || (size_t)n >= cap) return 0;
-  if (net) {
-    RadioInfo ri = radio_info();
-    // The SSID is escaped for JSON: quotes and backslashes only (control bytes are dropped).
-    char ssid[2 * fnx::SSID_LEN];
-    size_t k = 0;
-    for (const char* p = ri.name; *p && k < sizeof ssid - 2; p++) {
-      if ((uint8_t)*p < 0x20) continue;
-      if (*p == '"' || *p == '\\') ssid[k++] = '\\';
-      ssid[k++] = *p;
-    }
-    ssid[k] = 0;
-    n += snprintf(b + n, cap - n, ",\"ssid\":\"%s\",\"rssi\":%d,\"ip\":\"%u.%u.%u.%u\"", ssid, ri.rssi, ri.ip[0],
-                  ri.ip[1], ri.ip[2], ri.ip[3]);
+  RadioInfo ri = radio_info();
+  // The SSID is escaped for JSON: quotes and backslashes only (control bytes are dropped).
+  char ssid[2 * fnx::SSID_LEN];
+  size_t k = 0;
+  for (const char* p = ri.name; *p && k < sizeof ssid - 2; p++) {
+    if ((uint8_t)*p < 0x20) continue;
+    if (*p == '"' || *p == '\\') ssid[k++] = '\\';
+    ssid[k++] = *p;
   }
+  ssid[k] = 0;
+  n += snprintf(b + n, cap - n, ",\"ssid\":\"%s\",\"rssi\":%d,\"ip\":\"%u.%u.%u.%u\"", ssid, ri.rssi, ri.ip[0],
+                ri.ip[1], ri.ip[2], ri.ip[3]);
   if ((size_t)n + 2 > cap) return 0;
   b[n++] = '}';
   b[n] = 0;
@@ -99,7 +98,7 @@ size_t status_json(char* b, size_t cap, bool net) {
 
 static esp_err_t status(httpd_req_t* r) {
   char b[512];
-  size_t n = status_json(b, sizeof b, true);
+  size_t n = status_json(b, sizeof b);
   httpd_resp_set_type(r, "application/json");
   return httpd_resp_send(r, b, n);
 }

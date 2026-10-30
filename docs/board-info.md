@@ -273,6 +273,8 @@ Measured with a Bluedroid probe (removed in P32; its settings are now in `sdkcon
 
 ## Radio manager (P32, 2026-10-30)
 
+Corrected (P38): Bluetooth is gone; the radio is Wi-Fi or off. Bluetooth numbers below are history.
+
 The normal firmware now carries both radios; Settings > Wireless (`Settings.radio` in NVS: 0 off, 1 Bluetooth, 2 Wi-Fi) picks the one that starts at boot. Switching saves the mode and restarts, because `esp_bt_mem_release` cannot be undone without a reboot.
 
 - **Image:** 1.38 MB (69% of the 2 MB slot), IRAM 130 of 172 KB. Up from 549 KB in v0.1.7: Bluedroid, Wi-Fi, lwIP.
@@ -301,7 +303,9 @@ Measured with the board on a Windows Mobile Hotspot (2.4 GHz, -39 dBm), PC on th
 - **STATS counters:** fixed in P34 to count frames from both transports (they counted the UART only, so a TCP session showed 0 frames).
 - **Heap under stream + scans over TCP:** minimum 24 KB seen after several streamed screenshots and scans (free 64 KB). Watch this before adding more Wi-Fi services.
 
-## Bluetooth link and BLE status (P33, 2026-10-31)
+## Bluetooth link and BLE status (P33, 2026-10-31; removed in P38)
+
+History: P38 removed Bluetooth from the firmware for the reasons below.
 
 Measured with the board paired to this PC (Intel adapter, Windows 11). Pairing makes an outgoing Bluetooth COM port (here COM10, `BTHENUM\DEV_B4A64AA0BE56`, Microsoft's RFCOMM driver, not CH340).
 
@@ -312,6 +316,24 @@ Measured with the board paired to this PC (Intel adapter, Windows 11). Pairing m
 - **RX buffer 6 KB:** the PC keeps 4 install chunks (4 KB) in flight; with framing that overflowed a 4 KB buffer. A full buffer blocks `BTC_TASK`, which also confirms the board's own writes, so its ACKs waited out their 500 ms and were lost.
 - **Heap in Bluetooth mode:** 23 to 24 KB free at idle with the BLE service and the 6 KB RX buffer; 19 KB with an SPP session; minimum seen 14 to 16 KB. Corrected: P32's 48.5 KB was before the remote link layer, the BLE service and the P37 caps were in.
 - **BLE status service** (`ble.cpp`): found by `bleak` as "fenixOS" (`B4:A6:4A:A0:BE:56`), MTU 517, the status JSON (98 B without Wi-Fi fields) read in one go and notified every 2 s. 25.4 KB free with a BLE client.
+
+## Bluetooth removed (P38, 2026-11-01)
+
+Same board, Wi-Fi joined to the hotspot, measured before (v0.1.10) and after.
+
+| | v0.1.10 | P38 |
+|---|---|---|
+| Image | 1,526,331 B | 1,115,815 B (-27%) |
+| IRAM used | 131,231 B (FreeRTOS, heap, ringbuf code in flash; SRAM1 as IRAM) | 111,827 of 131,072 B (IDF defaults again) |
+| Static DRAM | 62,280 B | 50,844 B |
+| Heap at boot, Wi-Fi | 63.9 KB (min 59.5) | 71.8 KB (min 67.4), of 281 KB |
+| Heap at boot, radio off | 147.5 KB | 154.9 KB (largest block 94 to 78 KB: the IRAM move changes the layout) |
+| `fenix bench 8 nostream` (USB) | 24.3 fps | 25.5 fps |
+| Stream over Wi-Fi (`bench 8`) | 46-54 KB/s, board 20-22 fps, heap min 10.8-16.7 KB | 50.8 KB/s, board 24.7 fps, heap min 17.2 KB |
+| Stream over USB (`bench 8`) | 23 fps | 24.2 fps |
+
+- Gone: `ble.cpp`, the SPP code in `radio.cpp`, Bluedroid, the BT controller and coexistence (`ESP_COEX_SW_COEXIST_ENABLE`), tasks `BTC_TASK`, `BTU_TASK`, `hciT`, `btController`. `esp_timer` stack 3072 to 2560 (1840 B free after the benches).
+- A saved radio mode 1 boots as Wi-Fi when a network is saved, else off, and is saved back. RADIO_SET 1 does nothing.
 
 ## Image retention ("burn-in"), 2026-10-29
 
