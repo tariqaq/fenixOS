@@ -133,6 +133,23 @@ static struct {
   int64_t close_at;  // pending return to Home (app removed while showing HostOff)
 } s_app;
 
+// A closed app's package, images and pixels, kept until its screen is deleted: labels show the
+// package's strings in place (lv_label_set_text_static) and images point at its descriptors, and
+// the screen still draws while it slides out. Freeing them at close read freed memory (P45: a
+// label then ran on through garbage; the simulator hung once in ~30 runs).
+static struct {
+  fpkg::Package pkg;
+  std::vector<lv_image_dsc_t> images;
+  std::vector<uint8_t*> pixels;
+} s_retired;
+
+static void free_retired(lv_event_t* = nullptr) {
+  for (uint8_t* px : s_retired.pixels) free(px);
+  s_retired.pixels.clear();
+  s_retired.images.clear();
+  s_retired.pkg = fpkg::Package();
+}
+
 static std::vector<std::string> s_host_off;  // apps whose PC half is switched off (HOST_STATE)
 
 static bool host_off(const char* id) {
@@ -166,12 +183,17 @@ static void close_app() {
   if (!s_app.open) return;
   if (sys::link_connected()) send_id(fnx::ty::APP_CLOSED, s_app.id);
   s_app.open = false;
+  // At most one app screen outlives the app (nav keeps two screens, only during a slide), and
+  // opening another app loads a new screen first, which deletes it: the older leftovers are free.
+  free_retired();
+  s_retired.pkg = std::move(s_app.pkg);  // moves keep the buffers, so the screen's pointers stay valid
+  s_retired.images = std::move(s_app.images);
+  s_retired.pixels = std::move(s_app.pixels);
   s_app.pkg = fpkg::Package();
+  s_app.images.clear();
+  s_app.pixels.clear();
   s_app.vals.clear();
   s_app.bound.clear();
-  s_app.images.clear();
-  for (uint8_t* px : s_app.pixels) free(px);
-  s_app.pixels.clear();
   s_app.close_at = 0;
 }
 
@@ -393,7 +415,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
       const char* glyph = icon >= 0 ? ICONS[icon] : nullptr;
       if (!*label && glyph) {  // icon button
         o = rowbox(parent, 0);
-        lv_obj_set_size(o, 36, 36);
+        lv_obj_set_size(o, 40, 40);
         lv_obj_set_flex_align(o, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
         lv_obj_set_style_radius(o, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(o, col(bg), 0);
@@ -402,7 +424,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
         lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
         text(o, glyph, &fx_icon_fill_18, get(fpkg::key::COLOR, FX_COLOR_LABEL));
       } else {
-        o = capsule(parent, glyph, &fx_icon_fill_16, label, bg, 36, nullptr, nullptr);
+        o = capsule(parent, glyph, &fx_icon_fill_16, label, bg, 40, nullptr, nullptr);  // DESIGN.md: 40 px targets
       }
       break;
     }
@@ -500,8 +522,7 @@ static void host_state(lv_obj_t* body, bool off) {
   if (off)
     snprintf(help, sizeof help, "Switch %s on in fenixOS on your PC to use it here.", s_app.name);
   else
-    snprintf(help, sizeof help, "%s runs with your PC. Open fenixOS on the PC and connect the board by USB.",
-             s_app.name);
+    snprintf(help, sizeof help, "%s runs with your PC. Open fenixOS on the PC and connect the board.", s_app.name);
   lv_obj_t* h = text(body, help, &fx_font_label, FX_COLOR_LABEL_2);
   lv_obj_set_width(h, LV_PCT(100));
   lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);
@@ -510,6 +531,7 @@ static void host_state(lv_obj_t* body, bool off) {
 
 void app_screen(lv_obj_t* scr) {
   s_app.bound.clear();
+  lv_obj_add_event_cb(scr, free_retired, LV_EVENT_DELETE, nullptr);
   navbar(scr, "Home", s_app.open ? s_app.name : "");
   lv_obj_t* body = column(scr, 0);
   lv_obj_set_width(body, LV_PCT(100));

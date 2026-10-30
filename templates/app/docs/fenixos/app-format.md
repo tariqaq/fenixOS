@@ -52,7 +52,7 @@ Props every element takes:
 - `bind`: a binding name. `event`: an event name. `hidden`: true hides it.
 - `portrait`: an object with any of these props, used instead when the board is in portrait (for example `{ "flow": "column", "w": "100%" }`).
 
-Defaults: button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`.
+Defaults: buttons 40 px tall (icon buttons 40 × 40), button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`.
 
 ### Fonts
 

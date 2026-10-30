@@ -107,7 +107,8 @@ class Package {
   Package(const Package&) = delete;
   Package& operator=(const Package&) = delete;
 
-  // nullptr on success, else a short reason. `n` is the whole package's size.
+  // nullptr on success, else a short reason (and the Package is left empty). `n` is the whole
+  // package's size.
   const char* parse(Source& src, size_t n);
   const char* parse(const uint8_t* data, size_t n);
   Header head{};
@@ -118,6 +119,7 @@ class Package {
   std::string_view id, name, version;
 
  private:
+  const char* read(Source& src, size_t n);
   const char* check();
   std::vector<uint8_t> arena;  // string bytes (each with a NUL), then element props
 };

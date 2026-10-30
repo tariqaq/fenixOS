@@ -145,7 +145,7 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 - **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. Values for other apps, or with no app open, are dropped.
 - **Events:** buttons send tap (1) and long press (2); switches send change (3) with 0/1; sliders send change (3) with the value on release. The board updates its cache for a bound control the user changed.
 - **Install / remove while open:** an update reloads the package in place. A remove returns Home at once, or after 2 s when 6b is showing (the PC's switch-off sends `HOST_STATE` off, then `APP_REMOVE`).
-- **Defaults:** button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`. Built-in widgets match the system screens (slider, capsule button).
+- **Defaults:** buttons 40 px tall (icon buttons 40 × 40, DESIGN.md's touch target), button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`. Built-in widgets match the system screens (slider, capsule button).
 - Not testable over the link: 6a (connecting the CLI ends it). The PC simulator shows it (`board/sim/golden/app_waiting.png`, the `disconnect` step in `board/sim/screens.txt`).
 
 ## Store on the board

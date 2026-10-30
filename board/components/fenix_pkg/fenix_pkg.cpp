@@ -138,6 +138,13 @@ const char* Package::parse(const uint8_t* data, size_t n) {
 }
 
 const char* Package::parse(Source& src, size_t n) {
+  const char* err = read(src, n);
+  // A failed read can leave elements whose props were never pointed at the arena: drop it all.
+  if (err) *this = Package();
+  return err;
+}
+
+const char* Package::read(Source& src, size_t n) {
   strings.clear();
   binds.clear();
   elems.clear();

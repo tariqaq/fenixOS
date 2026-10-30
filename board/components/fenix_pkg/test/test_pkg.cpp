@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
   std::vector<uint8_t> t = b;
   t.push_back(0);
   expect(p.parse(t.data(), t.size()) != nullptr, "trailing byte");
+  expect(p.elems.empty() && p.strings.empty() && p.id.empty(), "failed parse leaves it empty");
   t = b;
   t[0] = 'X';
   expect(p.parse(t.data(), t.size()) != nullptr, "magic");

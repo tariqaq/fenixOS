@@ -22,6 +22,7 @@ BUILD = SIM / "build"
 SHOTS = BUILD / "shots"
 GOLDEN = SIM / "golden"
 EXE = BUILD / "fenix_sim.exe"
+SIM_TIMEOUT_S = 60
 
 
 def read_png(path):
@@ -74,8 +75,14 @@ def main():
          str(BUILD / "sample.fxp")])
     if SHOTS.exists():
         shutil.rmtree(SHOTS)
-    if subprocess.run([str(EXE), "run", "screens.txt", "--out", str(SHOTS)], cwd=SIM,
-                      stdout=subprocess.DEVNULL).returncode != 0:
+    # A run takes well under a second; one hang was seen once (P42, not reproduced in P45), so a
+    # stuck simulator fails the check instead of blocking CI.
+    try:
+        rc = subprocess.run([str(EXE), "run", "screens.txt", "--out", str(SHOTS)], cwd=SIM,
+                            stdout=subprocess.DEVNULL, timeout=SIM_TIMEOUT_S).returncode
+    except subprocess.TimeoutExpired:
+        sys.exit(f"fenix_sim did not finish in {SIM_TIMEOUT_S} s (killed)")
+    if rc != 0:
         sys.exit("fenix_sim failed")
 
     shots = sorted(SHOTS.glob("*.png"))

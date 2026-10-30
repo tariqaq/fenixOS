@@ -83,7 +83,7 @@ void sheet_close();
 bool sheet_is_open();
 // Spinner ring in the given colour.
 lv_obj_t* spinner(lv_obj_t* parent, int size, uint32_t color);
-// Tap feedback: darken on press.
+// Tap feedback: a 20 % white wash while pressed.
 void pressable(lv_obj_t* o);
 
 }  // namespace fx::ui
