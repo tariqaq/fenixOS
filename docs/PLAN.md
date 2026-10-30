@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **done; v0.1.0 released 2026-10-29, now v0.1.5.** Follow-ups after the release (P11 to P28: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager) are in `tasks.md`, which mirrors the phases below.
+Status: **done; v0.1.0 released 2026-10-29, now v0.1.7.** Follow-ups after the release (P11 to P31: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims; radios planned in P32 to P34) are in `tasks.md`, which mirrors the phases below.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.
