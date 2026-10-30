@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **done; v0.1.0 released 2026-10-29, now v0.1.9.** Follow-ups after the release (P11 to P34: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page; the Bluetooth link is written but waits for a pairing test, P33) are in `tasks.md`, which mirrors the phases below.
+Status: **done; v0.1.0 released 2026-10-29, now v0.1.9.** Follow-ups after the release (P11 to P37: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, the Bluetooth link over a paired COM port with a BLE status service, P33; P37 fixes for taps and the stream over Wi-Fi) are in `tasks.md`, which mirrors the phases below.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.

@@ -1,6 +1,6 @@
 //! `fenix`: developer CLI for the fenixOS board link.
 //!
-//! fenix ports                      list serial ports (CH340 marked)
+//! fenix ports                      list serial ports (CH340 marked; Bluetooth ones show 0000:0000)
 //! fenix hello                      handshake and print the board info
 //! fenix logs [secs]                print LOG / STATS / BOARD_STATE (default 30 s)
 //! fenix time                       send TIME_SET (now, UTC)
@@ -15,7 +15,7 @@
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
-//! fenix bench [secs] [nostream]    link throughput
+//! fenix bench [secs] [nostream]    link throughput (no stream over Bluetooth: ERROR 6)
 //! fenix list                       installed apps
 //! fenix install <file.fxp>         push a board package
 //! fenix remove <id>                remove an app
@@ -31,6 +31,8 @@
 //! The flash commands replace esptool and `idf.py flash`, whose read timeouts take the CH340
 //! driver's crash path (P23).
 //! Common option: --port COMx, or --port tcp:<host> for the Wi-Fi link (default: auto-detect USB).
+//! A paired board's Bluetooth COM port works too; Windows takes up to ~45 s to open it, so the
+//! CLI waits 60 s for a board on a port that is not USB (P33).
 
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -46,6 +48,10 @@ fn main() {
         opts.port = args.get(i + 1).cloned();
         args.drain(i..(i + 2).min(args.len()));
     }
+    let not_usb = opts.port.as_deref().is_some_and(|p| {
+        !p.starts_with("tcp:") && fenix_link::list_ports().iter().any(|(i, _)| i.name == p && i.vid == 0)
+    });
+    let _ = CONNECT_SECS.set(if not_usb { 60 } else { 6 });
     let cmd = args.first().map(String::as_str).unwrap_or("help");
     let code = match cmd {
         "ports" => {
@@ -194,7 +200,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size> [--port COMx]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|bt|wifi]|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -328,7 +334,7 @@ fn ts() -> String {
 /// Wait for a connection, then print events for `secs`. `stop_after` ends early.
 fn with_link(opts: LinkOptions, stop_after: impl Fn(&Event) -> bool, secs: u64) -> i32 {
     let link = Link::spawn(opts);
-    let end = Instant::now() + Duration::from_secs(secs.max(1)) + Duration::from_secs(5);
+    let end = Instant::now() + Duration::from_secs(secs.max(1)) + Duration::from_secs(connect_secs().max(5));
     let mut connected = false;
     while Instant::now() < end {
         if let Some(e) = link.recv_event(Duration::from_millis(200)) {
@@ -379,7 +385,7 @@ fn print_event(e: &Event) {
 /// Connect, send one message, wait a moment so it goes out.
 fn one_shot(opts: LinkOptions, m: Msg) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -438,7 +444,7 @@ fn radio_show(opts: LinkOptions) -> i32 {
 
 fn wifi_scan(opts: LinkOptions) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -484,7 +490,7 @@ fn wifi_scan(opts: LinkOptions) -> i32 {
 /// Two SYSINFO answers 1 s apart; load and CPU % come from the difference (as the app does).
 fn sysinfo(opts: LinkOptions) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -551,7 +557,7 @@ fn sysinfo(opts: LinkOptions) -> i32 {
 /// Press and release at (x, y) through the TOUCH message.
 fn tap(opts: LinkOptions, x: u16, y: u16) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -572,7 +578,7 @@ fn tap(opts: LinkOptions, x: u16, y: u16) -> i32 {
 /// Press at `a`, drag to `b` over ~250 ms, release.
 fn swipe(opts: LinkOptions, a: (u16, u16), b: (u16, u16)) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -602,6 +608,14 @@ fn swipe(opts: LinkOptions, a: (u16, u16), b: (u16, u16)) -> i32 {
     0
 }
 
+/// How long to wait for the board: 6 s, or 60 s on a COM port that is not USB (a Bluetooth
+/// port, which Windows takes 2 to 46 s to open, P33).
+static CONNECT_SECS: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+
+fn connect_secs() -> u64 {
+    CONNECT_SECS.get().copied().unwrap_or(6)
+}
+
 fn wait_connected(link: &Link, secs: u64) -> bool {
     let end = Instant::now() + Duration::from_secs(secs);
     while Instant::now() < end {
@@ -620,7 +634,7 @@ fn wait_connected(link: &Link, secs: u64) -> bool {
 /// (landscape Tiles home), then report throughput and what the board dropped.
 fn bench(opts: LinkOptions, secs: u64, nostream: bool) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -681,7 +695,7 @@ fn bench(opts: LinkOptions, secs: u64, nostream: bool) -> i32 {
 
 fn shot(opts: LinkOptions, out: &str, secs: u64) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         eprintln!("no board");
         return 1;
     }
@@ -738,7 +752,7 @@ fn write_png(path: &str, w: u32, h: u32, rgba: &[u8]) -> Result<(), Box<dyn std:
 
 fn list(opts: LinkOptions) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         return 1;
     }
     link.send(Msg::AppListReq);
@@ -783,7 +797,7 @@ fn install(opts: LinkOptions, file: &Path) -> i32 {
     };
     let sha: [u8; 32] = Sha256::digest(&data).into();
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         return 1;
     }
     let t0 = Instant::now();
@@ -873,7 +887,7 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
         });
     }
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         return 1;
     }
     for m in msgs {
@@ -900,7 +914,7 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
 
 fn remove(opts: LinkOptions, id: &str) -> i32 {
     let link = Link::spawn(opts);
-    if !wait_connected(&link, 6) {
+    if !wait_connected(&link, connect_secs()) {
         return 1;
     }
     link.send(Msg::AppRemove { id: id.into() });
