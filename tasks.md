@@ -234,6 +234,12 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 - [x] P28 Release v0.1.5 (user 2026-10-30: "why didnt u jus keep both pc app and board firmware updated"): P27 shipped as a release, so the app and board both say v0.1.5 and the Task manager's "0.1.5 and later" holds
   - [x] 1. VERSION 0.1.5, tag, push. Release run 41024387636 green: firmware 148 s, app 197 s (warm)
   - [x] 2. Done: app 0.1.5 installed (exit 0), board on v0.1.5 (`fenix flash` of the run's firmware artifact), Task manager live in the app. README and PLAN status lines corrected (they still said v0.1.3). Was: install the release app (`/S` from PowerShell), flash the release firmware with `fenix flash`, check the Task manager live
+- [~] P29 RAM (and flash) headroom for Wi-Fi and Bluetooth (user 2026-10-30: "look into optimizing ram usage for now so that we can enable wifi and bluetooth stack ... as for storage yea try optimziing"). Measure, do not guess: forum numbers for ESP32 radio RAM disagree
+  - [ ] 1. Baseline: `idf.py size` / `size-components` (static DRAM, IRAM, flash), `fenix sysinfo` (heap free, min, largest block), `fenix bench` (slide fps)
+  - [ ] 2. Radio probe build (`sdkconfig.radio` on top of the defaults, own build dir): Wi-Fi STA started (no network) plus BLE (NimBLE, BLE-only controller) advertising; measure heap, IRAM, image size and fps with both up. This is what the radios really cost here
+  - [ ] 3. Cut fenixOS RAM, each step measured (free heap and slide fps; gate PLAN: >= 25 fps slides, >= 60 KB free with Home): LVGL draw bands (2 x 51 KB now), UART buffers, task stacks, whatever `size-components` shows
+  - [ ] 4. Flash: firmware slot use with radios; partition table only if needed (apps area is mostly empty; SD card later)
+  - [ ] 5. Docs (board-info, PLAN, decisions), commit, push; release when firmware changes
 
 ## Decisions
 
