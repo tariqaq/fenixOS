@@ -51,7 +51,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P39 App packages from flash in pieces, not whole in RAM
 - P40 Link buffer trims, measured
 
-Releases: v0.1.0 (P10) to v0.1.13 (P42); tags on GitHub.
+Releases: v0.1.0 (P10) to v0.1.14 (P42, P44); tags on GitHub.
 
 ## Open (needs the user)
 
@@ -91,7 +91,7 @@ Releases: v0.1.0 (P10) to v0.1.13 (P42); tags on GitHub.
   - [x] 4. `tools/app.py` (`check`: manifest rules copied from fenixOS `tools/registry.py` plus app.toml id/version match; `local <dir>`: local registry for `FENIX_REGISTRY`; `release <tag>`: fills url/sha256/size and writes `dist/<id>.json` for the registry PR), `tools/build.ps1` (fenix-pkg + cargo into `dist/`), `.github/workflows/release.yml` (tag -> build -> release assets -> manifest artifact)
   - [x] 5. Test: unzip into scratch, build the starter with fenix-pkg, build the PC half against the git tag, `app.py check|local|release`, install through the PC app with `FENIX_REGISTRY` and see it on the board; then remove it. Done: `cargo install --git ... --tag v0.1.13 fenix-pkg` (35 s), build (1468 B package, 238 KB exe), `app.py check|local|release` pass fenixOS `registry.check`; added through the PC app from a local registry ("On, installed on the board"), then removed; board screen and tile checked in the simulator (landscape, portrait Home). Found and fixed: sidebar re-click did not leave a sub-page
   - [x] 6. `tools/app_template.py` + CI check, docs (README, toolchain, registry.md link), decisions log, commit
-- [ ] Overnight decisions log: `docs/decisions.md`, section "Overnight 2026-11-01" (each choice made for the user and the options not taken)
+- [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
