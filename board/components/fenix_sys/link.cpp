@@ -23,7 +23,7 @@
 namespace fx::sys {
 
 static constexpr uart_port_t UART = UART_NUM_0;
-static constexpr int RX_BUF = 8192;  // 4 install chunks in flight while LittleFS writes
+static constexpr int RX_BUF = 5120;  // the PC keeps at most 4 KB of install chunks unacked (P40: peak 2.1 KB)
 static constexpr int TX_BUF = 8192;  // also the stream TX ring (PLAN §4.1)
 static constexpr int64_t LINK_TIMEOUT_US = 3000000;
 static constexpr int64_t STATS_PERIOD_US = 5000000;

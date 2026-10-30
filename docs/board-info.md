@@ -175,7 +175,7 @@ Findings:
 ## fenixOS board core (P4, 2026-10-29)
 
 - **Image:** ~826 KB app (`fenixos.bin`, 60% of the 2 MB factory slot free, P6 app store and runtime included). Free heap with Home shown and one app installed: ~121 KB (was ~134 KB before P6: +4 KB UART RX buffer, +2 KB link stack, ~5 KB bind queue, tile icons), minimum ~117 KB (the gate is ≥ 60 KB). An open app adds its package (a few KB) and its LVGL objects.
-- **Link task:** UART0 at 921600 with an 8 KB RX (corrected: 4 KB until P6, `RX_BUF` in `link.cpp`) and a 16 KB TX buffer (corrected, P29: 8 KB; streaming drops about as many bands as before, +130 vs +116 in a 15 s bench). The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
+- **Link task:** UART0 at 921600 with a 5 KB RX (`RX_BUF` in `link.cpp`; 4 KB until P6, 8 KB until P40) and a 16 KB TX buffer (corrected, P29: 8 KB; streaming drops about as many bands as before, +130 vs +116 in a 15 s bench). The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
 - **Stream:** each flushed area is cut into bands of ≤ 3 KB raw and sent RLE16 (raw when RLE is not smaller). A static Home screen streams at ~3–4 KB/s.
 - **Reset reason:** a reset through the EN pin (the PC's RTS line, esptool, `serial_read.py --reset`) reports `ESP_RST_POWERON`, the same as a cold power-on, and the RTC clock restarts. So the "time valid" flag is cleared at boot on POWERON (`hal::time_boot_check`); it survives `esp_restart` and deep sleep. (Corrected: the first version also required reset reason ≠ POWERON when reading the flag, so the time never became valid after a PC-triggered reset.)
 - **LVGL input gotchas:**
@@ -291,7 +291,7 @@ Measured with the board on a Windows Mobile Hotspot (2.4 GHz, -39 dBm), PC on th
 - **TCP link:** port 7350, one client, `TCP_NODELAY`, 500 ms send timeout (a stalled frame ends the connection rather than leaving half a frame). Since P37 frames go into a 6 KB send ring that task `tcp_tx` (2.5 KB stack) drains into the socket; a frame that finds no room for 500 ms ends the connection. `fenix --port tcp:fenixos.local ...` works for every link command; a USB session still open answers the TCP HELLO with ERROR busy until it times out (3 s).
 - **Stream over TCP** (`fenix bench 8`, P37): 46 to 54 KB/s, 0 dropped, 0 RX errors; board fps 20 to 22 while streaming (USB 23). Corrected (P37): P34 measured 47.3 KB/s with board fps 14.4, because the UI task blocked in `send()` while `tcp_tx_free` reported a fixed 8 KB. The send ring reports its real room, so the stream skips a band instead of waiting.
 - **Heap under a Wi-Fi stream (P37):** with the ring the UI stopped waiting, and the first stream frame took the heap to 0.5 KB; LVGL's failed malloc then hung the UI in its default `while(1)` assert (core 1 at 100%, no events, stream never stopped). Consumers and caps: each small `send()` held a whole-MSS pbuf (1.5 KB, 16 queued; `TCP_OVERSIZE` now quarter MSS), Wi-Fi dynamic buffers (32 each way, now 10), LVGL's opacity layer (24 KB, now 8 KB), the stream encoder (5.8 KB, only while streaming). Static Wi-Fi RX buffers 10 to 8. An LVGL assert now aborts, so the board restarts instead of freezing (`board/CMakeLists.txt`). Minimum over three 8 s Wi-Fi streams: 10.8 to 16.7 KB (the same bench over USB: 32 KB).
-- **Heap, Wi-Fi joined, TCP server, mDNS, SNTP:** 80 to 90 KB free (108 KB before the services: 8 KB link RX buffer, 2.4 KB decoder, task stacks, mDNS). With weather, the web page and the send ring (P37): 63 KB free at idle.
+- **Heap, Wi-Fi joined, TCP server, mDNS, SNTP:** 80 to 90 KB free (108 KB before the services: 8 KB link RX buffer (2 KB since P40), 2.4 KB decoder, task stacks, mDNS). With weather, the web page and the send ring (P37): 63 KB free at idle.
 - **mDNS:** `fenixos.local` resolves on Windows 11 (`Resolve-DnsName`, getaddrinfo) within a few seconds of the board joining; service `_fenixos._tcp`. No UPnP: nothing is opened on the router; the link is reachable only from the same network.
 - **SNTP:** synced in about 10 s after boot. One cold boot did not sync within 74 s while DNS through the hotspot worked; a second server (`time.cloudflare.com`, `LWIP_SNTP_MAX_SERVERS=2`) covers a pool address that does not answer. SNTP starts on each new address (`net_up`); before an address its DNS query fails and backs off.
 - **Open-Meteo:** answers plain HTTP (`http://api.open-meteo.com/v1/forecast?...&current=temperature_2m,weather_code`, 200, no redirect, checked 2026-10-30), so weather needs no TLS.
@@ -334,6 +334,20 @@ Same board, Wi-Fi joined to the hotspot, measured before (v0.1.10) and after.
 
 - Gone: `ble.cpp`, the SPP code in `radio.cpp`, Bluedroid, the BT controller and coexistence (`ESP_COEX_SW_COEXIST_ENABLE`), tasks `BTC_TASK`, `BTU_TASK`, `hciT`, `btController`. `esp_timer` stack 3072 to 2560 (1840 B free after the benches).
 - A saved radio mode 1 boots as Wi-Fi when a network is saved, else off, and is saved back. RADIO_SET 1 does nothing.
+
+## Link buffers trimmed (P40, 2026-11-01)
+
+Peaks measured with temporary counters (removed after), 32 KB package installs and 15-20 s `fenix bench` streams, over USB and Wi-Fi:
+
+| Buffer | Size before | Peak | Now |
+|---|---|---|---|
+| UART RX (`RX_BUF`) | 8 KB | 2.1 KB in an install; the PC keeps at most 4 KB of chunks unacked | 5 KB |
+| Wi-Fi link RX (stream buffer fed by `tcp_link`) | 8 KB | small; when full, `tcp_link` waits and TCP holds the rest | 2 KB |
+| UART TX (`TX_BUF`, the USB stream ring) | 8 KB | full while streaming | 8 KB: a stream band needs up to ~4.6 KB of room |
+| TCP send ring (`TX_RING`) | 6 KB | full while streaming | 6 KB |
+| `tcp_link` stack | 3072 B | 1960 B free | 2560 B |
+
+Result, Wi-Fi mode: heap at boot 71.8 to 81.8 KB; install of 32 KB 0.48 s over USB, 0.41-0.55 s over Wi-Fi (unchanged); stream fps USB 25.0, Wi-Fi 25.8; lowest heap in a Wi-Fi stream 15.8 to 23.9 KB; 0 RX errors. Kept: `link` 8 KB stack (1984 B free), `tcp_tx` 2560 (1728 B free), mDNS 4 KB (1560 B free).
 
 ## App packages read in pieces (P39, 2026-11-01)
 

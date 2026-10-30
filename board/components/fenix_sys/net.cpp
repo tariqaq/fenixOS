@@ -261,8 +261,8 @@ static void wx_task(void*) {
 void net_start() {
   s_sock_lock = xSemaphoreCreateMutex();
   s_tx = xStreamBufferCreate(TX_RING, 1);
-  link_remote_start(&TCP_LINK, 8192);  // as the UART: 4 install chunks in flight
-  xTaskCreatePinnedToCore(tcp_task, "tcp_link", 3072, nullptr, 5, nullptr, 0);
+  link_remote_start(&TCP_LINK, 2048);  // a full buffer stalls tcp_link and TCP holds the rest (P40)
+  xTaskCreatePinnedToCore(tcp_task, "tcp_link", 2560, nullptr, 5, nullptr, 0);
   xTaskCreatePinnedToCore(tcp_tx_task, "tcp_tx", 2560, nullptr, 5, nullptr, 0);
   if (mdns_init() == ESP_OK) {
     mdns_hostname_set("fenixos");
