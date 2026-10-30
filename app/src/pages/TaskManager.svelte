@@ -4,7 +4,7 @@
   // answers. The board has threads (FreeRTOS tasks), not processes; apps run in the UI thread.
   import Icon from "../lib/Icon.svelte";
   import LineChart from "../lib/LineChart.svelte";
-  import { getSysinfo, type Board, type Sysinfo, type TaskInfo } from "../lib/api";
+  import { getSysinfo, linkText, type Board, type Sysinfo, type TaskInfo } from "../lib/api";
 
   let { board, onreinstall }: { board: Board; onreinstall: () => void } = $props();
 
@@ -90,13 +90,16 @@
     return a === null || b === null ? null : (a + b) / 2;
   });
   const flags = $derived(cur?.flags ?? 0);
+  // The session's transport (P37): USB, or TCP over Wi-Fi (no line rate to fill).
+  const wifi = $derived(board.port.startsWith("tcp:"));
+  const linkName = $derived(wifi ? "Wi-Fi link" : "USB link");
   const screen = $derived(flags & 2 ? "Panel resting" : flags & 1 ? "Dimmed" : "On");
 </script>
 
 <div class="wrap">
   <div class="head">
     <h1>Task manager</h1>
-    <p class="sub">{board.port}{unsupported ? "" : " · live, every second"}</p>
+    <p class="sub">{linkText(board.port)}{unsupported ? "" : " · live, every second"}</p>
   </div>
 
   {#if unsupported}
@@ -157,8 +160,8 @@
 
       <section class="card">
         <div class="title">
-          <h2>USB link</h2>
-          <p class="sub">The board's only connection, 921,600 baud</p>
+          <h2>{linkName}</h2>
+          <p class="sub">{wifi ? `TCP to ${board.port.slice(4)}` : "Serial over USB, 921,600 baud"}</p>
           <p class="hero">{rate((last(toBoard) ?? 0) + (last(fromBoard) ?? 0))}</p>
         </div>
         <div class="legend">
@@ -166,7 +169,7 @@
           <span><i style="background: {SERIES_2}"></i>From board {rate(last(fromBoard) ?? 0)}</span>
         </div>
         <LineChart
-          label="USB link traffic, last 60 seconds"
+          label="{linkName} traffic, last 60 seconds"
           series={[
             { label: "To board", color: SERIES_1, values: toBoard },
             { label: "From board", color: SERIES_2, values: fromBoard },
@@ -174,7 +177,9 @@
           format={rate}
         />
         <div class="facts">
-          <p>Line in use<span>{share((last(toBoard) ?? 0) + (last(fromBoard) ?? 0), LINK_BPS).toFixed(1)}%</span></p>
+          {#if !wifi}
+            <p>Line in use<span>{share((last(toBoard) ?? 0) + (last(fromBoard) ?? 0), LINK_BPS).toFixed(1)}%</span></p>
+          {/if}
           <p>Messages received<span>{cur.rx_frames.toLocaleString()}</span></p>
           <p>Damaged messages<span>{cur.rx_errors.toLocaleString()}</span></p>
         </div>

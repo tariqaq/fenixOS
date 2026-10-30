@@ -28,13 +28,14 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 8 | PcDashboard | PC: app tiles with on/off switches, "+" (toggle: apps / empty) |
 | 9 | PcAppSettings | PC: one app's settings, back to Apps |
 | 10 | PcAddApp | PC: registry list, search, Add buttons |
-| 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware. Since P13 the mirror starts off; Start stream turns it on. Since P14 it follows the board. Since P15 it has no Start button: the off state says to start streaming in the board's Stream app; Stop stream shows while live. P27 added a Task manager page after it in the sidebar (no artboard; the same cards, lists and type) |
+| 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware. Since P13 the mirror starts off; Start stream turns it on. Since P14 it follows the board. Since P15 it has no Start button: the off state says to start streaming in the board's Stream app; Stop stream shows while live. P27 added a Task manager page after it in the sidebar (artboard 17 since P35) |
 | 12 | PcUpdate | PC: version mismatch dialog and the progress state |
 | 13 | PcSettings | PC: start with Windows, port, updates, about (with "Show welcome again") |
 | 3c | SettingsHome | Board: Settings › Home screen, Tiles / Dock picker with previews |
 | 14 | PcTray | PC: tray menu (status, Open fenixOS, Quit) |
 | 15 | PcPermissions | PC: what an app's PC part will do, shown before Add |
 | 16 | PcLogs | PC: log sheet (filter All / Board / Apps / Problems, Copy, Open log folder), opened from the Board page |
+| 17 | PcTaskManager | PC: Task manager (P27, drawn in P35 from the shipped page): CPU per core, memory, the link (USB; over Wi-Fi "Wi-Fi link" without line use), storage, display, wireless, threads. Series colours `chart-1` / `chart-2`. In `design/mockups/` only; the review canvas gets it at its next publish |
 
 ## Review round 1 (2026-10-29)
 

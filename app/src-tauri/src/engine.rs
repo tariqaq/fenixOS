@@ -625,9 +625,12 @@ impl Engine {
                 self.state.lock().unwrap().streaming = false;
                 self.link.send(Msg::StreamSync);
                 // The board keeps the place in NVS; resending covers an erased or swapped board.
-                if let Some(p) = self.weather_place() {
-                    self.link.send(p.to_msg());
-                }
+                // The app's choice wins, "off" included, so Settings never says Off while the
+                // board shows a place set elsewhere (P37: `fenix weather` from the CLI).
+                self.link.send(match self.weather_place() {
+                    Some(p) => p.to_msg(),
+                    None => Msg::WeatherSet { lat_e4: 0, lon_e4: 0, name: String::new() },
+                });
                 true
             }
             Event::Disconnected { reason } => {

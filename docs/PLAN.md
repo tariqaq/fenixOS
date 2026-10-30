@@ -33,7 +33,7 @@ PC app (fenixOS v0.1.0, Windows):
   - App settings.
   - Add app, with a permissions sheet.
   - Board page (live mirror, facts, reboot, reinstall firmware).
-  - Task manager (P27, no artboard): the board's load every second (SYSINFO): CPU per core, memory, storage, USB link, display, radios, threads.
+  - Task manager (P27; artboard 17 PcTaskManager drawn in P35): the board's load every second (SYSINFO): CPU per core, memory, storage, the link (USB or Wi-Fi), display, radios, threads.
   - Update dialog with progress.
   - Settings.
 - Logs: a rolling log file plus a log view.

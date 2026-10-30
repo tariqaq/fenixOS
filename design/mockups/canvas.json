@@ -187,6 +187,14 @@
       "h": 800,
       "title": "16. PC, logs",
       "expand": "fill"
+    },
+    "PcTaskManager.dc.html": {
+      "x": 4160,
+      "y": 5100,
+      "w": 1280,
+      "h": 800,
+      "title": "17. PC, task manager",
+      "expand": "fill"
     }
   },
   "order": [
@@ -213,7 +221,8 @@
     "SettingsHome.dc.html",
     "PcTray.dc.html",
     "PcPermissions.dc.html",
-    "PcLogs.dc.html"
+    "PcLogs.dc.html",
+    "PcTaskManager.dc.html"
   ],
   "notes": {
     "row1": {

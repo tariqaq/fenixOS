@@ -1,5 +1,5 @@
 <script lang="ts">
-  // Sidebar (PcDashboard and siblings): Apps, Board, Task manager (P27, no artboard), Settings,
+  // Sidebar (PcDashboard and siblings): Apps, Board, Task manager (P27; artboard PcTaskManager since P35), Settings,
   // and the board status card. The selection is one highlight that glides to the chosen item
   // (250 ms).
   import Icon from "./Icon.svelte";
@@ -31,7 +31,11 @@
     </button>
   {/each}
   <div class="status">
-    <span class="status-icon"><Icon name="usb" size={20} color={board ? "var(--success)" : "var(--label-2)"} /></span>
+    <span class="status-icon"><Icon
+        name={board?.port.startsWith("tcp:") ? "wifi-high" : "usb"}
+        size={20}
+        color={board ? "var(--success)" : "var(--label-2)"}
+      /></span>
     <div class="lines">
       <p class="title">{board ? "Board connected" : "Board not connected"}</p>
       {#if board}

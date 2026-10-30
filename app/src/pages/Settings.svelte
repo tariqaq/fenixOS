@@ -59,7 +59,13 @@
       ports = p.ports;
     });
   refresh();
-  const portText = $derived(selected ?? (boardPort ? `Automatic (${boardPort})` : "Automatic"));
+  const portName = (p: string) => (p.startsWith("tcp:") ? "Wi-Fi" : p);
+  const portText = $derived(
+    selected ? portName(selected) : boardPort ? `Automatic (${portName(boardPort)})` : "Automatic",
+  );
+  // Wi-Fi as a fixed port (P37): offered while the board runs Wi-Fi, or once picked.
+  const WIFI_PORT = "tcp:fenixos.local";
+  const wifiItem = $derived(selected === WIFI_PORT || radio?.mode === 2);
 
   function openMenu() {
     refresh();
@@ -235,7 +241,14 @@
             <span class="sub">{p.board ? "CH340, board chip" : p.product}</span>
           </button>
         {/each}
-        {#if selected && !ports.some((p) => p.name === selected)}
+        {#if wifiItem}
+          <button type="button" role="menuitemradio" aria-checked={selected === WIFI_PORT} onclick={() => pick(WIFI_PORT)}>
+            <span class="tick">{#if selected === WIFI_PORT}<Icon name="check" size={14} color="var(--accent)" />{/if}</span>
+            <span>Wi-Fi</span>
+            <span class="sub">fenixos.local, even with USB plugged in</span>
+          </button>
+        {/if}
+        {#if selected && selected !== WIFI_PORT && !ports.some((p) => p.name === selected)}
           <button type="button" role="menuitemradio" aria-checked="true" onclick={() => pick(selected)}>
             <span class="tick"><Icon name="check" size={14} color="var(--accent)" /></span>
             <span>{selected}</span>
@@ -245,7 +258,10 @@
       </div>
     {/if}
   </div>
-  <p class="note">Automatic picks the first port with a CH340 chip that answers as a fenixOS board.</p>
+  <p class="note">
+    Automatic picks the first port with a CH340 chip that answers as a fenixOS board, or the board on Wi-Fi when
+    none is plugged in.
+  </p>
 
   <h2 class="section-title">Wireless</h2>
   {#if !radio}

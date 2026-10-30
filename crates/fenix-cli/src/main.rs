@@ -10,7 +10,8 @@
 //! fenix radio [off|bt|wifi]        show the radio, or switch it (the board restarts)
 //! fenix wifi scan                  networks the board hears (Wi-Fi mode)
 //! fenix wifi join <ssid> [pass]    save a network on the board and connect; wifi forget
-//! fenix weather <lat> <lon> <name>  weather place (Wi-Fi mode fetches it); weather off
+//! fenix weather <lat> <lon> <name>  weather place (Wi-Fi mode fetches it); weather off. The PC
+//!                                  app sets its own place (or off) again when it connects
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
