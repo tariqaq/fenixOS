@@ -341,8 +341,7 @@ fn decoder_splits_stream_and_skips_garbage() {
 
 #[test]
 fn rle16() {
-    let px: Vec<u16> = std::iter::repeat(0x1234)
-        .take(300)
+    let px: Vec<u16> = std::iter::repeat_n(0x1234, 300)
         .chain([1, 2, 2])
         .collect();
     let enc = rle16_encode(&px);

@@ -83,7 +83,7 @@ fn parse(text: &str) -> Vec<WifiAp> {
         }
     }
     push(cur.take(), &mut out);
-    out.sort_by(|a, b| b.rssi.cmp(&a.rssi));
+    out.sort_by_key(|a| std::cmp::Reverse(a.rssi));
     out
 }
 
