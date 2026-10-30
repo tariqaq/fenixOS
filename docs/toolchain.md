@@ -33,7 +33,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 | three | 0.186.1 | same (first-run scene) | Latest |
 | @fontsource-variable/inter | 5.3.0 | same | Inter, bundled locally |
 | @phosphor-icons/core | 2.1.1 | same + board icon font | Matches `DESIGN.md` |
-| lv_font_conv | 1.5.3 | `tools/gen_fonts` (npx) | Latest |
+| lv_font_conv | 1.5.3 | `tools/gen_fonts.py` (npx) | Latest |
 
 ## Build commands
 

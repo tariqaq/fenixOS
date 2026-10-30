@@ -16,7 +16,7 @@ The FenixDeck PoC plan is in `docs/legacy/PLAN.md`; what it taught is in `docs/P
 
 Board firmware (fenixOS v0.1.0):
 - Boot screen: name, version, a grey track with a white line sweeping left to right. Home is built while it plays, then a smooth transition to Home.
-- Home: time and date (MYT, UTC+8), `--:--` until the first PC time sync. Two styles, **Tiles** and **Dock**, chosen in Settings › Home screen. Works in all 4 rotations.
+- Home: time and date (MYT, UTC+8), `--:--` until the first PC time sync (or SNTP in Wi-Fi mode, P34). Two styles, **Tiles** and **Dock**, chosen in Settings › Home screen. Works in all 4 rotations.
 - System apps:
   - **Settings:** Display (rotation, brightness, auto-dim level, dim after, touch calibration, burn-in protection), Home screen (Tiles / Dock), Storage, Host PC, About, Debug (P21: unlocks the burn-in protection switch).
   - **Session:** pop-up with Shut down (sleep, tap to wake) and Restart.
@@ -185,7 +185,7 @@ docs/, pics/
 ### 3.5 PC engine (Rust, always running while fenixOS runs)
 
 - **Link manager:**
-  - Scans CH340 ports (VID 0x1A86, PID 0x7523) and does the `HELLO` handshake; with no USB board it tries the board over Wi-Fi at `fenixos.local` (P34).
+  - Scans CH340 ports (VID 0x1A86, PID 0x7523) and does the `HELLO` handshake; with no USB board it tries the board over Wi-Fi at `fenixos.local` (P34). Corrected (P42): ports are listed once a second, a CH340 that fails two handshakes waits 10 s, and the Wi-Fi try runs only for a board last seen with Wi-Fi on (`board_wifi` in the app config).
   - Reconnects, reconciles apps, sends time sync on connect and hourly.
   - Single-thread serial I/O: batch write, then read. Corrected (P16): reads never wait (COMMTIMEOUTS `MAXDWORD, 0, 0`) and the link polls every 2 to 10 ms; a read timeout crashes the CH340 driver (`docs/board-info.md`).
   - Background scanning never resets a board.
@@ -238,7 +238,7 @@ docs/, pics/
 
 ### 3.8 Versions
 
-- `VERSION` feeds everything. `tools/version` writes it into `Cargo.toml` files, `tauri.conf.json`, `package.json` and the board's `PROJECT_VER`. CI fails if any differs.
+- `VERSION` feeds everything. `tools/version.py` writes it into `Cargo.toml` files, `tauri.conf.json`, `package.json` and the board's `PROJECT_VER`. CI fails if any differs.
 - The board shows "fenixOS v0.1".
 - On connect, a mismatch opens the update dialog (artboard 12). Host apps stay off until the versions match.
 
@@ -327,13 +327,13 @@ Each phase ends with:
 3. Pin exact versions (latest stable, checked on the web, recorded in `docs/toolchain.md`): LVGL 9.x, `joltwallet/littlefs`, Tauri 2.x and its plugins, Svelte 5.x, Vite, Three.js, `espflash`, `serialport`.
    - Keep IDF v5.5.5 and LovyanGFX 1.2.35 (decided).
    - Rewrite the legacy build-command part of `docs/toolchain.md`.
-4. Add `tools/version` (sync + check) and `tools/gen-tokens` (`design/tokens.json` → C header + CSS), with tokens taken from `DESIGN.md`.
+4. Add `tools/version.py` (sync + check) and `tools/gen_tokens.py` (`design/tokens.json` → C header + CSS), with tokens taken from `DESIGN.md`.
 5. Set up a CI skeleton (GitHub Actions):
    - Board build in the `espressif/idf:v5.5.5` image.
    - Rust tests and the PC build on `windows-latest`.
    - Version check.
 
-Accept: CI green on an empty build; `tools/version check` passes.
+Accept: CI green on an empty build; `tools/version.py --check` passes.
 
 ### P1. Spikes (de-risk on the real board; results documented, code kept only if clean)
 
