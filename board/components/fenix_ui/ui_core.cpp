@@ -1,6 +1,6 @@
 // LVGL glue: display (2 DMA bands, RGB565 swapped), touch, backlight dimming, burn-in
 // protection, stream hook, fps.
-// Choices from spike S1 and P4 profiling (docs/board-info.md): 320x80 bands, no LVGL OS layer,
+// Choices from spike S1 and P4/P29 profiling (docs/board-info.md): 320x40 bands, no LVGL OS layer,
 // 16 ms refresh.
 #include "esp_heap_caps.h"
 #include "esp_timer.h"
@@ -245,7 +245,7 @@ void init(uint8_t rotation) {
   lv_indev_t* in = lv_indev_create();
   lv_indev_set_type(in, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(in, touch_cb);
-  lv_obj_set_style_bg_color(lv_screen_active(), lv_color_black(), 0);
+  lv_obj_set_style_bg_color(lv_screen_active(), col(FX_COLOR_BG), 0);
   s_fps_t0 = esp_timer_get_time();
   s_bl_now = 0;
 }

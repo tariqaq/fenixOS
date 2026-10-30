@@ -13,3 +13,7 @@ static inline void esp_chip_info(esp_chip_info_t* c) {
   c->revision = 301;
   c->cores = 2;
 }
+// The board's sdkconfig value (CPU frequency).
+#ifndef CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ
+#define CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ 240
+#endif

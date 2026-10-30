@@ -55,7 +55,7 @@ lv_obj_t* text(lv_obj_t* parent, const char* s, const lv_font_t* f, uint32_t col
 
 void pressable(lv_obj_t* o) {
   lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_bg_color(o, lv_color_white(), LV_STATE_PRESSED);
+  lv_obj_set_style_bg_color(o, col(FX_COLOR_LABEL), LV_STATE_PRESSED);
   lv_obj_set_style_bg_opa(o, LV_OPA_20, LV_STATE_PRESSED);
 }
 
@@ -167,7 +167,7 @@ lv_obj_t* capsule(lv_obj_t* parent, const char* icon, const lv_font_t* icon_font
   lv_obj_set_style_bg_color(b, col(bg), 0);
   lv_obj_set_style_bg_opa(b, LV_OPA_COVER, 0);
   lv_obj_add_flag(b, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_bg_color(b, lv_color_mix(lv_color_white(), col(bg), LV_OPA_20), LV_STATE_PRESSED);
+  lv_obj_set_style_bg_color(b, lv_color_mix(col(FX_COLOR_LABEL), col(bg), LV_OPA_20), LV_STATE_PRESSED);
   if (icon) text(b, icon, icon_font, FX_COLOR_LABEL);
   text(b, label, &fx_font_body_semibold, FX_COLOR_LABEL);
   if (cb) lv_obj_add_event_cb(b, cb, LV_EVENT_CLICKED, ud);
@@ -187,7 +187,7 @@ lv_obj_t* slider(lv_obj_t* parent, int min, int max, int value) {
   lv_obj_set_style_bg_color(s, col(FX_COLOR_ACCENT), LV_PART_INDICATOR);
   lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_INDICATOR);
   lv_obj_set_style_radius(s, 2, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(s, lv_color_white(), LV_PART_KNOB);
+  lv_obj_set_style_bg_color(s, col(FX_COLOR_LABEL), LV_PART_KNOB);
   lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_KNOB);
   lv_obj_set_style_pad_all(s, 7, LV_PART_KNOB);  // 4 + 2*7 = 18 px knob
@@ -205,7 +205,7 @@ lv_obj_t* toggle(lv_obj_t* parent, bool on) {
   lv_obj_set_style_bg_color(s, col(FX_COLOR_SUCCESS), (lv_style_selector_t)LV_PART_INDICATOR | LV_STATE_CHECKED);
   lv_obj_set_style_bg_opa(s, LV_OPA_COVER, (lv_style_selector_t)LV_PART_INDICATOR | LV_STATE_CHECKED);
   lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
-  lv_obj_set_style_bg_color(s, lv_color_white(), LV_PART_KNOB);
+  lv_obj_set_style_bg_color(s, col(FX_COLOR_LABEL), LV_PART_KNOB);
   lv_obj_set_style_bg_opa(s, LV_OPA_COVER, LV_PART_KNOB);
   lv_obj_set_style_radius(s, LV_RADIUS_CIRCLE, LV_PART_KNOB);
   lv_obj_set_style_pad_all(s, -2, LV_PART_KNOB);
@@ -309,7 +309,7 @@ lv_obj_t* sheet_open() {
   sheet_close();
   s_scrim = box(lv_layer_top());
   lv_obj_set_size(s_scrim, LV_PCT(100), LV_PCT(100));
-  lv_obj_set_style_bg_color(s_scrim, lv_color_black(), 0);
+  lv_obj_set_style_bg_color(s_scrim, col(FX_COLOR_BG), 0);
   lv_obj_set_style_bg_opa(s_scrim, 0, 0);
   lv_obj_add_flag(s_scrim, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_add_event_cb(s_scrim, scrim_click, LV_EVENT_CLICKED, nullptr);

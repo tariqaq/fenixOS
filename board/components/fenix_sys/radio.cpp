@@ -118,6 +118,7 @@ bool radio_saved_network(char* out, size_t cap) {
 static constexpr int MAX_APS = 24;  // one WIFI_SCAN frame
 static esp_timer_handle_t s_retry;
 static int s_fails;
+static volatile bool s_leaving;  // radio_join or radio_reconnect dropped the link on purpose
 static bool s_scan_for_pc;
 static volatile bool s_scanning;
 static fnx::WifiAp* s_aps;  // last scan, strongest first; under s_mux
@@ -223,6 +224,12 @@ static void wifi_event(void*, esp_event_base_t base, int32_t id, void* data) {
     wifi_connect();
   } else if (base == WIFI_EVENT && id == WIFI_EVENT_STA_DISCONNECTED) {
     if (s_scanning) return;  // radio_scan dropped the attempt; scan_done reconnects
+    // Our own esp_wifi_disconnect (radio_join, radio_reconnect) already called wifi_connect: not
+    // a failure, and a retry now would restart that attempt (P42).
+    if (s_leaving && ((wifi_event_sta_disconnected_t*)data)->reason == WIFI_REASON_ASSOC_LEAVE) {
+      s_leaving = false;
+      return;
+    }
     if (!s_ssid[0]) return set_state(fnx::radio_state::READY, "");
     // Back off 1, 2, 4 ... 30 s; after 5 tries say "failed" but keep trying.
     s_fails++;
@@ -232,6 +239,8 @@ static void wifi_event(void*, esp_event_base_t base, int32_t id, void* data) {
     esp_timer_start_once(s_retry, ms * 1000);
   } else if (base == IP_EVENT && id == IP_EVENT_STA_GOT_IP) {
     s_fails = 0;
+    s_leaving = false;
+    esp_timer_stop(s_retry);  // a retry still pending would report CONNECTING over CONNECTED (P42)
     auto* ev = (ip_event_got_ip_t*)data;
     uint8_t ip[4];
     memcpy(ip, &ev->ip_info.ip.addr, 4);  // network order: a.b.c.d
@@ -310,6 +319,7 @@ void radio_join(const char* ssid, const char* pass) {
   if (radio_info().mode != fnx::radio::WIFI) return;
   s_fails = 0;
   esp_timer_stop(s_retry);
+  s_leaving = true;
   esp_wifi_disconnect();
   wifi_connect();
 }
@@ -318,6 +328,7 @@ void radio_reconnect() {
   if (radio_info().mode != fnx::radio::WIFI || !s_ssid[0]) return;
   s_fails = 0;
   esp_timer_stop(s_retry);
+  s_leaving = true;
   esp_wifi_disconnect();
   wifi_connect();
 }

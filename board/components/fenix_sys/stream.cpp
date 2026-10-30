@@ -1,7 +1,7 @@
 // Stream encoder: flushed LVGL areas -> STREAM_RECT frames (proto/spec.md, "Stream").
 // Each area is cut into bands of a few rows, RLE16-coded (raw when RLE does not help)
-// and written into the UART TX buffer. When the buffer has no room, the band is dropped
-// and the caller marks it stale, so the UI re-sends it later.
+// and written into the link's TX buffer (the UART's, or the Wi-Fi ring in net.cpp). When it has
+// no room, the band is dropped and the caller marks it stale, so the UI re-sends it later.
 #include <stdlib.h>
 #include <string.h>
 

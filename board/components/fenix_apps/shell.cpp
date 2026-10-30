@@ -71,7 +71,7 @@ void boot_screen(lv_obj_t* scr) {
   lv_obj_t* line = box(track);
   lv_obj_set_size(line, LINE_W, 3);
   lv_obj_set_style_radius(line, 2, 0);
-  lv_obj_set_style_bg_color(line, lv_color_white(), 0);
+  lv_obj_set_style_bg_color(line, col(FX_COLOR_LABEL), 0);
   lv_obj_set_style_bg_opa(line, LV_OPA_COVER, 0);
   lv_anim_t a;
   lv_anim_init(&a);
@@ -150,7 +150,7 @@ void on_link(const sys::LinkEvent& e) {
   app_on_link(e);
   if (e.type == sys::LinkEv::CONNECTED || e.type == sys::LinkEv::DISCONNECTED) {
     refresh_if_top(stream_screen);
-    if (nav_top() != home_screen) refresh_if_top(settings_screen);
+    refresh_if_top(settings_screen);
   }
 }
 

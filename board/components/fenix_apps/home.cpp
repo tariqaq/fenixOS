@@ -30,6 +30,7 @@ static void forget(lv_event_t* e) {
   s_shown_min = -2;
   s_shown_conn = -1;
   s_shown_radio = -1;
+  s_shown_wx = -1;
 }
 
 struct Launch {
@@ -87,7 +88,7 @@ static lv_obj_t* tile(lv_obj_t* parent, const TileSpec& s, bool grid) {
   lv_obj_set_style_radius(t, FX_RADIUS_BOARD_TILE, 0);
   lv_obj_set_style_bg_color(t, col(s.color), 0);
   lv_obj_set_style_bg_opa(t, LV_OPA_COVER, 0);
-  lv_obj_set_style_bg_color(t, lv_color_mix(lv_color_white(), col(s.color), LV_OPA_20), LV_STATE_PRESSED);
+  lv_obj_set_style_bg_color(t, lv_color_mix(col(FX_COLOR_LABEL), col(s.color), LV_OPA_20), LV_STATE_PRESSED);
   lv_obj_add_flag(t, LV_OBJ_FLAG_CLICKABLE);
   lv_obj_remove_flag(t, LV_OBJ_FLAG_SCROLL_ON_FOCUS);
   tile_icon(t, s, &fx_icon_fill_20);
@@ -304,7 +305,9 @@ void home_tick() {
       lv_label_set_text(s_date, d);
     } else {
       clock_show("--:--", FX_COLOR_LABEL_2);
-      lv_label_set_text(s_date, "Waiting for your PC to set the time");
+      // In Wi-Fi mode SNTP sets it too (P34); the mode only changes with a restart.
+      bool wifi = sys::radio_info().mode == fnx::radio::WIFI;
+      lv_label_set_text(s_date, wifi ? "Getting the time over Wi-Fi" : "Waiting for your PC to set the time");
     }
   }
   int conn = shell().connected;

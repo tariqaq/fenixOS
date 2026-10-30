@@ -1,4 +1,4 @@
-// RGB LED status light. Levels are first guesses until spike S6 measures them.
+// RGB LED status light. Levels seen and kept by the user (spike S6, P19).
 #include "fenix_hal.h"
 #include "shell.h"
 

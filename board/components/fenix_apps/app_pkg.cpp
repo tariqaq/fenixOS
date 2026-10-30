@@ -398,7 +398,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
         lv_obj_set_style_radius(o, LV_RADIUS_CIRCLE, 0);
         lv_obj_set_style_bg_color(o, col(bg), 0);
         lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
-        lv_obj_set_style_bg_color(o, lv_color_mix(lv_color_white(), col(bg), LV_OPA_20), LV_STATE_PRESSED);
+        lv_obj_set_style_bg_color(o, lv_color_mix(col(FX_COLOR_LABEL), col(bg), LV_OPA_20), LV_STATE_PRESSED);
         lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
         text(o, glyph, &fx_icon_fill_18, get(fpkg::key::COLOR, FX_COLOR_LABEL));
       } else {

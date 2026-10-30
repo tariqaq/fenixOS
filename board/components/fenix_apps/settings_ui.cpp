@@ -283,7 +283,8 @@ static void host_screen(lv_obj_t* scr) {
   link_text(v, sizeof v);
   info_row(g, "Link", v);
   separator(g, 10);
-  info_row(g, "Time", sys::clock_valid() ? "Set by your PC" : "Not set");
+  // Set by the PC, or by SNTP in Wi-Fi mode (P34): the source is not kept.
+  info_row(g, "Time", sys::clock_valid() ? "Set" : "Not set");
   lv_obj_t* note = text(c, "Open fenixOS on your PC to manage apps, update the board and see its screen.",
                         &fx_font_caption, FX_COLOR_LABEL_2);
   lv_obj_set_width(note, LV_PCT(100));
@@ -491,10 +492,12 @@ static void about_screen(lv_obj_t* scr) {
   snprintf(v, sizeof v, "ESP32-D0WD-V3 rev %d.%d", ci.revision / 100, ci.revision % 100);
   info_row(g, "Chip", v);
   separator(g, 10);
-  snprintf(v, sizeof v, "%d cores, 240 MHz", ci.cores);
+  snprintf(v, sizeof v, "%d cores, %d MHz", ci.cores, CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ);
   info_row(g, "CPU", v);
   separator(g, 10);
-  snprintf(v, sizeof v, "%u KB of 520 KB", (unsigned)(heap_caps_get_free_size(MALLOC_CAP_8BIT) / 1024));
+  // Of the heap, as the PC's Task manager shows it (P42: was "of 520 KB", the chip's whole SRAM).
+  snprintf(v, sizeof v, "%u KB of %u KB", (unsigned)(heap_caps_get_free_size(MALLOC_CAP_8BIT) / 1024),
+           (unsigned)(heap_caps_get_total_size(MALLOC_CAP_8BIT) / 1024));
   info_row(g, "Memory free", v);
   separator(g, 10);
   uint32_t flash = 0;

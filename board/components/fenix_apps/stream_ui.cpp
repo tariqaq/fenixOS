@@ -35,7 +35,7 @@ void stream_screen(lv_obj_t* scr) {
   const Shell& sh = shell();
   if (!sh.connected) {
     message(centre_column(scr, 6, 24, 16), FX_ICON_SCREENCAST, "No PC connection",
-            "Connect the board by USB and open fenixOS on your PC to stream this screen.");
+            "Connect the board by USB or Wi-Fi and open fenixOS on your PC to stream this screen.");
     return;
   }
   if (!sh.streaming) {
