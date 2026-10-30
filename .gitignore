@@ -30,3 +30,6 @@ node_modules/
 /docs/recordedvids/
 docs/tempcrashlogs/
 .ccache/
+
+# Python bytecode
+__pycache__/
