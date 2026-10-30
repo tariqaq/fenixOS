@@ -6,7 +6,9 @@ CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
-CONFIG_COMPILER_OPTIMIZATION_PERF=y
+# -Os: 33% smaller image at the same slide fps (P30/P31: the slide is SPI-bound).
+CONFIG_COMPILER_OPTIMIZATION_SIZE=y
+CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_SILENT=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
 # The UI (main task) gets core 1 to itself; the link and the radios stay on core 0 (P29).
 CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1=y
@@ -16,7 +18,10 @@ CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y
 # UART0 is the PC link: keep console and logs off it.
 CONFIG_ESP_CONSOLE_NONE=y
 CONFIG_BOOTLOADER_LOG_LEVEL_NONE=y
-CONFIG_LOG_DEFAULT_LEVEL_INFO=y
+# No log strings in the image: nothing reads ESP_LOG output (the PC log is link_log). P31.
+CONFIG_LOG_DEFAULT_LEVEL_NONE=y
+# CONFIG_ESP_ERR_TO_NAME_LOOKUP is not set
+CONFIG_LIBC_NEWLIB_NANO_FORMAT=y
 CONFIG_ESP_SYSTEM_PANIC_PRINT_REBOOT=y
 # LVGL: system heap, 16-bit colour, 1 ms timer resolution (fps cap set per display).
 CONFIG_LV_COLOR_DEPTH_16=y
@@ -30,3 +35,39 @@ CONFIG_LV_OBJ_STYLE_CACHE=y
 
 # App installs write flash while the PC streams chunks: keep the UART ISR running then (P6).
 CONFIG_UART_ISR_IN_IRAM=y
+
+# Flash (P31): only the LVGL widgets fenixOS uses (obj, label, image, bar, slider, switch,
+# spinner + arc; flex and grid). LVGL's examples and demos call the others, so they go too.
+# Default font: fenixOS sets its own fonts everywhere; UNSCII 8 (1 bpp ASCII) replaces
+# Montserrat 14 (13.6 KB) as the unused theme default.
+CONFIG_LV_FONT_DEFAULT_UNSCII_8=y
+# CONFIG_LV_FONT_MONTSERRAT_14 is not set
+# CONFIG_LV_BUILD_EXAMPLES is not set
+# CONFIG_LV_BUILD_DEMOS is not set
+# CONFIG_LV_USE_ANIMIMG is not set
+# CONFIG_LV_USE_ARCLABEL is not set
+# CONFIG_LV_USE_BUTTON is not set
+# CONFIG_LV_USE_BUTTONMATRIX is not set
+# CONFIG_LV_USE_CALENDAR is not set
+# CONFIG_LV_USE_CANVAS is not set
+# CONFIG_LV_USE_CHART is not set
+# CONFIG_LV_USE_CHECKBOX is not set
+# CONFIG_LV_USE_DROPDOWN is not set
+# CONFIG_LV_USE_IMAGEBUTTON is not set
+# CONFIG_LV_USE_KEYBOARD is not set
+# CONFIG_LV_USE_LED is not set
+# CONFIG_LV_USE_LINE is not set
+# CONFIG_LV_USE_LIST is not set
+# CONFIG_LV_USE_MENU is not set
+# CONFIG_LV_USE_MSGBOX is not set
+# CONFIG_LV_USE_ROLLER is not set
+# CONFIG_LV_USE_SCALE is not set
+# CONFIG_LV_USE_SPAN is not set
+# CONFIG_LV_USE_SPINBOX is not set
+# CONFIG_LV_USE_TABLE is not set
+# CONFIG_LV_USE_TABVIEW is not set
+# CONFIG_LV_USE_TEXTAREA is not set
+# CONFIG_LV_USE_TILEVIEW is not set
+# CONFIG_LV_USE_WIN is not set
+# CONFIG_LV_USE_THEME_SIMPLE is not set
+# CONFIG_LV_USE_OBSERVER is not set
