@@ -2,6 +2,7 @@
 // Artboards Settings, SettingsDisplay, SettingsHome, SettingsAbout. Wireless (P32) uses the
 // Rotation list and the Session pop-up (no artboard of its own).
 #include <stdio.h>
+#include <string.h>
 
 #include "esp_app_desc.h"
 #include "esp_chip_info.h"
@@ -362,6 +363,73 @@ static void radio_pick_cb(lv_event_t* e) {
   lv_obj_add_event_cb(cancel, radio_cancel_cb, LV_EVENT_CLICKED, nullptr);
 }
 
+// ---- Wi-Fi networks (P34): the board's own scan; passwords come from the PC (no keyboard, P36) ----
+
+static void wireless_screen(lv_obj_t* scr);
+static constexpr int MAX_LIST = 12;
+static fnx::WifiAp s_aps[MAX_LIST];
+static int s_naps;
+
+static void ok_cb(lv_event_t*) { sheet_close(); }
+
+static void net_info(const char* title, const char* sub) {
+  lv_obj_t* sh = sheet_open();
+  lv_obj_t* head = column(sh, 2);
+  lv_obj_set_width(head, LV_PCT(100));
+  lv_obj_set_flex_align(head, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  text(head, title, &fx_font_title, FX_COLOR_LABEL);
+  lv_obj_t* s = text(head, sub, &fx_font_caption, FX_COLOR_LABEL_2);
+  lv_obj_set_style_text_align(s, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_width(s, LV_PCT(100));
+  lv_obj_t* ok = box(sh);
+  lv_obj_set_size(ok, LV_PCT(100), 32);
+  lv_obj_add_flag(ok, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_opa(ok, LV_OPA_50, LV_STATE_PRESSED);
+  lv_obj_center(text(ok, "OK", &fx_font_body, FX_COLOR_ACCENT));
+  lv_obj_add_event_cb(ok, ok_cb, LV_EVENT_CLICKED, nullptr);
+}
+
+// Saved and open networks join with a tap; others need their password from the PC.
+static void ap_cb(lv_event_t* e) {
+  int i = (int)(intptr_t)lv_event_get_user_data(e);
+  if (i < 0 || i >= s_naps) return;
+  const fnx::WifiAp& a = s_aps[i];
+  char saved[fnx::SSID_LEN];
+  bool is_saved = sys::radio_saved_network(saved, sizeof saved) && strcmp(saved, a.ssid) == 0;
+  if (is_saved) {
+    sys::radio_reconnect();
+  } else if (a.auth == fnx::wifi_auth::OPEN) {
+    sys::radio_join(a.ssid, "");
+  } else if (a.auth == fnx::wifi_auth::ENTERPRISE) {
+    net_info("Can't join", "Networks that need a user name are not supported.");
+  } else {
+    net_info(a.ssid, "Enter its password in fenixOS on your PC: Settings, Wireless.");
+  }
+}
+
+static void scan_cb(lv_event_t*) {
+  sys::radio_scan(false);
+  refresh_if_top(wireless_screen);
+}
+
+static void networks(lv_obj_t* c, const sys::RadioInfo& ri) {
+  bool scanning = sys::radio_scanning();
+  s_naps = sys::radio_scan_results(s_aps, MAX_LIST);
+  lv_obj_t* g = group(c);
+  lv_obj_t* head = list_row(g, nullptr, 0, "Networks", nullptr, false, scanning ? nullptr : scan_cb, nullptr);
+  text(head, scanning ? "Scanning\xE2\x80\xA6" : "Scan", &fx_font_label, scanning ? FX_COLOR_LABEL_2 : FX_COLOR_ACCENT);
+  for (int i = 0; i < s_naps; i++) {
+    const fnx::WifiAp& a = s_aps[i];
+    separator(g, 10);
+    lv_obj_t* r = list_row(g, nullptr, 0, a.ssid, nullptr, false, ap_cb, (void*)(intptr_t)i);
+    bool here = ri.state == fnx::radio_state::CONNECTED && strcmp(ri.name, a.ssid) == 0;
+    if (here) text(r, FX_ICON_CHECK, &fx_icon_bold_14, FX_COLOR_ACCENT);
+    if (a.auth != fnx::wifi_auth::OPEN) text(r, FX_ICON_LOCK, &fx_icon_fill_14, FX_COLOR_LABEL_2);
+    const char* bars = a.rssi >= -60 ? FX_ICON_WIFI_HIGH : a.rssi >= -75 ? FX_ICON_WIFI_MEDIUM : FX_ICON_WIFI_LOW;
+    text(r, bars, &fx_icon_fill_14, FX_COLOR_LABEL);
+  }
+}
+
 static void wireless_screen(lv_obj_t* scr) {
   sys::RadioInfo ri = sys::radio_info();
   navbar(scr, "Settings", "Wireless");
@@ -404,13 +472,21 @@ static void wireless_screen(lv_obj_t* scr) {
     }
   }
   note(c, tip);
+  if (ri.mode == fnx::radio::WIFI) {
+    // The first visit scans by itself; the list then stays until Scan.
+    static bool scanned;
+    if (!scanned && !sys::radio_scanning() && sys::radio_scan_results(s_aps, 1) == 0) sys::radio_scan(false);
+    scanned = true;
+    networks(c, ri);
+  }
 }
 
 // Rebuild Wireless when the radio's state changes.
 void settings_tick() {
   static int shown = -1;
   sys::RadioInfo ri = sys::radio_info();
-  int key = ri.mode << 8 | ri.state;
+  fnx::WifiAp one;
+  int key = ri.mode << 8 | ri.state | sys::radio_scanning() << 16 | sys::radio_scan_results(&one, 1) << 17;
   if (key == shown) return;
   shown = key;
   refresh_if_top(wireless_screen);

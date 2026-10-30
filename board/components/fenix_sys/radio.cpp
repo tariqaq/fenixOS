@@ -153,11 +153,11 @@ static bool spp_write(const uint8_t* d, size_t n) {
   uint32_t h = s_spp;
   if (!h) return false;
   portENTER_CRITICAL(&s_mux);
-  s_spp_pending++;
+  s_spp_pending = s_spp_pending + 1;
   portEXIT_CRITICAL(&s_mux);
   if (esp_spp_write(h, n, (uint8_t*)d) == ESP_OK) return true;
   portENTER_CRITICAL(&s_mux);
-  s_spp_pending--;
+  s_spp_pending = s_spp_pending - 1;
   portEXIT_CRITICAL(&s_mux);
   return false;
 }
@@ -201,7 +201,7 @@ static void spp_cb(esp_spp_cb_event_t e, esp_spp_cb_param_t* p) {
       break;
     case ESP_SPP_WRITE_EVT:
       portENTER_CRITICAL(&s_mux);
-      if (s_spp_pending > 0) s_spp_pending--;
+      if (s_spp_pending > 0) s_spp_pending = s_spp_pending - 1;
       portEXIT_CRITICAL(&s_mux);
       s_spp_cong = p->write.cong;
       spp_room();
@@ -445,6 +445,14 @@ void radio_join(const char* ssid, const char* pass) {
   if (s_ssid[0]) link_log(3, "radio: network \"%s\" saved", s_ssid);
   else link_log(3, "radio: network forgotten");
   if (radio_info().mode != fnx::radio::WIFI) return;
+  s_fails = 0;
+  esp_timer_stop(s_retry);
+  esp_wifi_disconnect();
+  wifi_connect();
+}
+
+void radio_reconnect() {
+  if (radio_info().mode != fnx::radio::WIFI || !s_ssid[0]) return;
   s_fails = 0;
   esp_timer_stop(s_retry);
   esp_wifi_disconnect();

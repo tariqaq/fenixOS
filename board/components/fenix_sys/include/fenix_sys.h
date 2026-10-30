@@ -133,9 +133,11 @@ bool radio_scan(bool for_pc);
 bool radio_scanning();
 int radio_scan_results(fnx::WifiAp* out, int max);  // last scan, strongest first
 void radio_join(const char* ssid, const char* pass);  // saved in plaintext; empty ssid forgets
+void radio_reconnect();                               // the saved network, now
 bool radio_saved_network(char* out, size_t cap);
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
+void web_start();  // phone page on port 80, status only (web.cpp)
 // Weather (P34): Open-Meteo every 15 min in Wi-Fi mode, for the place set from the PC.
 struct Weather {
   bool valid;

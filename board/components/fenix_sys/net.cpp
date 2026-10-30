@@ -239,7 +239,9 @@ void net_start() {
     mdns_hostname_set("fenixos");
     mdns_instance_name_set("fenixOS");
     mdns_service_add(nullptr, "_fenixos", "_tcp", fnx::TCP_PORT, nullptr, 0);
+    mdns_service_add(nullptr, "_http", "_tcp", 80, nullptr, 0);
   }
+  web_start();
   // Two servers: one pool address sometimes never answered (P34); lwIP then tries the next.
   esp_sntp_config_t c = ESP_NETIF_SNTP_DEFAULT_CONFIG_MULTIPLE(2, ESP_SNTP_SERVER_LIST("pool.ntp.org", "time.cloudflare.com"));
   c.start = false;  // net_up starts it: before an address its DNS query fails and backs off

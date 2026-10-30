@@ -226,6 +226,7 @@ bool radio_scan(bool) { return false; }
 bool radio_scanning() { return false; }
 int radio_scan_results(fnx::WifiAp*, int) { return 0; }
 void radio_join(const char*, const char*) {}
+void radio_reconnect() {}
 bool radio_saved_network(char* out, size_t cap) {
   if (cap) out[0] = 0;
   return false;
