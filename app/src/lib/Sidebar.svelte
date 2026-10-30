@@ -89,7 +89,7 @@
     transition: transform var(--dur-base) var(--ease);
   }
   button:not(.current):hover {
-    background: rgba(255, 255, 255, 0.04);
+    background: var(--fill-hover);
   }
   button.current {
     font-weight: 600;

@@ -1,5 +1,9 @@
+/* Hallmark · shape: app screen · system: DESIGN.md (locked) · surface: absolute · built: the project · redesign: polish · v2.0.0 */
+/* Hallmark · waive 7b · bg #000000, label #FFFFFF · DESIGN.md locks Apple-style dark to match the board */
+/* Hallmark · waive 24b · 6, 10, 14 px steps · spacing follows the PC artboards in design/mockups */
+/* Hallmark · waive 29 · blurred dim over the live mirror · DESIGN.md Shape allows it while the stream is off */
 /* Base styles. Colours, radii and motion come from tokens.css (design/tokens.json);
-   the few chrome colours below are the PC artboards' own (design/mockups/Pc*.dc.html). */
+   the chrome colours, fills and shadows below are the PC artboards' own (design/mockups/Pc*.dc.html). */
 @import "./lib/tokens.css";
 @import "@fontsource-variable/inter/opsz.css";
 
@@ -8,6 +12,16 @@
   --titlebar-line: #2c2c2e;
   --label-3: #a1a1a6;
   --backdrop: #0c0c0d;
+  --fill-hover: rgba(255, 255, 255, 0.04);
+  --fill-press: rgba(255, 255, 255, 0.08);
+  --switch-tile-off: #48484a;
+  --switch-tile-on: rgba(255, 255, 255, 0.38);
+  --shadow-sheet: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --shadow-menu: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --shadow-tip: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-knob: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --dim-live: rgba(0, 0, 0, 0.45);
+  --font-ui: "Inter Variable", system-ui, sans-serif;
   color-scheme: dark;
 }
 
@@ -21,12 +35,12 @@ body {
   height: 100%;
   background: var(--bg);
   color: var(--label);
-  font-family: "Inter Variable", system-ui, sans-serif;
+  font-family: var(--font-ui);
   font-optical-sizing: auto;
   font-size: 15px;
   -webkit-font-smoothing: antialiased;
   user-select: none;
-  overflow: hidden;
+  overflow: clip;
 }
 
 #app {
@@ -71,6 +85,11 @@ h1,
 h2,
 p {
   margin: 0;
+}
+
+h1,
+h2 {
+  text-wrap: balance;
 }
 
 h1 {
@@ -125,12 +144,12 @@ a.row {
 }
 button.row:not(:disabled):hover,
 a.row:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--fill-hover);
   filter: none;
 }
 button.row:not(:disabled):active,
 a.row:active {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--fill-press);
 }
 
 .note {
@@ -145,8 +164,6 @@ a.row:active {
   font-size: 13px;
   font-weight: 400;
   color: var(--label-2);
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }
 
 /* Thin dark scrollbars (WebView2 draws light Windows ones otherwise). */

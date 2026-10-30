@@ -187,7 +187,7 @@
     {:else if step === "confirm"}
       <h1>Install fenixOS on this board?</h1>
       <p>This erases what is on it.</p>
-      {#if probe}<p class="fine">{probe.chip.toUpperCase()} · {probe.flash} flash · {snap?.silent[0]?.port ?? ""}</p>{/if}
+      {#if probe}<p class="fine">{probe.chip.toUpperCase()} with {probe.flash} flash{snap?.silent[0] ? `, on ${snap.silent[0].port}` : ""}</p>{/if}
       <div class="buttons">
         <button type="button" class="primary" onclick={() => install(true)}>Install fenixOS</button>
         <button type="button" class="secondary" onclick={skip}>Not now</button>
@@ -223,9 +223,10 @@
 {/key}
 
 <style>
+  :global(html),
   :global(body) {
-    background: #000;
-    overflow: hidden;
+    background: var(--bg);
+    overflow: clip;
   }
   canvas {
     position: fixed;
@@ -258,7 +259,7 @@
     border-radius: 14px;
     padding: 0 14px;
     margin-right: 8px;
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill-press);
     color: var(--label-2);
     font-size: 13px;
   }
@@ -272,7 +273,7 @@
     justify-content: center;
   }
   .ctl:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill-press);
   }
   .copy {
     position: fixed;
@@ -283,7 +284,7 @@
     flex-direction: column;
     gap: 8px;
     z-index: 1;
-    animation: fade 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: fade 600ms var(--ease) both;
   }
   .copy.center {
     left: 0;
@@ -341,17 +342,17 @@
   .secondary {
     height: 44px;
     border: 0;
-    border-radius: 22px;
+    border-radius: var(--radius-pc-button);
     padding: 0 22px;
     font-size: 17px;
   }
   .primary {
     background: var(--accent-fill);
-    color: #fff;
+    color: var(--label);
     font-weight: 600;
   }
   .secondary {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--fill-press);
     color: var(--accent);
   }
 </style>

@@ -67,7 +67,7 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-sheet);
   }
   .head {
     display: flex;
@@ -119,7 +119,7 @@
   .secondary {
     height: 44px;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--radius-pc-button);
     font-size: 17px;
   }
   .primary {
@@ -129,6 +129,6 @@
   }
   .secondary {
     background: transparent;
-    color: var(--accent);
+    color: var(--label);
   }
 </style>

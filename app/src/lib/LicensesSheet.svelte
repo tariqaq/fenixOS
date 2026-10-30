@@ -66,7 +66,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-sheet);
   }
   .head {
     padding: 18px 16px 14px 20px;

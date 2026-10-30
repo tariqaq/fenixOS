@@ -9,6 +9,7 @@
 
   let { live }: { live: boolean } = $props();
   let canvas: HTMLCanvasElement;
+  let img: ImageData | undefined; // reused while the size stays
   let fps = $state(0);
   let size = $state({ w: 320, h: 240 });
   let version = 0;
@@ -49,7 +50,7 @@
     }
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const img = ctx.createImageData(w, h);
+    if (img?.width !== w || img.height !== h) img = ctx.createImageData(w, h);
     const d = img.data;
     for (let i = 0, j = 0; i < px.length; i++, j += 4) {
       const p = px[i];
@@ -178,7 +179,7 @@
     gap: 4px;
     text-align: center;
     pointer-events: none;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--dim-live);
     -webkit-backdrop-filter: blur(14px) saturate(0.8);
     backdrop-filter: blur(14px) saturate(0.8);
   }

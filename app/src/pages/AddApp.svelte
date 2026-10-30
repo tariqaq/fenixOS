@@ -199,7 +199,7 @@
     border: 0;
     border-radius: 16px;
     background: var(--surface-2);
-    color: var(--accent);
+    color: var(--label);
     padding: 0 16px;
     font-size: 15px;
     font-weight: 600;

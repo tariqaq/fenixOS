@@ -99,7 +99,7 @@
 <div class="wrap">
   <div class="head">
     <h1>Task manager</h1>
-    <p class="sub">{linkText(board.port)}{unsupported ? "" : " · live, every second"}</p>
+    <p class="sub">{linkText(board.port)}{unsupported ? "" : ", live every second"}</p>
   </div>
 
   {#if unsupported}
@@ -231,7 +231,7 @@
       <section class="card wide">
         <div class="title">
           <h2>Threads</h2>
-          <p class="sub">{cur.tasks.length} FreeRTOS tasks{board.app_id ? ` · app ${board.app_id} runs in main` : ""}</p>
+          <p class="sub">{cur.tasks.length} FreeRTOS tasks{board.app_id ? `; app ${board.app_id} runs in main` : ""}</p>
         </div>
         <table>
           <thead>

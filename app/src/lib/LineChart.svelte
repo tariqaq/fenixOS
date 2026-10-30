@@ -142,7 +142,7 @@
     font-size: 12px;
     white-space: nowrap;
     pointer-events: none;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-tip);
     z-index: 1;
   }
   .tip.left {

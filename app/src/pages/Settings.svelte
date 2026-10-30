@@ -431,7 +431,7 @@
     background: var(--surface-2);
     border-radius: 12px;
     padding: 6px;
-    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-menu);
     z-index: 10;
     transform-origin: top right;
     display: flex;

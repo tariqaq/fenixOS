@@ -314,8 +314,11 @@ export class BoardScene {
   reduced: boolean;
   /** Frame rate over the last second, for the S8 numbers. */
   fps = 0;
-  /** No frames while true (the window is minimized). */
-  paused = false;
+  /** No frames while the window is minimized or the page hidden. */
+  private minimized = false;
+  private get paused() {
+    return this.minimized || document.hidden;
+  }
   private minGap: number;
   private unlisten?: () => void;
   private last = -Infinity;
@@ -355,7 +358,7 @@ export class BoardScene {
     this.raf = requestAnimationFrame(this.frame);
     // WebView2 keeps a minimized window "visible" and its frames coming: pause while minimized.
     const win = getCurrentWindow();
-    const check = () => win.isMinimized().then((m) => (this.paused = m), () => {});
+    const check = () => win.isMinimized().then((m) => (this.minimized = m), () => {});
     check();
     win.onResized(check).then((f) => (this.unlisten = f), () => {});
   }

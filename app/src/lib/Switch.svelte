@@ -1,6 +1,6 @@
 <script lang="ts">
   // iOS-style switch, 51 × 31 (PcSettings, PcAppSettings). `tile`: the PcDashboard variant on a
-  // coloured tile (white 38 % track when on, #48484A when off).
+  // coloured tile (--switch-tile-on / --switch-tile-off tracks, app.css).
   let {
     checked,
     label,
@@ -48,17 +48,17 @@
     background: var(--success);
   }
   button.tile {
-    background: #48484a;
+    background: var(--switch-tile-off);
   }
   button.tile.on {
-    background: rgba(255, 255, 255, 0.38);
+    background: var(--switch-tile-on);
   }
   span {
     width: 27px;
     height: 27px;
     border-radius: 14px;
     background: var(--label);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--shadow-knob);
     transition: transform var(--dur-fast) var(--ease);
   }
   button.on span {

@@ -96,7 +96,7 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-sheet);
   }
   .head {
     padding: 18px 16px 14px 20px;
@@ -140,7 +140,7 @@
     border: 0;
     border-radius: var(--radius-pc-button);
     background: var(--surface-2);
-    color: var(--accent);
+    color: var(--label);
     padding: 0 14px;
     font-size: 14px;
     font-weight: 600;

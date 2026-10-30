@@ -238,7 +238,7 @@ export function tileColor(c: string): string {
 }
 
 /** Shown as: what an app's PC part does (docs/registry.md Permissions). */
-export const permissionText: Record<string, { text: string; icon: string }> = {
+const permissionText: Record<string, { text: string; icon: string }> = {
   keys: { text: "Press keys and shortcuts", icon: "keyboard" },
   media: { text: "Change volume and control media", icon: "speaker-high" },
   "system-stats": { text: "Read CPU, memory and other system stats", icon: "cpu" },

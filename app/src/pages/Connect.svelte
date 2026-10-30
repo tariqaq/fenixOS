@@ -5,7 +5,7 @@
   // on since P11: software WebGL took ~8 cores here (docs/decisions.md).
   import { onDestroy, onMount, untrack } from "svelte";
   import type { BoardScene } from "../ootb/scene";
-  import type { Silent } from "../lib/api";
+  import { showWelcome, type Silent } from "../lib/api";
 
   let {
     silent,
@@ -85,9 +85,8 @@
       {:else if stage === "seated"}
         <h1>Board found</h1>
         <p>A board on {port} did not answer as fenixOS.</p>
-        <p class="fine">
-          It may have no fenixOS on it yet, or another firmware. Settings &gt; About &gt; Show welcome again sets it up.
-        </p>
+        <p class="fine">It may have no fenixOS on it yet, or another firmware.</p>
+        <button type="button" class="setup" onclick={() => showWelcome()}>Set up this board</button>
       {:else}
         <h1>Plug in your board</h1>
         <p>Connect the ESP32 board with a USB cable. fenixOS finds it on its own and connects.</p>
@@ -123,7 +122,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    animation: fade 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation: fade 600ms var(--ease) both;
   }
   @keyframes fade {
     from {
@@ -161,6 +160,18 @@
   }
   .fine {
     font-size: 13px;
+  }
+  .setup {
+    align-self: flex-start;
+    margin-top: 8px;
+    height: 44px;
+    border: 0;
+    border-radius: var(--radius-pc-button);
+    padding: 0 20px;
+    background: var(--accent-fill);
+    color: var(--label);
+    font-size: 15px;
+    font-weight: 600;
   }
   .fine a {
     display: block;

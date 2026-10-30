@@ -47,7 +47,7 @@
       <h2 id="upd-title">Updating the board</h2>
       <p>Keep the board plugged in. It restarts on its own when done.</p>
       <div class="bar" role="progressbar" aria-label="Firmware update" aria-valuemin="0" aria-valuemax="100" aria-valuenow={u.percent}>
-        <div style="width: {u.percent}%"></div>
+        <div style="transform: scaleX({u.percent / 100})"></div>
       </div>
       <p class="status">
         <span>
@@ -128,7 +128,7 @@
     align-items: center;
     text-align: center;
     gap: 8px;
-    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    box-shadow: var(--shadow-sheet);
   }
   h2 {
     margin-top: 8px;
@@ -152,7 +152,8 @@
     height: 6px;
     border-radius: 3px;
     background: var(--accent);
-    transition: width var(--dur-base) var(--ease);
+    transform-origin: left;
+    transition: transform var(--dur-base) var(--ease);
   }
   .status {
     margin-top: 4px;
@@ -175,7 +176,7 @@
   .secondary {
     height: 44px;
     border: 0;
-    border-radius: 12px;
+    border-radius: var(--radius-pc-button);
     font-size: 17px;
   }
   .primary {
@@ -185,7 +186,7 @@
   }
   .secondary {
     background: transparent;
-    color: var(--accent);
+    color: var(--label);
   }
   .error {
     color: var(--warning);
