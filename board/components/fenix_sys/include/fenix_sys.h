@@ -114,6 +114,7 @@ bool stream_rect(int x, int y, int w, int h, const uint8_t* px);
 // Room for a full redraw of `bytes` raw pixels, roughly (used before re-invalidating stale areas).
 bool stream_has_room(size_t bytes);
 uint32_t stream_dropped();
+// UI task only. Off frees the encode buffers (they are allocated at the first band).
 void stream_set_active(bool on);
 
 }  // namespace fx::sys

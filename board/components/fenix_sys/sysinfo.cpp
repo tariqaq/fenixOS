@@ -1,6 +1,7 @@
 // SYSINFO for the PC's Task manager (proto/spec.md): heap, flash, link counters and the
 // FreeRTOS tasks with their run times. Raw counters only; the PC works out load and rates.
 // Link task only.
+#include <stdlib.h>
 #include <string.h>
 
 #include "esp_app_format.h"
@@ -20,7 +21,6 @@ uint32_t link_rx_bytes();
 uint32_t link_tx_bytes();
 
 static constexpr int MAX_TASKS = 40;  // 40 tasks fit in one frame (spec: MAX_PAYLOAD)
-static TaskStatus_t s_tasks[MAX_TASKS + 8];
 static uint32_t s_flash_size, s_app_size, s_app_slot;
 
 // Flash and image sizes do not change while running: read them once.
@@ -69,13 +69,15 @@ void sysinfo_write(fnx::Writer& w) {
 
   // The run-time clock (esp_timer, µs) also stamps the sample. 0 tasks when the table is full.
   configRUN_TIME_COUNTER_TYPE now = 0;
-  UBaseType_t n = uxTaskGetSystemState(s_tasks, MAX_TASKS + 8, &now);
+  // The table (~2 KB) lives only for this answer (P31).
+  TaskStatus_t* tasks = (TaskStatus_t*)malloc((MAX_TASKS + 8) * sizeof(TaskStatus_t));
+  UBaseType_t n = tasks ? uxTaskGetSystemState(tasks, MAX_TASKS + 8, &now) : 0;
   s.time_us = (uint32_t)now;
   fnx::write_sysinfo(w, s);
   if (n > MAX_TASKS) n = MAX_TASKS;
   w.u8(n);
   for (UBaseType_t i = 0; i < n; i++) {
-    const TaskStatus_t& t = s_tasks[i];
+    const TaskStatus_t& t = tasks[i];
     fnx::TaskInfo ti{};
     ti.id = t.xTaskNumber;
     BaseType_t core = xTaskGetCoreID(t.xHandle);
@@ -87,6 +89,7 @@ void sysinfo_write(fnx::Writer& w) {
     strlcpy(ti.name, t.pcTaskName, sizeof ti.name);
     fnx::write_task_info(w, ti);
   }
+  free(tasks);
 }
 
 }  // namespace fx::sys
