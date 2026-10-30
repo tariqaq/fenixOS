@@ -32,13 +32,15 @@
 
   async function add(a: RegistryApp) {
     asking = null;
+    error = "";
     busy[a.id] = "Adding";
     try {
       await addApp(a.id);
       a.added = true;
       delete busy[a.id];
     } catch (e) {
-      busy[a.id] = "Failed";
+      // The error shows below the list; Add comes back so it can be tried again (P42).
+      delete busy[a.id];
       error = `${a.name}: ${e}`;
     }
   }
@@ -77,7 +79,7 @@
           {#if a.added}
             <span class="done"><Icon name="check" size={14} color="var(--label-2)" /><span>Added</span></span>
           {:else if busy[a.id]}
-            <span class="done">{busy[a.id] === "Adding" ? "Adding…" : "Failed"}</span>
+            <span class="done">Adding…</span>
           {:else}
             <button type="button" class="get" aria-label="Add {a.name}" onclick={() => (asking = a)}>
               <Icon name="download-simple" size={14} color="var(--accent)" />
@@ -93,7 +95,7 @@
   {/if}
   <p class="foot">
     Apps are listed from the fenixOS registry on GitHub (<a href="https://github.com/tariqaq/fenixOS">tariqaq/fenixOS</a>,
-    folder registry). Each app downloads from its own repo, and fenixOS checks it against the checksum in its manifest
+    the registry folder). Each app downloads from its own repo, and fenixOS checks it against the checksum in its manifest
     before installing.
   </p>
 </div>

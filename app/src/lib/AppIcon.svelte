@@ -7,7 +7,7 @@
   }) as Record<string, () => Promise<string>>;
   const path = (n: string) => `/node_modules/@phosphor-icons/core/assets/fill/${n}-fill.svg`;
 
-  let { name, size = 22, color = "#FFFFFF" }: { name: string; size?: number; color?: string } = $props();
+  let { name, size = 22, color = "var(--label)" }: { name: string; size?: number; color?: string } = $props();
 
   let svg = $state("");
   $effect(() => {

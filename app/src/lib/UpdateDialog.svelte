@@ -180,7 +180,7 @@
   }
   .primary {
     background: var(--accent-fill);
-    color: #fff;
+    color: var(--label);
     font-weight: 600;
   }
   .secondary {

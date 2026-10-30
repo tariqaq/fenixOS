@@ -198,7 +198,7 @@
           <div class="meter">
             <p class="lbl">{d.name}<span class="num">{d.unit(d.used)} of {d.unit(d.total)}</span></p>
             <div class="track" role="meter" aria-label={d.name} aria-valuenow={d.used} aria-valuemin={0} aria-valuemax={d.total}>
-              <div class="fill" style="width: {share(d.used, d.total)}%"></div>
+              <div class="fill" style="transform: scaleX({share(d.used, d.total) / 100})"></div>
             </div>
           </div>
         {/each}
@@ -374,11 +374,12 @@
     background: var(--surface-3);
     overflow: hidden;
   }
+  /* Scaled, not resized, so the change animates on the compositor; the track clips the ends. */
   .fill {
     height: 100%;
-    border-radius: 4px;
     background: var(--accent);
-    transition: width var(--dur-base) var(--ease);
+    transform-origin: left;
+    transition: transform var(--dur-base) var(--ease);
   }
   table {
     width: 100%;

@@ -60,6 +60,6 @@
     background: var(--danger-fill);
   }
   .close:hover path {
-    stroke: #fff;
+    stroke: var(--label);
   }
 </style>

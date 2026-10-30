@@ -57,7 +57,7 @@
     width: 27px;
     height: 27px;
     border-radius: 14px;
-    background: #fff;
+    background: var(--label);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
     transition: transform var(--dur-fast) var(--ease);
   }

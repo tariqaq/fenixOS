@@ -106,7 +106,7 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    background: #000;
+    background: var(--bg);
   }
   canvas {
     position: absolute;

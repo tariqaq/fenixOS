@@ -23,6 +23,8 @@
   const value = (s: Setting) => app.values[s.key] ?? s.default;
 
   let confirming = $state(false);
+  // A slider's value while it is dragged; it is sent once, on release (P42).
+  let dragging = $state<Record<string, number>>({});
 
   // Text settings are sent when the field loses focus or Enter is pressed, not on every key.
   function commitText(s: Setting, e: Event) {
@@ -91,9 +93,13 @@
                   max={s.max}
                   step={s.step}
                   value={value(s)}
-                  onchange={(e) => setAppSetting(app.id, s.key, Number((e.target as HTMLInputElement).value))}
+                  oninput={(e) => (dragging[s.key] = Number((e.target as HTMLInputElement).value))}
+                  onchange={(e) => {
+                    delete dragging[s.key];
+                    setAppSetting(app.id, s.key, Number((e.target as HTMLInputElement).value));
+                  }}
                 />
-                <span class="num">{value(s)}{s.unit ? ` ${s.unit}` : ""}</span>
+                <span class="num">{dragging[s.key] ?? value(s)}{s.unit ? ` ${s.unit}` : ""}</span>
               </span>
             {:else if s.type === "text"}
               <label for="set-{s.key}">{s.label}</label>
@@ -317,7 +323,7 @@
   }
   .confirm .remove {
     background: var(--danger-fill);
-    color: #fff;
+    color: var(--label);
   }
   .cancel {
     height: 40px;

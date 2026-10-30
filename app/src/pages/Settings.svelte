@@ -314,25 +314,25 @@
         {#if ap.auth !== 0}<Icon name="lock" size={14} color="var(--label-2)" />{/if}
       </button>
       {#if joining === ap.ssid}
-        <div class="row join">
+        <form class="row join" onsubmit={(e) => (e.preventDefault(), join())}>
           {#if ap.auth === 5}
             <p class="value">Enterprise networks need a user name; fenixOS cannot join them.</p>
           {:else}
             {#if ap.auth !== 0}
               <input type="password" placeholder="Password" maxlength="64" bind:value={password} aria-label="Password for {ap.ssid}" />
             {/if}
-            <button type="button" class="action" disabled={!boardPort} onclick={join}>Join</button>
+            <button type="submit" class="action" disabled={!boardPort}>Join</button>
           {/if}
-        </div>
+        </form>
       {/if}
     {/each}
     <button type="button" class="row" onclick={() => openJoin(null)}>Other network…</button>
     {#if joining === ""}
-      <div class="row join">
+      <form class="row join" onsubmit={(e) => (e.preventDefault(), join())}>
         <input type="text" placeholder="Network name" maxlength="32" bind:value={ssid} aria-label="Network name" />
         <input type="password" placeholder="Password" maxlength="64" bind:value={password} aria-label="Password" />
-        <button type="button" class="action" disabled={!boardPort || !ssid.trim()} onclick={join}>Join</button>
-      </div>
+        <button type="submit" class="action" disabled={!boardPort || !ssid.trim()}>Join</button>
+      </form>
     {/if}
     {#if radio?.mode === 2 && radio.name}
       <button type="button" class="row danger" onclick={() => wifiJoin("", "")}>Forget {radio.name}</button>
@@ -490,12 +490,12 @@
     height: 32px;
     padding: 0 14px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-pc-button);
     font-size: 15px;
   }
   .primary {
     background: var(--accent-fill);
-    color: #fff;
+    color: var(--label);
     font-weight: 600;
   }
   .secondary {

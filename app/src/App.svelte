@@ -19,6 +19,12 @@
 
   let snap = $state<State | null>(null);
   let page = $state<Page>("apps");
+  let mainEl = $state<HTMLElement>();
+  // A new page starts at its top, not at the old page's scroll position (P42).
+  $effect(() => {
+    void page;
+    mainEl?.scrollTo(0, 0);
+  });
   let logs = $state(false);
   // Update dialog: "Later" hides the mismatch prompt until the board connects again.
   let later = $state(false);
@@ -70,7 +76,7 @@
   {#if snap && connected && snap.board}
     <div class="body">
       <Sidebar bind:page board={snap.board} />
-      <main>
+      <main bind:this={mainEl}>
         <!-- A new page fades in rising 8 px; the old one leaves at once, so the two never stack. -->
         {#key page}
           <div in:enter>

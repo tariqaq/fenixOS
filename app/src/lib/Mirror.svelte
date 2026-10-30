@@ -165,7 +165,7 @@
     position: relative;
     border-radius: 10px;
     overflow: hidden;
-    background: #000;
+    background: var(--bg);
     margin: 0 auto;
   }
   .off {

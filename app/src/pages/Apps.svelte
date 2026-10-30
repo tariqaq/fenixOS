@@ -20,6 +20,7 @@
   const go = (v: View) => {
     dir = v.kind === "list" ? -1 : 1;
     view = v;
+    document.querySelector("main")?.scrollTo(0, 0);
   };
   const key = $derived(view.kind === "settings" ? `s:${view.id}` : view.kind);
   const open = $derived.by(() => {
@@ -44,7 +45,7 @@
     <div class="head">
       <h1>Apps</h1>
       <button type="button" class="add" onclick={() => go({ kind: "add" })}>
-        <Icon name="plus" size={14} color="#FFFFFF" />
+        <Icon name="plus" size={14} color="var(--label)" />
         <span>Add app</span>
       </button>
     </div>
@@ -61,7 +62,7 @@
             animate:flip={{ duration: BASE, easing: ease }}
           >
             <button type="button" class="open" onclick={() => go({ kind: "settings", id: a.id })}>
-              <AppIcon name={a.icon} size={28} color={a.enabled ? "#FFFFFF" : "var(--label-2)"} />
+              <AppIcon name={a.icon} size={28} color={a.enabled ? "var(--label)" : "var(--label-2)"} />
               <span class="text">
                 <span class="name">{a.name}</span>
                 <span class="status" class:problem={a.status === "error"}>{a.detail}</span>
@@ -106,7 +107,7 @@
     border: 0;
     border-radius: var(--radius-pc-button);
     background: var(--accent-fill);
-    color: #fff;
+    color: var(--label);
     padding: 0 14px;
     display: flex;
     align-items: center;
@@ -156,7 +157,7 @@
     border-radius: var(--radius-pc-tile);
     background: transparent;
     padding: 18px;
-    color: #fff;
+    color: var(--label);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -179,7 +180,7 @@
     color: var(--label-3);
   }
   .tile.on .status {
-    color: #fff;
+    color: var(--label);
   }
   .status.problem {
     color: var(--warning);

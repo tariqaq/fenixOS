@@ -60,6 +60,7 @@
     gap: 4px;
   }
   button {
+    position: relative;
     height: 36px;
     border: 0;
     border-radius: 8px;
@@ -82,9 +83,6 @@
     border-radius: 8px;
     background: var(--surface-2);
     transition: transform var(--dur-base) var(--ease);
-  }
-  button {
-    position: relative;
   }
   button:not(.current):hover {
     background: rgba(255, 255, 255, 0.04);
