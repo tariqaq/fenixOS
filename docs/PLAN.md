@@ -167,7 +167,7 @@ docs/, pics/
   - Fonts are the built-in Inter sizes only.
 - **Source and limits:**
   - Source format: `app.toml` + `layout.json`, compiled by `fenix-pkg build`.
-  - Limits checked at compile time and again on the board: 64 KB per package (corrected 2026-10-29 from 256 KB: the board holds the whole package in RAM), element count, and an RAM estimate.
+  - Limits checked at compile time and again on the board: 64 KB per package (corrected 2026-10-29 from 256 KB; since P39 the board reads it in pieces), element count, and an RAM estimate.
 - **Board runtime:**
   - One host app is open at a time.
   - Its LVGL objects are built from the package when it opens and freed when it closes.

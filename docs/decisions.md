@@ -109,7 +109,7 @@ Consequences:
 | Rotation setting UI (artboard shows a Rotation row with a chevron) | Cycle on tap / sub-page | **Sub-page** with the 4 orientations and a check mark |
 | Navbar on narrow (portrait) screens when back label and title collide | Truncate / drop the back label | **Drop the back label**, keep the chevron (iOS does the same) |
 | Settings › Storage and Host PC pages (no artboards) | — | Grouped info rows in the About style |
-| Package size cap (PLAN said 256 KB) | 256 KB, read in pieces / **64 KB, whole package in RAM** | **64 KB.** The board has ~125 KB free heap, and the package is read whole to check it and while the app is open. Assets other than the two tile icons count toward the 24 KB image budget, so real packages are a few KB |
+| Package size cap (PLAN said 256 KB) | 256 KB, read in pieces / **64 KB, whole package in RAM** | **64 KB.** The board has ~125 KB free heap, and the package is read whole to check it and while the app is open. Assets other than the two tile icons count toward the 24 KB image budget, so real packages are a few KB. Corrected (P39): the board reads packages in pieces now; the 64 KB cap stays (no format change) |
 | Asset compression (PLAN said compressed) | Compress now / **raw in format 1** | **Raw.** With the 64 KB cap compression buys little; a later format version can add it |
 | RGB565 byte order in packages | Big-endian (screen order) / **little-endian** | **Little-endian**, LVGL's native order, so images draw straight from the package buffer |
 | App id length | 63 bytes / **48 bytes** | **48 bytes** of letters, digits, `.`, `-`, `_`: ids name files on LittleFS, whose names are ≤ 63 bytes |

@@ -6,31 +6,55 @@ namespace fpkg {
 
 static const uint8_t MAGIC[4] = {'F', 'X', 'P', '1'};
 
+bool MemSource::read(void* dst, size_t n) {
+  if (n > n_ - pos) return false;
+  memcpy(dst, b_ + pos, n);
+  pos += n;
+  return true;
+}
+
+bool MemSource::skip(size_t n) {
+  if (n > n_ - pos) return false;
+  pos += n;
+  return true;
+}
+
+bool FileSource::read(void* dst, size_t n) {
+  if (n > n_ - pos || fread(dst, 1, n, f_) != n) return false;
+  pos += n;
+  return true;
+}
+
+bool FileSource::skip(size_t n) {
+  if (n > n_ - pos || fseek(f_, (long)n, SEEK_CUR) != 0) return false;
+  pos += n;
+  return true;
+}
+
 namespace {
+// Little-endian fields from a Source; after the first short read every value is 0 and ok is false.
 struct Rd {
-  const uint8_t* b;
-  size_t n, i = 0;
+  Source& s;
   bool ok = true;
-  const uint8_t* take(size_t k) {
-    if (!ok || k > n - i) {
-      ok = false;
-      return nullptr;
-    }
-    const uint8_t* p = b + i;
-    i += k;
-    return p;
+  bool get(void* d, size_t n) {
+    if (ok && !s.read(d, n)) ok = false;
+    if (!ok) memset(d, 0, n);
+    return ok;
   }
   uint8_t u8() {
-    const uint8_t* p = take(1);
-    return p ? p[0] : 0;
+    uint8_t p[1];
+    get(p, 1);
+    return p[0];
   }
   uint16_t u16() {
-    const uint8_t* p = take(2);
-    return p ? (uint16_t)(p[0] | p[1] << 8) : 0;
+    uint8_t p[2];
+    get(p, 2);
+    return (uint16_t)(p[0] | p[1] << 8);
   }
   uint32_t u32() {
-    const uint8_t* p = take(4);
-    return p ? (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24 : 0;
+    uint8_t p[4];
+    get(p, 4);
+    return (uint32_t)p[0] | (uint32_t)p[1] << 8 | (uint32_t)p[2] << 16 | (uint32_t)p[3] << 24;
   }
 };
 
@@ -44,8 +68,8 @@ struct Counts {
 };
 
 bool read_header(Rd& r, Header& h, Counts& c) {
-  const uint8_t* m = r.take(4);
-  if (!m || memcmp(m, MAGIC, 4) != 0 || r.u8() != FORMAT) return false;
+  uint8_t m[4];
+  if (!r.get(m, 4) || memcmp(m, MAGIC, 4) != 0 || r.u8() != FORMAT) return false;
   r.u8();
   h.min_fenixos[0] = r.u8();
   h.min_fenixos[1] = r.u8();
@@ -92,38 +116,53 @@ bool valid_id(std::string_view id) {
 }
 
 bool peek(const uint8_t* data, size_t n, std::string_view* id, std::string_view* version) {
-  Rd r{data, n};
+  MemSource src(data, n);
+  Rd r{src};
   Header h;
   Counts c;
   if (!read_header(r, h, c) || c.id >= c.ns || c.version >= c.ns) return false;
   uint16_t last = c.id > c.version ? c.id : c.version;
   for (uint16_t i = 0; i <= last; i++) {
     uint16_t len = r.u16();
-    const uint8_t* s = r.take(len);
-    if (!s) return false;
-    if (i == c.id) *id = std::string_view((const char*)s, len);
-    if (i == c.version) *version = std::string_view((const char*)s, len);
+    size_t at = src.pos;
+    if (!r.ok || !src.skip(len)) return false;
+    if (i == c.id) *id = std::string_view((const char*)data + at, len);
+    if (i == c.version) *version = std::string_view((const char*)data + at, len);
   }
   return r.ok;
 }
 
 const char* Package::parse(const uint8_t* data, size_t n) {
+  MemSource src(data, n);
+  return parse(src, n);
+}
+
+const char* Package::parse(Source& src, size_t n) {
   strings.clear();
   binds.clear();
   elems.clear();
   assets.clear();
+  arena.clear();
+  id = name = version = {};
   if (n > MAX_SIZE) return "package too big";
-  Rd r{data, n};
+  Rd r{src};
   Counts c;
   if (!read_header(r, head, c)) return "not a fenixOS package";
   if (c.ne > MAX_ELEMS) return "too many elements";
   if (c.nb > MAX_BINDS) return "too many bindings";
-  strings.reserve(c.ns);
+  // Strings and props go into the arena by offset; views are made once it stops growing. It holds
+  // bytes read from the package plus one NUL per string, so it stays under twice `n`.
+  // Each string gets a NUL after it, so a view's data() is also a C string.
+  std::vector<uint32_t> at;
+  std::vector<uint16_t> lens;
+  at.reserve(c.ns + c.ne);
+  lens.reserve(c.ns);
   for (uint16_t i = 0; i < c.ns; i++) {
     uint16_t len = r.u16();
-    const uint8_t* s = r.take(len);
-    if (!s) return "truncated package";
-    strings.emplace_back((const char*)s, len);
+    at.push_back((uint32_t)arena.size());
+    lens.push_back(len);
+    arena.resize(arena.size() + len + 1);
+    if (!r.get(arena.data() + at.back(), len)) return "truncated package";
   }
   binds.reserve(c.nb);
   for (uint16_t i = 0; i < c.nb; i++) binds.push_back(r.u16());
@@ -134,8 +173,11 @@ const char* Package::parse(const uint8_t* data, size_t n) {
     e.parent = r.u16();
     if (r.ok && e.parent != NONE && e.parent >= i) return "parent not before child";
     e.nprops = r.u8();
-    e.props = r.take((size_t)e.nprops * 5);
-    if (!r.ok) return "truncated package";
+    e.props = nullptr;
+    size_t len = (size_t)e.nprops * 5;
+    at.push_back((uint32_t)arena.size());
+    arena.resize(arena.size() + len);
+    if (!r.get(arena.data() + at.back(), len)) return "truncated package";
     elems.push_back(e);
   }
   assets.reserve(c.na);
@@ -145,12 +187,15 @@ const char* Package::parse(const uint8_t* data, size_t n) {
     a.w = r.u16();
     a.h = r.u16();
     a.len = r.u32();
-    a.data = r.take(a.len);
-    if (!r.ok) return "truncated package";
+    a.offset = (uint32_t)src.pos;
+    if (!r.ok || !src.skip(a.len)) return "truncated package";
     assets.push_back(a);
   }
   if (!r.ok) return "truncated package";
-  if (r.i != n) return "trailing bytes";
+  if (src.pos != n) return "trailing bytes";
+  strings.reserve(c.ns);
+  for (uint16_t i = 0; i < c.ns; i++) strings.emplace_back((const char*)arena.data() + at[i], lens[i]);
+  for (uint16_t i = 0; i < c.ne; i++) elems[i].props = arena.data() + at[c.ns + i];
   for (uint16_t s : {c.id, c.name, c.version}) {
     if (s >= strings.size()) return "string index out of range";
   }

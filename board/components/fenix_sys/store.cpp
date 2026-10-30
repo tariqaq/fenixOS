@@ -102,22 +102,20 @@ int store_list(AppMeta* out, int max) {
   return n;
 }
 
-uint8_t* store_load(const char* id, size_t* n) {
-  char p[96];
-  path(p, sizeof p, id, "fxp");
+static FILE* open_sized(const char* p, size_t* n) {
   FILE* f = fopen(p, "rb");
   if (!f) return nullptr;
   fseek(f, 0, SEEK_END);
   long size = ftell(f);
   fseek(f, 0, SEEK_SET);
-  uint8_t* b = size > 0 && (size_t)size <= fpkg::MAX_SIZE ? (uint8_t*)malloc(size) : nullptr;
-  if (b && fread(b, 1, size, f) != (size_t)size) {
-    free(b);
-    b = nullptr;
-  }
-  fclose(f);
-  *n = b ? size : 0;
-  return b;
+  *n = size > 0 ? (size_t)size : 0;
+  return f;
+}
+
+FILE* store_open(const char* id, size_t* n) {
+  char p[96];
+  path(p, sizeof p, id, "fxp");
+  return open_sized(p, n);
 }
 
 // ---- Install (link task only) ----
@@ -219,21 +217,20 @@ uint8_t store_end(char* why, size_t cap) {
   path(tmp, sizeof tmp, id, "tmp");
   path(fxp, sizeof fxp, id, "fxp");
   path(sha, sizeof sha, id, "sha");
-  // Check the package itself: the same rules as fenix-pkg, plus id and version match BEGIN.
+  // Check the package itself: the same rules as fenix-pkg, plus id and version match BEGIN. It is
+  // read from flash in pieces (P39): pixels are skipped, so this needs the strings and props only.
   size_t n = 0;
-  uint8_t* b = nullptr;
-  if (FILE* f = fopen(tmp, "rb")) {
-    b = (uint8_t*)malloc(s_in.size);
-    n = b ? fread(b, 1, s_in.size, f) : 0;
-    fclose(f);
-  }
-  const char* err = b ? nullptr : "out of memory";
+  FILE* f = open_sized(tmp, &n);
+  const char* err = f ? nullptr : "read back failed";
   fpkg::Package pkg;
   if (!err && n != s_in.size) err = "read back failed";
-  if (!err) err = pkg.parse(b, n);
+  if (!err) {
+    fpkg::FileSource src(f, n);
+    err = pkg.parse(src, n);
+  }
+  if (f) fclose(f);
   if (!err && (pkg.id != id || pkg.version != version)) err = "id or version differs from install request";
   if (!err && newer_than_me(pkg.head.min_fenixos)) err = "needs a newer fenixOS";
-  free(b);
   if (err) {
     strlcpy(why, err, cap);
     unlink(tmp);
@@ -247,7 +244,7 @@ uint8_t store_end(char* why, size_t cap) {
     strlcpy(why, "rename failed", cap);
     return fnx::app::STORAGE;
   }
-  FILE* f = fopen(sha, "wb");
+  f = fopen(sha, "wb");
   bool ok = f && fwrite(s_in.sha, 1, 32, f) == 32;
   if (f) fclose(f);
   if (!ok) {

@@ -12,7 +12,8 @@ pub const FORMAT: u8 = 1;
 pub const HEADER_LEN: usize = 32;
 pub const NONE: u16 = 0xFFFF;
 
-/// The board loads a whole package into RAM to check it and while the app is open.
+/// Package cap. Since P39 the board reads packages from flash in pieces (strings, props and the
+/// shown images in RAM, never the whole file); the RAM estimate below is the real limit.
 pub const MAX_SIZE: usize = 64 * 1024;
 pub const MAX_ELEMS: usize = 200;
 pub const MAX_STRING_BYTES: usize = 8 * 1024;

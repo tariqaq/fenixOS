@@ -157,13 +157,13 @@ int store_list(AppMeta* out, int max) {
   for (; n < (int)v.size() && n < max; n++) out[n] = v[n];
   return n;
 }
-uint8_t* store_load(const char* id, size_t* n) {
-  std::vector<uint8_t> d = sim::read_file(sim::pkg_path(id));
-  if (d.empty()) return nullptr;
-  uint8_t* p = (uint8_t*)malloc(d.size());
-  memcpy(p, d.data(), d.size());
-  *n = d.size();
-  return p;
+FILE* store_open(const char* id, size_t* n) {
+  std::error_code ec;
+  fs::path p = sim::pkg_path(id);
+  uintmax_t size = fs::file_size(p, ec);
+  if (ec) return nullptr;
+  *n = (size_t)size;
+  return fopen(p.string().c_str(), "rb");
 }
 // Installs over the link do not happen in the simulator (`install` in a script copies the file).
 uint8_t store_begin(const char*, const char*, uint32_t, const uint8_t[32]) { return 1; }

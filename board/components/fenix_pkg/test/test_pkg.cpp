@@ -34,6 +34,20 @@ int main(int argc, char** argv) {
   expect(p.elems.size() == 15 && p.binds.size() == 6 && p.assets.size() == 2, "counts");
   expect(p.head.icon_small == 0 && p.head.icon_large == 1, "icons");
 
+  // Assets are not read, only located: the offset points at the pixels in the package.
+  const fpkg::Asset& last = p.assets.back();
+  expect(last.offset + last.len == b.size(), "asset offset");
+
+  // The same package read from the file in pieces (the board's path since P39).
+  f = fopen(argv[1], "rb");
+  fpkg::FileSource src(f, b.size());
+  fpkg::Package q;
+  const char* ferr = q.parse(src, b.size());
+  fclose(f);
+  expect(!ferr && q.id == p.id && q.elems.size() == p.elems.size() && q.strings == p.strings, "file source");
+  fpkg::Package moved = std::move(q);
+  expect(moved.name == p.name, "move keeps views");
+
   // Portrait override: element 1 is a row that becomes a column in portrait.
   int32_t flow = -1;
   expect(p.elems[1].prop(fpkg::key::FLOW, &flow) && flow == 1, "flow landscape");

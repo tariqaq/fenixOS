@@ -335,6 +335,20 @@ Same board, Wi-Fi joined to the hotspot, measured before (v0.1.10) and after.
 - Gone: `ble.cpp`, the SPP code in `radio.cpp`, Bluedroid, the BT controller and coexistence (`ESP_COEX_SW_COEXIST_ENABLE`), tasks `BTC_TASK`, `BTU_TASK`, `hciT`, `btController`. `esp_timer` stack 3072 to 2560 (1840 B free after the benches).
 - A saved radio mode 1 boots as Wi-Fi when a network is saved, else off, and is saved back. RADIO_SET 1 does nothing.
 
+## App packages read in pieces (P39, 2026-11-01)
+
+Before P39 `store_load` malloc'd the whole package (up to 64 KB) to check an install, draw tiles and open an app. Now `fpkg::Package` parses from a `FileSource` into its own arena (strings with a NUL each, element props) and keeps only asset offsets; `app_pkg.cpp` reads the tile icons and the shown images by offset. Details: `docs/packages.md` "Board memory (P39)".
+
+Measured in Wi-Fi mode with a 32 KB worst-case package (110x110 RGB565 image, 7 KB text):
+
+| | Before | After |
+|---|---|---|
+| Lowest heap during install | 30.7 KB | 51.3 KB |
+| Free with the app open | 32.9 KB | 40.0 KB |
+| Lowest heap with the app open | 21.7 KB | 26.3 KB |
+
+The 64 KB package cap is not reachable in practice: the image (24 KB) and string (8 KB) caps bound a package near 33 KB plus tile icons.
+
 ## Image retention ("burn-in"), 2026-10-29
 
 - **Seen:** after long sessions on Home, a faint ghost of the clock stays on the panel (user: "a moderate level of screen burn in right where the clock is").

@@ -1,6 +1,7 @@
 // Host apps (docs/packages.md): Home tiles for installed packages, and the app screen built from
-// a package. One app is open at a time; its package stays in RAM while it is open and its LVGL
-// objects are rebuilt from it (rotation, host state). Artboards HostWaiting (6a), HostOff (6b).
+// a package. One app is open at a time. Packages are read from flash in pieces (P39): tiles read
+// the two icons only, and an open app keeps its strings, props and the images its elements show,
+// from which its LVGL objects are rebuilt (rotation, host state). Artboards 6a, 6b.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -41,6 +42,19 @@ static void fix_icons(AppTile& t) {
   t.large.data = t.large.data_size ? t.px.data() + t.small.data_size : nullptr;
 }
 
+// Parse an installed package from flash; `f` stays open for reading assets (caller closes).
+static const char* read_pkg(const char* id, fpkg::Package& p, FILE** f) {
+  size_t n = 0;
+  *f = sys::store_open(id, &n);
+  if (!*f) return "missing";
+  fpkg::FileSource src(*f, n);
+  return p.parse(src, n);
+}
+
+static bool read_at(FILE* f, const fpkg::Asset& a, uint8_t* out) {
+  return fseek(f, (long)a.offset, SEEK_SET) == 0 && fread(out, 1, a.len, f) == a.len;
+}
+
 static bool has_tile(const char* id) {
   for (const AppTile& t : s_tiles)
     if (strcmp(t.id, id) == 0) return true;
@@ -53,12 +67,11 @@ void apps_reload() {
   int n = sys::store_list(list, sys::MAX_APPS);
   s_tiles.reserve(n);
   for (int i = 0; i < n; i++) {
-    size_t len = 0;
-    uint8_t* b = sys::store_load(list[i].id, &len);
     fpkg::Package p;
-    if (!b || p.parse(b, len)) {
+    FILE* f = nullptr;
+    if (read_pkg(list[i].id, p, &f)) {
       sys::link_log(2, "app %s: unreadable package", list[i].id);
-      free(b);
+      if (f) fclose(f);
       continue;
     }
     AppTile t{};
@@ -70,11 +83,14 @@ void apps_reload() {
     // Tile icons are A8 by construction (fenix-pkg); anything else shows the puzzle glyph.
     if (s && s->format != fpkg::asset_format::A8) s = nullptr;
     if (l && l->format != fpkg::asset_format::A8) l = nullptr;
-    if (s) t.px.insert(t.px.end(), s->data, s->data + s->len);
-    if (l) t.px.insert(t.px.end(), l->data, l->data + l->len);
+    t.px.resize((s ? s->len : 0) + (l ? l->len : 0));
+    if ((s && !read_at(f, *s, t.px.data())) || (l && !read_at(f, *l, t.px.data() + (s ? s->len : 0)))) {
+      t.px.clear();
+      s = l = nullptr;
+    }
+    fclose(f);
     if (s) t.small = a8_dsc(nullptr, s->w, s->h);
     if (l) t.large = a8_dsc(nullptr, l->w, l->h);
-    free(b);
     s_tiles.push_back(std::move(t));
   }
   for (AppTile& t : s_tiles) fix_icons(t);
@@ -106,14 +122,14 @@ struct Bound {
 };
 
 static struct {
-  uint8_t* buf;  // the whole package; fpkg::Package points into it
-  size_t len;
+  bool open;
   fpkg::Package pkg;
   char id[fpkg::MAX_ID + 1];
   char name[32];
   std::vector<Val> vals;  // last value per binding, so rebuilds keep what the PC set
   std::vector<Bound> bound;
-  std::vector<lv_image_dsc_t> images;
+  std::vector<lv_image_dsc_t> images;  // per asset; data null unless an element shows it
+  std::vector<uint8_t*> pixels;        // what the descriptors point at (malloc)
   int64_t close_at;  // pending return to Home (app removed while showing HostOff)
 } s_app;
 
@@ -125,7 +141,7 @@ static bool host_off(const char* id) {
   return false;
 }
 
-const char* open_app_id() { return s_app.buf ? s_app.id : ""; }
+const char* open_app_id() { return s_app.open ? s_app.id : ""; }
 
 static void send_id(uint8_t type, const char* id) {
   uint8_t b[fnx::ID_LEN + 2];
@@ -147,35 +163,53 @@ static void send_event(uint16_t elem, uint8_t kind, int32_t value) {
 }
 
 static void close_app() {
-  if (!s_app.buf) return;
+  if (!s_app.open) return;
   if (sys::link_connected()) send_id(fnx::ty::APP_CLOSED, s_app.id);
-  free(s_app.buf);
-  s_app.buf = nullptr;
+  s_app.open = false;
   s_app.pkg = fpkg::Package();
   s_app.vals.clear();
   s_app.bound.clear();
   s_app.images.clear();
+  for (uint8_t* px : s_app.pixels) free(px);
+  s_app.pixels.clear();
   s_app.close_at = 0;
 }
 
 static bool load_app(const char* id) {
-  size_t len = 0;
-  uint8_t* b = sys::store_load(id, &len);
-  const char* err = b ? s_app.pkg.parse(b, len) : "missing";
+  FILE* f = nullptr;
+  const char* err = read_pkg(id, s_app.pkg, &f);
+  const fpkg::Package& p = s_app.pkg;
+  // Only images an element shows are read (in either orientation); tile icons stay in flash.
+  std::vector<bool> shown(err ? 0 : p.assets.size(), false);
+  for (const fpkg::Elem& e : p.elems) {
+    int32_t src;
+    if (e.kind != fpkg::kind::IMAGE) continue;
+    if (e.prop(fpkg::key::SRC, &src)) shown[src] = true;
+    if (e.prop(fpkg::key::SRC, &src, true)) shown[src] = true;
+  }
+  s_app.pixels.assign(shown.size(), nullptr);
+  for (size_t i = 0; !err && i < shown.size(); i++) {
+    if (!shown[i]) continue;
+    s_app.pixels[i] = (uint8_t*)malloc(p.assets[i].len);
+    if (!s_app.pixels[i]) err = "out of memory";
+    else if (!read_at(f, p.assets[i], s_app.pixels[i])) err = "read failed";
+  }
+  if (f) fclose(f);
   if (err) {
     sys::link_log(2, "app %s: %s", id, err);
-    free(b);
+    for (uint8_t* px : s_app.pixels) free(px);
+    s_app.pixels.clear();
     s_app.pkg = fpkg::Package();
     return false;
   }
-  s_app.buf = b;
-  s_app.len = len;
+  s_app.open = true;
   strlcpy(s_app.id, id, sizeof s_app.id);
-  snprintf(s_app.name, sizeof s_app.name, "%.*s", (int)s_app.pkg.name.size(), s_app.pkg.name.data());
-  s_app.vals.assign(s_app.pkg.binds.size(), Val{});
+  snprintf(s_app.name, sizeof s_app.name, "%.*s", (int)p.name.size(), p.name.data());
+  s_app.vals.assign(p.binds.size(), Val{});
   s_app.images.clear();
-  for (const fpkg::Asset& a : s_app.pkg.assets) {
-    lv_image_dsc_t d = a8_dsc(a.data, a.w, a.h);
+  for (size_t i = 0; i < p.assets.size(); i++) {
+    const fpkg::Asset& a = p.assets[i];
+    lv_image_dsc_t d = a8_dsc(s_app.pixels[i], a.w, a.h);
     if (a.format == fpkg::asset_format::RGB565) {
       d.header.cf = LV_COLOR_FORMAT_RGB565;
       d.header.stride = a.w * 2;
@@ -219,11 +253,6 @@ static const lv_font_t* icon_font(int px) {
   for (auto& s : SIZES)
     if (px <= s.px) return s.f;
   return &fx_icon_fill_40;
-}
-
-static std::string str(int32_t ix) {
-  std::string_view s = s_app.pkg.strings[ix];
-  return std::string(s.data(), s.size());
 }
 
 static int32_t lv_size(int32_t v) {
@@ -327,7 +356,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
     return e.prop(k, &v, port) ? v : def;
   };
   int32_t text_ix = get(fpkg::key::TEXT, -1);
-  std::string label = text_ix >= 0 ? str(text_ix) : "";
+  const char* label = text_ix >= 0 ? s_app.pkg.strings[text_ix].data() : "";  // NUL-terminated
   int32_t icon = get(fpkg::key::ICON, -1);
   lv_obj_t* o = nullptr;
   switch (e.kind) {
@@ -351,7 +380,9 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
       break;
     }
     case fpkg::kind::LABEL: {
-      o = text(parent, label.c_str(), FONTS[get(fpkg::key::FONT, 0)], get(fpkg::key::COLOR, FX_COLOR_LABEL));
+      // Static text from the package's own copy (lives while the app is open): no second copy.
+      o = text(parent, "", FONTS[get(fpkg::key::FONT, 0)], get(fpkg::key::COLOR, FX_COLOR_LABEL));
+      lv_label_set_text_static(o, label);
       int32_t al = get(fpkg::key::ALIGN, 0);
       lv_obj_set_style_text_align(o, al == 1 ? LV_TEXT_ALIGN_CENTER : al == 2 ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT,
                                   0);
@@ -360,7 +391,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
     case fpkg::kind::BUTTON: {
       uint32_t bg = get(fpkg::key::BG, FX_COLOR_ACCENT);
       const char* glyph = icon >= 0 ? ICONS[icon] : nullptr;
-      if (label.empty() && glyph) {  // icon button
+      if (!*label && glyph) {  // icon button
         o = rowbox(parent, 0);
         lv_obj_set_size(o, 36, 36);
         lv_obj_set_flex_align(o, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -371,7 +402,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
         lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
         text(o, glyph, &fx_icon_fill_18, get(fpkg::key::COLOR, FX_COLOR_LABEL));
       } else {
-        o = capsule(parent, glyph, &fx_icon_fill_16, label.c_str(), bg, 36, nullptr, nullptr);
+        o = capsule(parent, glyph, &fx_icon_fill_16, label, bg, 36, nullptr, nullptr);
       }
       break;
     }
@@ -479,11 +510,11 @@ static void host_state(lv_obj_t* body, bool off) {
 
 void app_screen(lv_obj_t* scr) {
   s_app.bound.clear();
-  navbar(scr, "Home", s_app.buf ? s_app.name : "");
+  navbar(scr, "Home", s_app.open ? s_app.name : "");
   lv_obj_t* body = column(scr, 0);
   lv_obj_set_width(body, LV_PCT(100));
   lv_obj_set_flex_grow(body, 1);
-  if (!s_app.buf) return;
+  if (!s_app.open) return;
   if (!sys::link_connected()) return host_state(body, false);
   if (host_off(s_app.id)) return host_state(body, true);
   lv_obj_add_flag(body, LV_OBJ_FLAG_SCROLLABLE);
@@ -498,7 +529,7 @@ void app_screen(lv_obj_t* scr) {
 void app_on_link(const sys::LinkEvent& e) {
   switch (e.type) {
     case sys::LinkEv::CONNECTED:
-      if (s_app.buf) send_id(fnx::ty::APP_OPENED, s_app.id);
+      if (s_app.open) send_id(fnx::ty::APP_OPENED, s_app.id);
       refresh_if_top(app_screen);
       break;
     case sys::LinkEv::DISCONNECTED:
@@ -556,7 +587,7 @@ void app_on_link(const sys::LinkEvent& e) {
 
 void app_tick() {
   sys::BindValue v;
-  if (!s_app.buf) {
+  if (!s_app.open) {
     while (sys::bind_poll(&v)) {
     }  // no app open: values are not kept (docs/packages.md)
     return;

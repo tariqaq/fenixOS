@@ -57,13 +57,22 @@ Checked by the compiler and again by the board before it commits an install. Bot
 
 | What | Limit |
 |---|---|
-| Package size | 64 KB (the board holds the whole package in RAM to check it and while the app is open) |
+| Package size | 64 KB |
 | Elements | 200 |
 | Strings (all, bytes) | 8 KB |
 | Bindings | 64 |
 | Image data (every asset except the two tile icons) | 24 KB |
 | RAM estimate (`elements × 160 B + strings + images`) | 40 KB |
 | Tree depth | 8 |
+
+### Board memory (P39)
+
+The board never holds a whole package. `fpkg::Package::parse` reads from a `FileSource` (LittleFS) or a `MemSource`, copies strings (each NUL-terminated) and element props into the package's own arena, and records each asset's offset instead of reading its pixels.
+
+- **Install check** (`store_end`): parses the temp file in place; RAM is the arena only. Hash is computed as chunks arrive.
+- **Home tiles** (`apps_reload`): parse, then read the two tile icons by offset.
+- **Open app:** keeps the arena while open; reads only the assets an `image` element shows. App labels point into the arena (`lv_label_set_text_static`), so their text is not copied again.
+- Measured on a 32 KB package (24.2 KB image, 7 KB text), Wi-Fi mode: lowest heap during install 30.7 to 51.3 KB; free with the app open 32.9 to 40.0 KB.
 
 ## Binary format 1
 
@@ -130,8 +139,8 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 `board/components/fenix_apps/app_pkg.cpp`, artboards HostWaiting (6a) and HostOff (6b).
 
 - **Tiles:** Home shows the system apps, then installed apps sorted by id: tile colour, the 20 px icon (Tiles) or 26 px icon (Dock), tinted white. A new tile fades and scales in (0.8 → 1, 250 ms); a removed one fades and scales out. Landscape tiles and the Dock scroll sideways when they do not fit; the portrait grid shows two rows and scrolls.
-- **Open:** tapping a tile loads the whole package into RAM, fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
-- **Close:** back, or any other screen change, frees the package and objects and sends `APP_CLOSED`. `BOARD_STATE` reports screen 5 and the app id while it is open.
+- **Open:** tapping a tile reads the package from flash (strings, element props and the images its elements show; tile icons stay in flash), fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
+- **Close:** back, or any other screen change, frees what was read and the objects and sends `APP_CLOSED`. `BOARD_STATE` reports screen 5 and the app id while it is open.
 - **States:** no PC link: 6a "Waiting for host PC". `HOST_STATE` off for this app: 6b "Turned off on host PC". Otherwise the layout.
 - **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. Values for other apps, or with no app open, are dropped.
 - **Events:** buttons send tap (1) and long press (2); switches send change (3) with 0/1; sliders send change (3) with the value on release. The board updates its cache for a bound control the user changed.

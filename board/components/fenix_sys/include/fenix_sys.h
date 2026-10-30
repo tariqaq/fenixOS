@@ -4,6 +4,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <time.h>
 
 #include "fenix_proto.h"
@@ -46,7 +47,7 @@ struct AppMeta {
 bool store_mount();  // also deletes leftovers of an interrupted install or remove
 void store_usage(uint32_t* used_kb, uint32_t* total_kb);
 int store_list(AppMeta* out, int max);           // sorted by id
-uint8_t* store_load(const char* id, size_t* n);  // whole package (malloc, caller frees); nullptr if missing
+FILE* store_open(const char* id, size_t* n);  // the package file and its size; caller closes. nullptr if missing
 // Install and remove. Link task only. Results are fnx::app codes.
 uint8_t store_begin(const char* id, const char* version, uint32_t size, const uint8_t sha256[32]);
 uint32_t store_chunk(uint32_t offset, const uint8_t* data, size_t n);  // next expected offset
