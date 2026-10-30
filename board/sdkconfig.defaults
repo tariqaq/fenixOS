@@ -104,8 +104,9 @@ CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=10
 # Static RX buffers stay allocated in Wi-Fi mode (1.6 KB each): 8, still above the 6-frame
 # block-ack window (default 10, P37).
 CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=8
-# Stacks with KBs unused (P37 high-water marks): esp_timer used ~0.7 KB, mDNS ~1.5 KB.
-CONFIG_ESP_TIMER_TASK_STACK_SIZE=2560
+# Stacks with KBs unused (P37 high-water marks): mDNS used ~1.5 KB. esp_timer: 3072, the BLE
+# status JSON is built there in Bluetooth mode (716 B left at 2560).
+CONFIG_ESP_TIMER_TASK_STACK_SIZE=3072
 CONFIG_MDNS_TASK_STACK_SIZE=3072
 # Each small send() got a whole-MSS (1.5 KB) pbuf, and 16 of them queue: a quarter MSS keeps
 # a pbuf near the size of its data (P37; off is not allowed with single-pbuf Wi-Fi TX).
