@@ -54,11 +54,15 @@ pub fn update(app: &AppHandle, s: &State) {
         return;
     };
     let (status, detail, tip) = match (&s.status, &s.board) {
-        (Status::Connected, Some(b)) => (
-            "Board connected".to_string(),
-            format!("{}, fenixOS v{}", b.port, b.firmware),
-            format!("fenixOS: board connected on {}", b.port),
-        ),
+        (Status::Connected, Some(b)) => {
+            // "tcp:fenixos.local" is the link's name for Wi-Fi, not something to show (P42).
+            let via = if b.port.starts_with("tcp:") { "Wi-Fi" } else { b.port.as_str() };
+            (
+                "Board connected".to_string(),
+                format!("{via}, fenixOS v{}", b.firmware),
+                format!("fenixOS: board connected over {via}"),
+            )
+        }
         _ => (
             "Board not connected".to_string(),
             "Looking for the board".to_string(),

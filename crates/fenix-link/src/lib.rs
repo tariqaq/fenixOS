@@ -48,7 +48,7 @@ pub struct LinkOptions {
     /// VID:PID. `Link::set_port` changes it.
     pub port: Option<String>,
     /// Wi-Fi fallback (P34): a host (e.g. "fenixos.local") tried every `NET_RETRY` when no USB
-    /// board port exists. None = USB only.
+    /// board port exists. None = USB only. `Link::set_net` changes it.
     pub net: Option<String>,
     pub baud: u32,
     pub heartbeat: Duration,
@@ -179,6 +179,12 @@ impl Write for Tcp {
 /// How often the Wi-Fi fallback is tried while no USB board port exists.
 const NET_RETRY: Duration = Duration::from_secs(5);
 
+/// A CH340 port that failed `UNRESPONSIVE_TRIES` handshakes in a row (another device, a blank
+/// board) is tried again only this often, not every `rescan` (P42). Replugging it, or a pause
+/// (flashing), clears the wait.
+const UNRESPONSIVE_RETRY: Duration = Duration::from_secs(10);
+const UNRESPONSIVE_TRIES: u32 = 2;
+
 /// `tcp:<host>[:<port>]` (port 7350 by default), IPv4.
 fn open_tcp(spec: &str) -> std::io::Result<Tcp> {
     use std::io::{Error, ErrorKind};
@@ -211,6 +217,7 @@ pub struct Link {
     tx: Sender<Msg>,
     paused: Arc<AtomicBool>,
     port: Arc<Mutex<Option<String>>>,
+    net: Arc<Mutex<Option<String>>>,
     retarget: Arc<AtomicBool>,
     events: Mutex<Receiver<Event>>,
     stop: Arc<AtomicBool>,
@@ -224,11 +231,13 @@ impl Link {
         let stop = Arc::new(AtomicBool::new(false));
         let paused = Arc::new(AtomicBool::new(false));
         let port = Arc::new(Mutex::new(opts.port.clone()));
+        let net = Arc::new(Mutex::new(opts.net.clone()));
         let retarget = Arc::new(AtomicBool::new(false));
         let ctl = Ctl {
             stop: stop.clone(),
             paused: paused.clone(),
             port: port.clone(),
+            net: net.clone(),
             retarget: retarget.clone(),
         };
         let handle = thread::Builder::new()
@@ -239,6 +248,7 @@ impl Link {
             tx,
             paused,
             port,
+            net,
             retarget,
             events: Mutex::new(ev_rx),
             stop,
@@ -259,6 +269,14 @@ impl Link {
             *p = port;
         }
         self.retarget.store(true, Ordering::Relaxed);
+    }
+
+    /// Turn the Wi-Fi fallback on (a host such as "fenixos.local") or off. Takes effect at the
+    /// next scan; a running session is kept.
+    pub fn set_net(&self, host: Option<String>) {
+        if let Ok(mut n) = self.net.lock() {
+            *n = host;
+        }
     }
 
     /// Queue a message for the board. Dropped while disconnected.
@@ -308,6 +326,7 @@ struct Ctl {
     stop: Arc<AtomicBool>,
     paused: Arc<AtomicBool>,
     port: Arc<Mutex<Option<String>>>,
+    net: Arc<Mutex<Option<String>>>,
     /// Set by `set_port`; the session checks it and the manager clears it.
     retarget: Arc<AtomicBool>,
 }
@@ -317,6 +336,8 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
     let mut announced_search = false;
     let mut announced_pause = false;
     let mut unresponsive: std::collections::HashMap<String, String> = Default::default();
+    // Failed handshakes in a row per port, and when a port past UNRESPONSIVE_TRIES may be tried.
+    let mut fails: std::collections::HashMap<String, (u32, Instant)> = Default::default();
     let mut next_net = Instant::now();
     while !stop.load(Ordering::Relaxed) {
         if paused.load(Ordering::Relaxed) {
@@ -327,30 +348,39 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
             while rx_out.try_recv().is_ok() {}
             sleep_unless_stopped(Duration::from_millis(100), stop);
             announced_search = false;
+            fails.clear();
             continue;
         }
         announced_pause = false;
         ctl.retarget.store(false, Ordering::Relaxed);
         let fixed = ctl.port.lock().map(|p| p.clone()).unwrap_or(None);
+        let now = Instant::now();
         let candidates = match fixed.clone() {
             Some(p) => vec![p],
             None => {
                 let mut c = find_board_ports();
-                if let (true, Some(h)) = (c.is_empty(), &opts.net) {
-                    if Instant::now() >= next_net {
-                        next_net = Instant::now() + NET_RETRY;
+                fails.retain(|p, _| c.contains(p)); // unplugged: a replug starts fresh
+                let net = ctl.net.lock().map(|n| n.clone()).unwrap_or(None);
+                if let (true, Some(h)) = (c.is_empty(), net) {
+                    if now >= next_net {
+                        next_net = now + NET_RETRY;
                         c.push(format!("tcp:{h}"));
                     }
                 }
                 c
             }
         };
+        let candidates: Vec<String> = candidates
+            .into_iter()
+            .filter(|p| fails.get(p).is_none_or(|(n, at)| *n < UNRESPONSIVE_TRIES || now >= *at))
+            .collect();
         let mut connected = false;
         for name in candidates {
             match handshake(&name, &opts) {
                 Ok((port, dec, info, early)) => {
                     announced_search = false;
                     unresponsive.remove(&name);
+                    fails.remove(&name);
                     let _ = ev.send(Event::Connected {
                         port: name.clone(),
                         info,
@@ -366,6 +396,9 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
                 // A Wi-Fi fallback that finds nothing is not a board that failed to answer.
                 Err(_) if fixed.is_none() && name.starts_with("tcp:") => continue,
                 Err(detail) => {
+                    let f = fails.entry(name.clone()).or_insert((0, now));
+                    f.0 += 1;
+                    f.1 = Instant::now() + UNRESPONSIVE_RETRY;
                     if unresponsive.get(&name) != Some(&detail) {
                         let _ = ev.send(Event::Unresponsive {
                             port: name.clone(),

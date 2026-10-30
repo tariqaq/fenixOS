@@ -18,6 +18,8 @@ use crate::registry::Manifest;
 
 const TIME_SYNC_EVERY: Duration = Duration::from_secs(3600);
 const MIRROR_FPS: u8 = 10;
+/// The board's Wi-Fi name (mDNS), tried while no USB board is plugged in (P34).
+const NET_HOST: &str = "fenixos.local";
 
 /// Live copy of the board screen for the Board page (artboard 11).
 pub struct Mirror {
@@ -137,8 +139,9 @@ impl Engine {
         let cfg = crate::config::Config::load();
         let link = Link::spawn(LinkOptions {
             port: cfg.port.clone(),
-            // No USB board: try the board's Wi-Fi link every 5 s (P34).
-            net: Some("fenixos.local".into()),
+            // No USB board: try the board's Wi-Fi link every 5 s (P34), unless the board was last
+            // seen with Wi-Fi off (P42: no mDNS lookups for a board that cannot answer).
+            net: (cfg.board_wifi != Some(false)).then(|| NET_HOST.into()),
             ..LinkOptions::default()
         });
         let apps = Apps::new(link.sender(), tx.clone());
@@ -191,9 +194,6 @@ impl Engine {
         self.link.send(m);
     }
 
-    /// Start or stop the board's stream from the PC (the Board page only stops it: the board's
-    /// Stream app starts it, P15). The board reports the change back (P14); the state flips now
-    /// so the page does not wait for it (and for v0.1.0 boards, which do not report).
     /// Ask the board for a new SYSINFO (the Task manager calls this every second) and return the
     /// latest one. Nothing is asked while no board is connected or the board does not know it.
     pub fn sysinfo(&self) -> SysinfoView {
@@ -279,6 +279,9 @@ impl Engine {
         self.with_apps(|a| a.cfg.weather.clone())
     }
 
+    /// Start or stop the board's stream from the PC (the Board page only stops it: the board's
+    /// Stream app starts it, P15). The board reports the change back (P14); the state flips now
+    /// so the page does not wait for it (and for v0.1.0 boards, which do not report).
     pub fn mirror_set(&self, app: &AppHandle, on: bool) {
         if self.state.lock().unwrap().status != Status::Connected {
             return;
@@ -713,6 +716,7 @@ impl Engine {
                 false
             }
             Event::Msg(Msg::RadioState(r)) => {
+                self.remember_radio(r.mode == fenix_proto::radio::WIFI);
                 let mut s = self.state.lock().unwrap();
                 match s.board.as_mut() {
                     Some(b) if b.radio.as_ref() != Some(&r) => {
@@ -767,6 +771,23 @@ impl Engine {
             }
             Event::Msg(m) => self.apps.lock().unwrap().board_msg(&m),
             _ => false,
+        }
+    }
+}
+
+impl Engine {
+    /// Keep the Wi-Fi fallback only for a board that runs Wi-Fi (P42), saved for the next start.
+    fn remember_radio(&self, wifi: bool) {
+        let changed = self.with_apps(|a| {
+            let changed = a.cfg.board_wifi != Some(wifi);
+            if changed {
+                a.cfg.board_wifi = Some(wifi);
+                let _ = a.cfg.save();
+            }
+            changed
+        });
+        if changed {
+            self.link.set_net(wifi.then(|| NET_HOST.into()));
         }
     }
 }

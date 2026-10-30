@@ -22,6 +22,16 @@ Status: **v0.1.12.** Plan: `docs/PLAN.md`; progress: `tasks.md`.
 
 fenixOS lives in the tray and starts with Windows if you leave that on (Settings). It keeps the board's clock and firmware in step, and updates itself from the GitHub releases (Settings > Updates).
 
+## What fenixOS does on your PC
+
+Checked file by file in P42 (2026-11-01), with games that use kernel anti-cheat (Vanguard and similar) in mind:
+
+- **Processes:** `fenixos.exe`, plus WebView2 only while its window is open, plus the PC half of each app you switch on (none by default). It caps its own CPU with a Windows job object; it never touches other processes.
+- **Not used:** process or window lists, keyboard or mouse hooks, raw input, simulated input, screen capture, reading other programs' memory, DLL injection, drivers of its own, admin rights (only an app marked `elevated` asks, through UAC, each time it starts).
+- **USB:** while no board is connected it lists USB serial ports once a second; a CH340 that does not answer as fenixOS is retried every 10 s. Connected, it reads the board's COM port every 2 to 10 ms and pings once a second. The only kernel driver involved is WCH's CH340 driver, which Windows installs for the board; no anti-cheat reports about it were found (searched 2026-11-01), but that is not a guarantee.
+- **Network:** GitHub (update check at start, the app registry when Add app opens, downloads), Open-Meteo place search when you search, and the board itself on your LAN (TCP 7350, `fenixos.local` by mDNS every 5 s) only while no USB board is plugged in and the board was last seen with Wi-Fi on. `netsh wlan show networks` runs only when you scan for networks in Settings with the board's Wi-Fi off.
+- To be sure during a match: Quit fenixOS from the tray. The board keeps running on its own (clock, apps without a PC half).
+
 ## How apps work
 
 An app has two halves:

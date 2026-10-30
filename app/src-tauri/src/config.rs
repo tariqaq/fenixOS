@@ -23,6 +23,10 @@ pub struct Config {
     /// Settings > Weather (P34): the board's weather place, sent on every connect.
     #[serde(default)]
     pub weather: Option<crate::weather::Place>,
+    /// The board's radio was Wi-Fi when last seen (P42), so the link looks for it at
+    /// `fenixos.local` while no USB board is plugged in. `None` (never seen) also looks.
+    #[serde(default)]
+    pub board_wifi: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
