@@ -66,7 +66,7 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
   - [x] 3. Done: board type table matches `tools/gen_fonts.py` weights; icon sizes and the full icon map; unused `bluetooth` glyph dropped from the icon fonts (P38 leftover; firmware build in P42). `DESIGN.md` (tokens against `design/tokens.json`, `tools/gen_tokens.py` output, board `fenix_ui` and app CSS)
   - [x] 4. Done: every type ID matches `msg.rs` and `fenix_proto.h` (script check); reserved Bluetooth values right. `proto/spec.md` (message table against `fenix_proto.h` and `msg.rs`)
   - [x] 5. Done: marked as the v0.1.0 plan as built; Wi-Fi, NTP, Bluetooth, SNTP, element kinds, Wi-Fi fallback corrected. `docs/PLAN.md` (status lines, partitions, limits, task table against code)
-  - [ ] 6. `docs/decisions.md` (Corrected notes still true; superseded rows marked)
+  - [x] 6. Done: P30/P33 Bluetooth rows marked superseded; the overnight "keep Bluetooth glyph" row corrected (not app API: dropped); icon weights and bundled firmware size corrected. `docs/decisions.md` (Corrected notes still true; superseded rows marked)
   - [ ] 7. `docs/board-info.md` (heap and image numbers: latest first, old ones marked history)
   - [ ] 8. `docs/packages.md`, `docs/registry.md`, `docs/sidecars.md` (against `crates/fenix-pkg`, `tools/registry.py`, `app/src-tauri`)
   - [ ] 9. `docs/toolchain.md`, `docs/tooling.md` (commands, versions, scripts that exist)
