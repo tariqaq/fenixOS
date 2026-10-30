@@ -9,7 +9,8 @@
 if (-not $args) { Write-Error "usage: pwsh tools/capped.ps1 <command> [args...]"; exit 2 }
 $Command = $args
 
-$Cores = 4
+# FENIX_CORES overrides the cap when the user allows more (2026-10-30: 8 until further notice).
+$Cores = if ($env:FENIX_CORES) { [int]$env:FENIX_CORES } else { 4 }
 Add-Type -Namespace Fenix -Name Job -MemberDefinition @'
 [StructLayout(LayoutKind.Sequential)]
 public struct RateInfo { public uint ControlFlags; public uint CpuRate; }

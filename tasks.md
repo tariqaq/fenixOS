@@ -250,6 +250,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 
 ## Decisions
 
+- 2026-10-30: **Builds may use 8 cores at normal priority until further notice** (user: "your free to do builds on 8 cores at default priority untill further notice"): `$env:FENIX_CORES = 8` before `tools/capped.ps1`. Default stays 4.
+
 - 2026-10-29: **The agent may bump the version, tag and push releases at any time** (user: "i permit u at all times").
 
 - 2026-10-29: **Keep current versions.** ESP-IDF v5.5.5, LovyanGFX 1.2.35, CH340 PC driver 3.3.2011.11. No upgrade to IDF v5.5.6 / v6.x or the 2024 CH340 driver for now (see `docs/board-info.md` "Version status").
