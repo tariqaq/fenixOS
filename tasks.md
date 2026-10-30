@@ -313,6 +313,14 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [ ] 2. Trim each to its peak plus margin only where stream fps (USB 23, Wi-Fi 20-22), install time and 0 RX errors hold. Same method as P37 step 3
   - [ ] 3. Docs (board-info heap lines Corrected), release
 
+- [ ] P41 Docs audit 1 (user 2026-10-31, overnight goal): every `*.md` and reference file (README, docs/*, proto/spec.md, DESIGN.md, design/, AGENTS.md, CLAUDE.md, ideas.md, tasks.md, code-adjacent READMEs). Each: matches the code (code wins, rule 7), no stale numbers, versions, removed features or done TODOs; token-optimized (cut repetition, history only where it explains a choice; "Corrected:" kept short). Detailed per-file checklist written here before starting
+- [ ] P42 File-by-file code audit (user: logic errors, design errors, inefficient or tangled code, stale code; not a security review). Detailed per-file checklist written here before starting. Includes
+  - [ ] PC to board traffic that could look odd to anti-cheat (Vanguard and similar): what the app does at runtime (serial port polling, process and hardware queries, LibreHardwareMonitor sidecar, sockets, injected or elevated anything, global hooks); findings and changes in `docs/decisions.md`
+  - [ ] PC app page by page (run it, screenshots), board screen by screen (sim and the board): design language (DESIGN.md, hallmark skill), simple QoL, layout of the app and of board Settings
+- [ ] P43 Docs audit 2: the same pass again after P42's changes
+- [ ] P44 App repo template zip in the repo root (user: copy into a new app repo, open Claude, build a fenixOS app in the design language, installable by the PC app from the registry). Contents planned here before writing: AGENTS/CLAUDE instructions, package format and manifest, board UI rules and tokens, PC half rules, registry steps, a sample app skeleton, build and test commands
+- [ ] Overnight decisions log: `docs/decisions.md`, section "Overnight 2026-11-01" (each choice made for the user and the options not taken)
+
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [ ] Phone Web Bluetooth page (user: later)
