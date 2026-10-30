@@ -21,7 +21,7 @@ namespace fx::sys {
 
 static constexpr uart_port_t UART = UART_NUM_0;
 static constexpr int RX_BUF = 8192;  // 4 install chunks in flight while LittleFS writes
-static constexpr int TX_BUF = 16384;  // also the stream TX ring (PLAN §4.1)
+static constexpr int TX_BUF = 8192;  // also the stream TX ring (PLAN §4.1)
 static constexpr int64_t LINK_TIMEOUT_US = 3000000;
 static constexpr int64_t STATS_PERIOD_US = 5000000;
 static constexpr int64_t INSTALL_TIMEOUT_US = 10000000;

@@ -8,6 +8,8 @@ CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
 CONFIG_COMPILER_OPTIMIZATION_PERF=y
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192
+# The UI (main task) gets core 1 to itself; the link and the radios stay on core 0 (P29).
+CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1=y
 # Task list and per-task run times (esp_timer µs) for the PC's Task manager (SYSINFO, P27).
 CONFIG_FREERTOS_USE_TRACE_FACILITY=y
 CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS=y

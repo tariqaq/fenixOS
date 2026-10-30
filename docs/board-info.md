@@ -175,7 +175,7 @@ Findings:
 ## fenixOS board core (P4, 2026-10-29)
 
 - **Image:** ~826 KB app (`fenixos.bin`, 60% of the 2 MB factory slot free, P6 app store and runtime included). Free heap with Home shown and one app installed: ~121 KB (was ~134 KB before P6: +4 KB UART RX buffer, +2 KB link stack, ~5 KB bind queue, tile icons), minimum ~117 KB (the gate is ≥ 60 KB). An open app adds its package (a few KB) and its LVGL objects.
-- **Link task:** UART0 at 921600 with an 8 KB RX (corrected: 4 KB until P6, `RX_BUF` in `link.cpp`) and a 16 KB TX buffer. The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
+- **Link task:** UART0 at 921600 with an 8 KB RX (corrected: 4 KB until P6, `RX_BUF` in `link.cpp`) and a 16 KB TX buffer (corrected, P29: 8 KB; streaming drops about as many bands as before, +130 vs +116 in a 15 s bench). The TX buffer is also the stream ring: `stream_rect` checks `uart_get_tx_buffer_free_size` and drops a band (marking it stale) instead of blocking the UI.
 - **Stream:** each flushed area is cut into bands of ≤ 3 KB raw and sent RLE16 (raw when RLE is not smaller). A static Home screen streams at ~3–4 KB/s.
 - **Reset reason:** a reset through the EN pin (the PC's RTS line, esptool, `serial_read.py --reset`) reports `ESP_RST_POWERON`, the same as a cold power-on, and the RTC clock restarts. So the "time valid" flag is cleared at boot on POWERON (`hal::time_boot_check`); it survives `esp_restart` and deep sleep. (Corrected: the first version also required reset reason ≠ POWERON when reading the flag, so the time never became valid after a PC-triggered reset.)
 - **LVGL input gotchas:**
@@ -200,7 +200,7 @@ Measured with `fenix bench` (opens and closes Settings every second: two full-sc
 
 - **Stale `board/sdkconfig`:** it was made before `sdkconfig.defaults` had its final values, and IDF never re-applies defaults to an existing `sdkconfig`. The firmware ran DIO 40 MHz flash, LVGL's own 64 KB pool and a 33 ms refresh. Fix: delete `board/sdkconfig` after editing `sdkconfig.defaults` (`docs/toolchain.md`). CI always builds from the defaults.
 - Rounded-corner clipping (`clip_corner` on grouped lists) cost nothing measurable here; it is off anyway, and pressed rows round their own highlight.
-- **Bands:** fewer, taller bands mean fewer passes over the object tree per frame. 80 lines = 3 bands in landscape, 4 in portrait.
+- **Bands:** fewer, taller bands mean fewer passes over the object tree per frame. 80 lines = 3 bands in landscape, 4 in portrait. Corrected (P29, 2026-10-30): remeasured the same way (`fenix bench 15 nostream`), 80 lines now gives 25.6 fps, 48 lines 24.9, 40 lines 24.0, 20 lines 20.7. The P4 numbers above no longer hold (later features slowed the slide; not looked into). The bands are now 40 lines: 51 KB more free heap for 1.6 fps.
 - **Stream throttle:** only frames on the PC's `STREAM_START` rate are encoded. Areas drawn in between, and bands that did not fit the TX buffer, are marked stale and redrawn for the stream when the screen is idle (or after 1 s). During slides the stream is link-bound (~45 KB/s, ~3.5 screens of pixels per s, RLE ~11×).
 - **Shut down (deep sleep at first, light sleep since P19), 2026-10-29:** Session › Shut down fades the backlight, holds the backlight and LED pins and sleeps; the link goes silent at once. A PC-side reset through RTS (EN pin) wakes it as a normal boot (reset reason POWERON, so the time is unset again). Tap-to-wake (ext0 on GPIO36) still needs a check by hand. The PC app can offer "Wake board" through the same RTS pulse. **Update:** tap-to-wake failed at first and works since the touch-bus fix in "Hands-on review" below.
 - **Rotations:** all four work, including touch through `fenix tap` (LovyanGFX rotates touch with the panel). The stream sends logical coordinates, so PC screenshots are always upright. **Note:** `fenix tap` injects logical coordinates and skips the touch panel, so it could not catch the mirrored default range.
@@ -235,12 +235,25 @@ With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends t
 
 From `fenix sysinfo` (two SYSINFO answers 1 s apart), v0.1.4 firmware with run-time stats on, Home shown, PC app closed:
 
-- **Tasks:** 6 in all: `main` (the UI, core 0, priority 1, 3.6 KB stack free), `link` (core 0, priority 6, 2.2 KB free), `IDLE0`, `IDLE1` (~950 B free), `ipc0`, `ipc1` (priority 24, ~500 B free). No `esp_timer` or `Tmr Svc` task is listed. Corrected: `docs/PLAN.md` put the UI task on core 1; `main` is pinned to core 0, so both busy tasks share core 0 and core 1 stays idle.
+- **Tasks:** 6 in all (corrected, P29: `main` moved to core 1): `main` (the UI, core 0, priority 1, 3.6 KB stack free), `link` (core 0, priority 6, 2.2 KB free), `IDLE0`, `IDLE1` (~950 B free), `ipc0`, `ipc1` (priority 24, ~500 B free). No `esp_timer` or `Tmr Svc` task is listed. Corrected: `docs/PLAN.md` put the UI task on core 1; `main` is pinned to core 0, so both busy tasks share core 0 and core 1 stays idle.
 - **CPU:** core 0 about 2% busy, core 1 about 0.1% (idle Home). Per-core load = 1 − (idle task run time ÷ elapsed time); run times count in esp_timer µs (`CONFIG_FREERTOS_RUN_TIME_STATS_USING_ESP_TIMER`, 32-bit counters that wrap after ~71 minutes, so the PC subtracts with wrap-around).
 - **Memory:** 8-bit heap 302,848 B in all, 117,720 B free, minimum 113,904 B, largest block 94,208 B; all of it DMA-capable.
 - **Flash:** 4 MB chip; firmware image 837,584 B in the 2 MB app slot; apps 8 KB of 1984 KB; NVS 4 of 756 entries.
 - **Cost of the stats:** `CONFIG_FREERTOS_USE_TRACE_FACILITY` and `CONFIG_FREERTOS_GENERATE_RUN_TIME_STATS` add a few hundred bytes of code (image 837,584 B vs ~830 KB before) and one counter update per context switch.
 - **Link while the page is open:** ~16 B/s to the board, ~200 to 600 B/s from it (one SYSINFO a second, ~230 B with 6 tasks).
+
+## RAM for Wi-Fi and Bluetooth (P29, 2026-10-30)
+
+Measured on the board with a probe build: `board/sdkconfig.radio` on top of the defaults (Bluetooth on, NimBLE host, BLE-only controller), built in `board/build-radio`; `fx::sys::radio_probe()` starts Wi-Fi (station, no network) and BLE advertising once the PC connects and logs the heap after each step.
+
+- **IRAM:** with Wi-Fi's IRAM speed options on (`ESP_WIFI_IRAM_OPT`, `ESP_WIFI_RX_IRAM_OPT`, the defaults) the image does not link: `iram0_0_seg` overflowed by 10,968 B. With both off: IRAM 116 of 128 KB. They only matter for peak Wi-Fi throughput.
+- **Fixed cost at boot:** the BT controller reserves 56 KB of DRAM (`BTDM_RESERVE_DRAM` 0xdb5c) and Wi-Fi/lwIP add ~31 KB static. With the v0.1.5 firmware the heap free at boot fell from 118 KB to 46 KB; Wi-Fi then took the rest and BLE init panicked (boot loop, reset reason 4).
+- **Releasing the Classic BT part:** `esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT)` before NimBLE starts gives back 15 KB.
+- **Runtime cost, buffers trimmed** (`sdkconfig.radio`: Wi-Fi static RX 4, dynamic RX/TX 16, no AMPDU; NimBLE 1 connection, 1 bond, smaller msys pools): Wi-Fi start 37 KB, BLE host and advertising 39.5 KB.
+- **Result with the P29 cuts** (draw bands 40 lines, TX ring 8 KB): 101 KB free at boot, 116 KB after the release, 79 KB with Wi-Fi up, **39.7 KB with Wi-Fi and BLE both up** (largest block 38.9 KB). Stable, but under the 60 KB gate, and an app package (up to 64 KB, read whole) would not fit.
+- **New tasks with both radios:** `wifi` (core 0, priority 23), `tiT` (lwIP), `sys_evt`, `esp_timer`, `Tmr Svc`, `nimble_host`, `btController`. CPU stays under 2% on core 0 when idle.
+- **Flash:** the image grows from 0.84 MB to 1.60 MB, 76% of the 2 MB app slot.
+- **Core 1 for the UI:** `CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1` (P29) moves `main` off core 0, where the link and the radio tasks run. No fps change without radios (24.2 vs 24.0): slides are bound by the SPI display (~31 ms for a full 320 × 240 frame at 40 MHz), not by CPU.
 
 ## Image retention ("burn-in"), 2026-10-29
 

@@ -102,6 +102,10 @@ bool bind_poll(BindValue* v);
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
 
+// ---- Radio probe (P29; built only with sdkconfig.radio, which turns Bluetooth on) ----
+// Starts Wi-Fi (station, no network) and BLE advertising; logs the heap each step costs.
+void radio_probe();
+
 // ---- Stream encoder (called from the LVGL flush callback) ----
 bool stream_active();
 // Encode one flushed area (RGB565 big-endian, w*h pixels) into STREAM_RECT frames.

@@ -90,7 +90,7 @@ docs/, pics/
 ### 3.1 Board runtime
 
 - **Tasks:**
-  - **UI task:** LVGL timer handler, touch read, flush. Corrected (P27, from the board's task list): it is ESP-IDF's `main` task, pinned to core 0 (`CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0`), not core 1; core 1 runs only its idle and IPC tasks.
+  - **UI task:** LVGL timer handler, touch read, flush. Corrected (P27, from the board's task list): it is ESP-IDF's `main` task, which was pinned to core 0 (`CONFIG_ESP_MAIN_TASK_AFFINITY_CPU0`), not core 1. Since P29 it is on core 1 (`CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1`), so the link and future radio tasks keep core 0.
   - **Link task** on core 0: UART RX/TX, frame decode, dispatch through queues to the UI task. LVGL is touched only by the UI task.
   - Corrected (P27): there is no background worker. Installs write LittleFS in the link task (`store_chunk`), while the UI keeps running in `main`.
 - **Console:** UART0 console logs off (PoC finding). Logs go out as `LOG` frames.

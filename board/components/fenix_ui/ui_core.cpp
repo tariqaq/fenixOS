@@ -12,7 +12,7 @@
 
 namespace fx::ui {
 
-static constexpr int BAND_LINES = 80;
+static constexpr int BAND_LINES = 40;  // 2 x 25.6 KB; 80 lines gave 1.6 fps more for 51 KB (P29)
 
 static lv_display_t* s_disp;
 static uint8_t s_rot;
