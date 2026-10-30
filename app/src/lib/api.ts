@@ -146,6 +146,15 @@ export const rebootBoard = () => invoke("reboot_board");
 /** "USB on COM9" or "Wi-Fi, fenixos.local" (P34: ports named tcp:<host>). */
 export const linkText = (port: string, sep = " on ") =>
   port.startsWith("tcp:") ? `Wi-Fi, ${port.slice(4)}` : `USB${sep}${port}`;
+/** Settings > Weather (P34). */
+export interface Place {
+  name: string;
+  lat: number;
+  lon: number;
+}
+export const weatherSearch = (query: string) => invoke<Place[]>("weather_search", { query });
+export const getWeatherPlace = () => invoke<Place | null>("get_weather_place");
+export const setWeatherPlace = (place: Place | null) => invoke("set_weather_place", { place });
 export const setRadio = (mode: number) => invoke("set_radio", { mode });
 export const wifiScan = () => invoke("wifi_scan");
 export const getWifiScan = () => invoke<WifiScan>("get_wifi_scan");

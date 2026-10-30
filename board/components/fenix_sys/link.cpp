@@ -308,6 +308,12 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       radio_join(j.ssid, j.password);
       return;
     }
+    case fnx::ty::WEATHER_SET: {
+      fnx::WeatherSet s;
+      if (!fnx::read_weather_set(r, s)) return send_error(fnx::err::BAD_BODY, "weather_set");
+      weather_set(s);
+      return;
+    }
     case fnx::ty::SYSINFO_REQ:
       send_with(fnx::ty::SYSINFO, [](fnx::Writer& w) { sysinfo_write(w); });
       return;

@@ -292,6 +292,7 @@ Measured with the board on a Windows Mobile Hotspot (2.4 GHz, -39 dBm), PC on th
 - **mDNS:** `fenixos.local` resolves on Windows 11 (`Resolve-DnsName`, getaddrinfo) within a few seconds of the board joining; service `_fenixos._tcp`. No UPnP: nothing is opened on the router; the link is reachable only from the same network.
 - **SNTP:** synced in about 10 s after boot. One cold boot did not sync within 74 s while DNS through the hotspot worked; a second server (`time.cloudflare.com`, `LWIP_SNTP_MAX_SERVERS=2`) covers a pool address that does not answer. SNTP starts on each new address (`net_up`); before an address its DNS query fails and backs off.
 - **Open-Meteo:** answers plain HTTP (`http://api.open-meteo.com/v1/forecast?...&current=temperature_2m,weather_code`, 200, no redirect, checked 2026-10-30), so weather needs no TLS.
+- **Weather (P34):** task `weather` (4 KB stack, core 0, priority 2) on the board: a plain-socket HTTP/1.0 GET (never chunked) to Open-Meteo every 15 min, 60 s after a failure, and at once on a new address or place. The answer (~400 B) is read into a 2 KB static buffer and parsed with `strstr`/`strtof`; no JSON library, no float printf (newlib nano: coordinates are printed from integers). Place in NVS (`wx_lat`, `wx_lon` × 10000, `wx_name`), set by WEATHER_SET from the PC (Settings > Weather, Open-Meteo geocoding on the PC over HTTPS). Home shows "Friday, 30 October · 25° Partly cloudy" (portrait: second line). Heap with weather running: ~75 KB free in Wi-Fi mode.
 
 ## Image retention ("burn-in"), 2026-10-29
 

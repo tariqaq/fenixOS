@@ -73,6 +73,7 @@ payload = type:u8 ‖ seq:u8 ‖ body
 | 0x18 | WIFI_SCAN_REQ | P→B | empty. The board scans all channels (~2 to 3 s), then answers WIFI_SCAN |
 | 0x19 | WIFI_SCAN | B→P | status:u8 (0 ok, 1 not in Wi-Fi mode, 2 failed) ‖ n:u8 (≤ 24) ‖ n × (ssid:str ‖ rssi:u8 (i8 dBm) ‖ channel:u8 ‖ auth:u8 (0 open, 1 WEP, 2 WPA, 3 WPA2, 4 WPA/WPA2, 5 enterprise, 6 WPA3, 7 WPA2/WPA3, 8 other) ‖ bssid:6). Strongest first, one entry per SSID; hidden networks are left out |
 | 0x1A | WIFI_JOIN | P→B | ssid:str (≤ 32 bytes) ‖ password:str (≤ 64 bytes, empty for open). The board saves both in plaintext (user choice, no encryption anywhere) and connects; progress comes as RADIO_STATE. An empty SSID forgets the network |
+| 0x1B | WEATHER_SET | P→B | lat:i32 ‖ lon:i32 (degrees × 10000) ‖ name:str (≤ 47 bytes). The board saves the place and, in Wi-Fi mode, fetches the current weather from Open-Meteo over plain HTTP every 15 min (P34). An empty name turns weather off |
 
 ### Apps (0x2_)
 

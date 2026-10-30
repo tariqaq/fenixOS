@@ -364,6 +364,18 @@ void write_wifi_join(Writer& w, const WifiJoin& j) {
   w.str(j.password);
 }
 
+bool read_weather_set(Reader& r, WeatherSet& s) {
+  s.lat_e4 = r.i32();
+  s.lon_e4 = r.i32();
+  r.str(s.name, sizeof s.name);
+  return r.done();
+}
+void write_weather_set(Writer& w, const WeatherSet& s) {
+  w.i32(s.lat_e4);
+  w.i32(s.lon_e4);
+  w.str(s.name);
+}
+
 bool read_app_entry(Reader& r, AppEntry& e) {
   r.str(e.id, sizeof e.id);
   r.str(e.version, sizeof e.version);

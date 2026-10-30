@@ -113,6 +113,12 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       write_wifi_join(w, j);
       break;
     }
+    case ty::WEATHER_SET: {
+      WeatherSet s;
+      if (!read_weather_set(r, s)) return false;
+      write_weather_set(w, s);
+      break;
+    }
     case ty::WIFI_SCAN_REQ:
     case ty::SYSINFO_REQ:
     case ty::REBOOT:

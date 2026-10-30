@@ -146,6 +146,14 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 password: "hunter22".into(),
             },
         ),
+        (
+            "weather_set",
+            Msg::WeatherSet {
+                lat_e4: 31_390,
+                lon_e4: 1_016_869,
+                name: "Kuala Lumpur".into(),
+            },
+        ),
         ("time_set", Msg::TimeSet(1_793_200_000)),
         ("reboot", Msg::Reboot),
         (

@@ -20,6 +20,9 @@ pub struct Config {
     /// Set once the first-run experience finished (P9); "Show welcome again" clears it.
     #[serde(default)]
     pub welcome_done: bool,
+    /// Settings > Weather (P34): the board's weather place, sent on every connect.
+    #[serde(default)]
+    pub weather: Option<crate::weather::Place>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

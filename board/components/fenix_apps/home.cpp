@@ -21,6 +21,7 @@ static lv_obj_t* s_status_text;
 static int s_shown_min = -2;  // minute of day on screen; -1 = "--:--"
 static int s_shown_conn = -1;
 static int s_shown_radio = -1;
+static int s_shown_wx = -1;
 
 // The old Home is deleted after a rebuilt one is made: only forget our own objects.
 static void forget(lv_event_t* e) {
@@ -209,6 +210,7 @@ void home_screen(lv_obj_t* scr) {
   s_shown_min = -2;  // a rebuilt Home has fresh labels: redraw them on the first tick
   s_shown_conn = -1;
   s_shown_radio = -1;
+  s_shown_wx = -1;
   bool port = portrait();
   bool dock = sys::settings().home_style == sys::HOME_DOCK;
   int m = port ? FX_MARGIN_PORTRAIT : FX_MARGIN_LANDSCAPE;
@@ -283,12 +285,21 @@ void home_tick() {
   struct tm t;
   bool valid = sys::clock_local(&t);
   int min = valid ? t.tm_hour * 60 + t.tm_min : -1;
-  if (min != s_shown_min) {
+  sys::Weather wx;
+  int wxk = sys::weather(&wx) ? (wx.temp_x10 << 8 | wx.code) : -1;
+  if (min != s_shown_min || wxk != s_shown_wx) {
     s_shown_min = min;
+    s_shown_wx = wxk;
     if (valid) {
-      char c[8], d[48];
+      char c[8], d[80];
       snprintf(c, sizeof c, "%02d:%02d", t.tm_hour, t.tm_min);
-      snprintf(d, sizeof d, "%s, %d %s", DAYS[t.tm_wday], t.tm_mday, MONTHS[t.tm_mon]);
+      int n = snprintf(d, sizeof d, "%s, %d %s", DAYS[t.tm_wday], t.tm_mday, MONTHS[t.tm_mon]);
+      // Weather (P34): rounded degrees and a word, after the date (its own line in portrait).
+      if (wxk >= 0) {
+        int deg = (wx.temp_x10 + (wx.temp_x10 < 0 ? -5 : 5)) / 10;
+        snprintf(d + n, sizeof d - n, portrait() ? "\n%d\xC2\xB0 %s" : " \xC2\xB7 %d\xC2\xB0 %s", deg,
+                 sys::weather_text(wx.code));
+      }
       clock_show(c, FX_COLOR_LABEL);
       lv_label_set_text(s_date, d);
     } else {

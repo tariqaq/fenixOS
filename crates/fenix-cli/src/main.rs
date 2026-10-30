@@ -10,6 +10,7 @@
 //! fenix radio [off|bt|wifi]        show the radio, or switch it (the board restarts)
 //! fenix wifi scan                  networks the board hears (Wi-Fi mode)
 //! fenix wifi join <ssid> [pass]    save a network on the board and connect; wifi forget
+//! fenix weather <lat> <lon> <name>  weather place (Wi-Fi mode fetches it); weather off
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
@@ -72,6 +73,28 @@ fn main() {
             Some("off") => one_shot(opts, Msg::RadioSet(radio::OFF)),
             Some("bt") => one_shot(opts, Msg::RadioSet(radio::BLUETOOTH)),
             Some("wifi") => one_shot(opts, Msg::RadioSet(radio::WIFI)),
+            _ => usage(),
+        },
+        "weather" => match (args.get(1).map(|s| s.as_str()), args.get(2), args.get(3)) {
+            (Some("off"), _, _) => one_shot(
+                opts,
+                Msg::WeatherSet {
+                    lat_e4: 0,
+                    lon_e4: 0,
+                    name: String::new(),
+                },
+            ),
+            (Some(lat), Some(lon), Some(_)) => match (lat.parse::<f64>(), lon.parse::<f64>()) {
+                (Ok(la), Ok(lo)) => one_shot(
+                    opts,
+                    Msg::WeatherSet {
+                        lat_e4: (la * 1e4).round() as i32,
+                        lon_e4: (lo * 1e4).round() as i32,
+                        name: args[3..].join(" "),
+                    },
+                ),
+                _ => usage(),
+            },
             _ => usage(),
         },
         "wifi" => match (args.get(1).map(|s| s.as_str()), args.get(2)) {

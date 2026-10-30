@@ -231,4 +231,12 @@ bool radio_saved_network(char* out, size_t cap) {
   return false;
 }
 
+// Weather (P34): none in the simulator; the Home date line stays as in the golden shots.
+void weather_set(const fnx::WeatherSet&) {}
+bool weather(Weather* out) {
+  *out = {};
+  return false;
+}
+const char* weather_text(uint8_t) { return ""; }
+
 }  // namespace fx::sys

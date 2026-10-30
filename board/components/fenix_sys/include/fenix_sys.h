@@ -136,6 +136,16 @@ void radio_join(const char* ssid, const char* pass);  // saved in plaintext; emp
 bool radio_saved_network(char* out, size_t cap);
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
+// Weather (P34): Open-Meteo every 15 min in Wi-Fi mode, for the place set from the PC.
+struct Weather {
+  bool valid;
+  int16_t temp_x10;  // degrees C x 10
+  uint8_t code;      // WMO weather code
+  char place[fnx::PLACE_LEN];
+};
+void weather_set(const fnx::WeatherSet& p);  // saved in NVS; any mode
+bool weather(Weather* out);                  // false until the first reading
+const char* weather_text(uint8_t code);      // one short word: "Clear", "Rain"...
 
 // ---- Stream encoder (called from the LVGL flush callback) ----
 bool stream_active();

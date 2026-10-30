@@ -22,6 +22,7 @@ pub mod ty {
     pub const WIFI_SCAN_REQ: u8 = 0x18;
     pub const WIFI_SCAN: u8 = 0x19;
     pub const WIFI_JOIN: u8 = 0x1A;
+    pub const WEATHER_SET: u8 = 0x1B;
     pub const APP_LIST_REQ: u8 = 0x20;
     pub const APP_LIST: u8 = 0x21;
     pub const APP_INSTALL_BEGIN: u8 = 0x22;
@@ -300,6 +301,12 @@ pub enum Msg {
         ssid: String,
         password: String,
     },
+    /// Weather location (P34), degrees × 10000; an empty name turns weather off.
+    WeatherSet {
+        lat_e4: i32,
+        lon_e4: i32,
+        name: String,
+    },
     TimeSet(u32),
     Reboot,
     /// Remote touch from the PC (mirror clicks, tests), in current screen coordinates.
@@ -476,6 +483,7 @@ impl Msg {
             WifiScanReq => ty::WIFI_SCAN_REQ,
             WifiScan { .. } => ty::WIFI_SCAN,
             WifiJoin { .. } => ty::WIFI_JOIN,
+            WeatherSet { .. } => ty::WEATHER_SET,
             TimeSet(_) => ty::TIME_SET,
             Reboot => ty::REBOOT,
             Touch { .. } => ty::TOUCH,
@@ -593,6 +601,9 @@ impl Msg {
             }
             WifiJoin { ssid, password } => {
                 w.str(ssid).str(password);
+            }
+            WeatherSet { lat_e4, lon_e4, name } => {
+                w.i32(*lat_e4).i32(*lon_e4).str(name);
             }
             Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq | WifiScanReq => {}
             Touch { x, y, down } => {
@@ -758,6 +769,11 @@ impl Msg {
             ty::WIFI_JOIN => Msg::WifiJoin {
                 ssid: r.str()?,
                 password: r.str()?,
+            },
+            ty::WEATHER_SET => Msg::WeatherSet {
+                lat_e4: r.i32()?,
+                lon_e4: r.i32()?,
+                name: r.str()?,
             },
             ty::SYSINFO => {
                 let mut s = Sysinfo {

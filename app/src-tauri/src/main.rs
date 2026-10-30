@@ -12,6 +12,7 @@ mod sidecar;
 mod tray;
 mod update;
 mod welcome;
+mod weather;
 mod wifi;
 
 use std::path::PathBuf;
@@ -300,6 +301,28 @@ fn wifi_join(app: AppHandle, engine: tauri::State<Arc<Engine>>, ssid: String, pa
     engine.wifi_join(&app, ssid, password);
 }
 
+/// Settings > Weather: find places by name (Open-Meteo geocoding).
+#[tauri::command]
+async fn weather_search(query: String) -> Result<Vec<weather::Place>, String> {
+    tauri::async_runtime::spawn_blocking(move || weather::search(&query))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn get_weather_place(engine: tauri::State<Arc<Engine>>) -> Option<weather::Place> {
+    engine.weather_place()
+}
+
+#[tauri::command]
+fn set_weather_place(
+    app: AppHandle,
+    engine: tauri::State<Arc<Engine>>,
+    place: Option<weather::Place>,
+) -> Result<(), String> {
+    engine.weather_set(&app, place)
+}
+
 /// A click on the mirror, in board screen coordinates.
 #[tauri::command]
 fn mirror_touch(engine: tauri::State<Arc<Engine>>, x: u16, y: u16, down: bool) {
@@ -457,6 +480,9 @@ fn main() {
             wifi_scan,
             get_wifi_scan,
             wifi_join,
+            weather_search,
+            get_weather_place,
+            set_weather_place,
             open_url,
             list_registry,
             add_app,

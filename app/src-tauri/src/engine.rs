@@ -254,6 +254,31 @@ impl Engine {
         self.link.send(Msg::WifiJoin { ssid, password });
     }
 
+    /// Settings > Weather: save the place and send it to the board (None turns weather off).
+    pub fn weather_set(&self, app: &AppHandle, place: Option<crate::weather::Place>) -> Result<(), String> {
+        self.with_apps(|a| {
+            a.cfg.weather = place.clone();
+            a.cfg.save()
+        })
+        .map_err(|e| e.to_string())?;
+        let msg = match &place {
+            Some(p) => {
+                self.log(app, Source::Pc, false, format!("Weather place set to {}", p.name));
+                p.to_msg()
+            }
+            None => {
+                self.log(app, Source::Pc, false, "Weather turned off");
+                Msg::WeatherSet { lat_e4: 0, lon_e4: 0, name: String::new() }
+            }
+        };
+        self.link.send(msg);
+        Ok(())
+    }
+
+    pub fn weather_place(&self) -> Option<crate::weather::Place> {
+        self.with_apps(|a| a.cfg.weather.clone())
+    }
+
     pub fn mirror_set(&self, app: &AppHandle, on: bool) {
         if self.state.lock().unwrap().status != Status::Connected {
             return;
@@ -599,6 +624,10 @@ impl Engine {
                 // stops streaming after 3 s without the link, so this matters for quick reconnects.
                 self.state.lock().unwrap().streaming = false;
                 self.link.send(Msg::StreamSync);
+                // The board keeps the place in NVS; resending covers an erased or swapped board.
+                if let Some(p) = self.weather_place() {
+                    self.link.send(p.to_msg());
+                }
                 true
             }
             Event::Disconnected { reason } => {

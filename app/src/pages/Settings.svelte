@@ -9,6 +9,7 @@
     checkAppUpdate,
     getAppUpdate,
     getAutostart,
+    getWeatherPlace,
     getWifiScan,
     installAppUpdate,
     listPorts,
@@ -16,11 +17,14 @@
     setAutostart,
     setPort,
     setRadio,
+    setWeatherPlace,
     showWelcome,
     wifiJoin,
     wifiScan,
+    weatherSearch,
     type AppUpdate,
     type PortItem,
+    type Place,
     type RadioState,
     type WifiAp,
     type WifiScan,
@@ -155,6 +159,32 @@
     password = "";
   }
   const bars = (rssi: number) => (rssi >= -60 ? "wifi-high" : rssi >= -75 ? "wifi-medium" : "wifi-low");
+
+  // Weather (P34): the board fetches it in Wi-Fi mode for this place.
+  let place = $state<Place | null>(null);
+  getWeatherPlace().then((p) => (place = p));
+  let query = $state("");
+  let places = $state<Place[]>([]);
+  let searching = $state(false);
+  let searchError = $state("");
+  async function findPlaces() {
+    if (!query.trim()) return;
+    searching = true;
+    searchError = "";
+    try {
+      places = await weatherSearch(query);
+      if (!places.length) searchError = `No place called "${query.trim()}"`;
+    } catch (e) {
+      searchError = String(e);
+    }
+    searching = false;
+  }
+  async function pickPlace(p: Place | null) {
+    await setWeatherPlace(p);
+    place = p;
+    places = [];
+    query = "";
+  }
 
   let licenses = $state(false);
 
@@ -297,6 +327,29 @@
       ? "Listed by this PC. Switch the board to Wi-Fi to see what it hears. "
       : ""}2.4 GHz networks only. The board saves the network in plain text and joins it in Wi-Fi mode.
   </p>
+
+  <h2 class="section-title">Weather</h2>
+  <div class="group">
+    <div class="row">
+      <p>Place</p>
+      <p class="value">{place ? place.name : "Off"}</p>
+    </div>
+    <form class="row join" onsubmit={(e) => (e.preventDefault(), findPlaces())}>
+      <input type="text" placeholder="Search for a city" maxlength="60" bind:value={query} aria-label="City" />
+      <button type="submit" class="action" disabled={searching || !query.trim()}>{searching ? "Searching…" : "Search"}</button>
+    </form>
+    {#each places as p (p.name + p.lat + p.lon)}
+      <button type="button" class="row plain" onclick={() => pickPlace(p)}>
+        <span>{p.name}</span>
+        {#if place && place.lat === p.lat && place.lon === p.lon}<Icon name="check" size={14} color="var(--accent)" />{/if}
+      </button>
+    {/each}
+    {#if place}
+      <button type="button" class="row danger" onclick={() => pickPlace(null)}>Turn weather off</button>
+    {/if}
+  </div>
+  {#if searchError}<p class="note warn">{searchError}</p>{/if}
+  <p class="note">The board shows the weather on Home in Wi-Fi mode. It asks Open-Meteo every 15 minutes, with no account or key.</p>
 
   <h2 class="section-title">Updates</h2>
   <div class="group">

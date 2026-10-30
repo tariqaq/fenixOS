@@ -20,6 +20,7 @@ namespace ty {
 constexpr uint8_t HELLO = 0x01, HELLO_ACK = 0x02, PING = 0x03, PONG = 0x04, LOG = 0x05, ERROR = 0x06, STATS = 0x07;
 constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12, TOUCH = 0x13, SYSINFO_REQ = 0x14, SYSINFO = 0x15;
 constexpr uint8_t RADIO_STATE = 0x16, RADIO_SET = 0x17, WIFI_SCAN_REQ = 0x18, WIFI_SCAN = 0x19, WIFI_JOIN = 0x1A;
+constexpr uint8_t WEATHER_SET = 0x1B;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
 constexpr uint8_t HOST_STATE = 0x2A;
@@ -194,6 +195,13 @@ struct WifiJoin {
 };
 bool read_wifi_join(Reader& r, WifiJoin& j);
 void write_wifi_join(Writer& w, const WifiJoin& j);
+constexpr size_t PLACE_LEN = 48;
+struct WeatherSet {
+  int32_t lat_e4, lon_e4;  // degrees x 10000
+  char name[PLACE_LEN];    // empty: weather off
+};
+bool read_weather_set(Reader& r, WeatherSet& s);
+void write_weather_set(Writer& w, const WeatherSet& s);
 
 struct BoardState {
   uint8_t screen, dimmed, rotation;
