@@ -138,6 +138,10 @@ bool radio_saved_network(char* out, size_t cap);
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
 void web_start();  // phone page on port 80, status only (web.cpp)
+// The board's state as JSON (web.cpp): version, uptime, heap, apps, PC link, time, date,
+// weather; `net` adds SSID, signal and address. Length, or 0 when `cap` is too small.
+size_t status_json(char* out, size_t cap, bool net);
+void ble_start();  // Bluetooth mode: the BLE status service (ble.cpp), once Bluedroid runs
 // Weather (P34): Open-Meteo every 15 min in Wi-Fi mode, for the place set from the PC.
 struct Weather {
   bool valid;

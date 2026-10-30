@@ -55,7 +55,8 @@ static const char* const DAYS[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "
 static const char* const MONTHS[] = {"January", "February", "March",     "April",   "May",      "June",
                                      "July",    "August",   "September", "October", "November", "December"};
 
-static esp_err_t status(httpd_req_t* r) {
+// Shared with the BLE status characteristic (ble.cpp). `net` adds the Wi-Fi fields.
+size_t status_json(char* b, size_t cap, bool net) {
   char t[8] = "", d[40] = "", wx[48] = "";
   struct tm tm;
   if (clock_local(&tm)) {
@@ -67,26 +68,38 @@ static esp_err_t status(httpd_req_t* r) {
     int deg = (w.temp_x10 + (w.temp_x10 < 0 ? -5 : 5)) / 10;
     snprintf(wx, sizeof wx, "%d\xC2\xB0 %s", deg, weather_text(w.code));
   }
-  RadioInfo ri = radio_info();
   uint32_t used = 0, total = 0;
   store_usage(&used, &total);
-  // The SSID is escaped for JSON: quotes and backslashes only (control bytes are dropped).
-  char ssid[2 * fnx::SSID_LEN];
-  size_t k = 0;
-  for (const char* p = ri.name; *p && k < sizeof ssid - 2; p++) {
-    if ((uint8_t)*p < 0x20) continue;
-    if (*p == '"' || *p == '\\') ssid[k++] = '\\';
-    ssid[k++] = *p;
-  }
-  ssid[k] = 0;
-  char b[512];
-  int n = snprintf(b, sizeof b,
+  int n = snprintf(b, cap,
                    "{\"version\":\"%s\",\"uptime\":%lu,\"heap\":%u,\"apps\":%lu,\"pc\":%s,\"time\":\"%s\","
-                   "\"date\":\"%s\",\"weather\":\"%s\",\"ssid\":\"%s\",\"rssi\":%d,\"ip\":\"%u.%u.%u.%u\"}",
+                   "\"date\":\"%s\",\"weather\":\"%s\"",
                    esp_app_get_description()->version, (unsigned long)(esp_timer_get_time() / 1000000),
                    (unsigned)heap_caps_get_free_size(MALLOC_CAP_8BIT), (unsigned long)used,
-                   link_connected() ? "true" : "false", t, d, wx, ssid, ri.rssi, ri.ip[0], ri.ip[1], ri.ip[2],
-                   ri.ip[3]);
+                   link_connected() ? "true" : "false", t, d, wx);
+  if (n < 0 || (size_t)n >= cap) return 0;
+  if (net) {
+    RadioInfo ri = radio_info();
+    // The SSID is escaped for JSON: quotes and backslashes only (control bytes are dropped).
+    char ssid[2 * fnx::SSID_LEN];
+    size_t k = 0;
+    for (const char* p = ri.name; *p && k < sizeof ssid - 2; p++) {
+      if ((uint8_t)*p < 0x20) continue;
+      if (*p == '"' || *p == '\\') ssid[k++] = '\\';
+      ssid[k++] = *p;
+    }
+    ssid[k] = 0;
+    n += snprintf(b + n, cap - n, ",\"ssid\":\"%s\",\"rssi\":%d,\"ip\":\"%u.%u.%u.%u\"", ssid, ri.rssi, ri.ip[0],
+                  ri.ip[1], ri.ip[2], ri.ip[3]);
+  }
+  if ((size_t)n + 2 > cap) return 0;
+  b[n++] = '}';
+  b[n] = 0;
+  return n;
+}
+
+static esp_err_t status(httpd_req_t* r) {
+  char b[512];
+  size_t n = status_json(b, sizeof b, true);
   httpd_resp_set_type(r, "application/json");
   return httpd_resp_send(r, b, n);
 }

@@ -4,7 +4,7 @@
 // +44 KB (docs/board-info.md "Radios one at a time").
 //
 // Bluetooth: Classic SPP server "fenixOS" (Just Works pairing), the PC link over it (P33), and
-// BLE advertising.
+// the BLE status service (ble.cpp).
 // Wi-Fi: station at full speed (power save off), the network saved in NVS in plaintext
 // (user choice: no encryption anywhere), reconnect with backoff, scans for the PC and the UI;
 // its services (PC link over TCP, time) are in net.cpp.
@@ -20,7 +20,6 @@
 #include "esp_bt.h"
 #include "esp_bt_main.h"
 #include "esp_event.h"
-#include "esp_gap_ble_api.h"
 #include "esp_gap_bt_api.h"
 #include "esp_netif.h"
 #include "esp_spp_api.h"
@@ -215,21 +214,6 @@ static void spp_cb(esp_spp_cb_event_t e, esp_spp_cb_param_t* p) {
   }
 }
 
-static esp_ble_adv_params_t s_adv = {
-    .adv_int_min = 0x100,
-    .adv_int_max = 0x200,
-    .adv_type = ADV_TYPE_NONCONN_IND,
-    .own_addr_type = BLE_ADDR_TYPE_PUBLIC,
-    .peer_addr = {},
-    .peer_addr_type = BLE_ADDR_TYPE_PUBLIC,
-    .channel_map = ADV_CHNL_ALL,
-    .adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
-};
-
-static void gap_ble_cb(esp_gap_ble_cb_event_t e, esp_ble_gap_cb_param_t*) {
-  if (e == ESP_GAP_BLE_ADV_DATA_RAW_SET_COMPLETE_EVT) esp_ble_gap_start_advertising(&s_adv);
-}
-
 static bool bt_start() {
   esp_bt_controller_config_t c = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
   if (esp_bt_controller_init(&c) != ESP_OK || esp_bt_controller_enable(ESP_BT_MODE_BTDM) != ESP_OK) return false;
@@ -244,9 +228,7 @@ static bool bt_start() {
   esp_spp_register_callback(spp_cb);
   esp_spp_cfg_t sc = {.mode = ESP_SPP_MODE_CB, .enable_l2cap_ertm = true, .tx_buffer_size = 0};
   if (esp_spp_enhanced_init(&sc) != ESP_OK) return false;
-  esp_ble_gap_register_callback(gap_ble_cb);
-  static uint8_t adv[] = {0x02, 0x01, 0x06, 0x08, 0x09, 'f', 'e', 'n', 'i', 'x', 'O', 'S'};
-  esp_ble_gap_config_adv_data_raw(adv, sizeof adv);
+  ble_start();
   return true;
 }
 
