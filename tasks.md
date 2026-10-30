@@ -231,9 +231,9 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 6. Build (4-core cap), flash with `fenix flash`, check on the board and in the app; docs (spec, board-info, README, PLAN), commit, push. Checked: the app's page fills in live (CPU per core, heap, link rates, storage, display, radios, 6 threads). Also `fenix sysinfo` (CLI). Found: the UI (`main`) runs on core 0 with the link, not core 1 as PLAN said (corrected); board-info said a 4 KB link RX buffer, the code has 8 KB (corrected)
   - [x] 7. Old-firmware path: flashed the v0.1.4 release firmware (CI artifact of run 40952355775, `fenix flash <dir>`). The page shows "fenixOS v0.1.4 on the board does not report its load" with Reinstall firmware; the app log stays clean (the one ERROR is absorbed, requests stop); `fenix sysinfo` prints "board error 2: type". The subtitle no longer says "live, every second" then. P27 firmware flashed back, `fenix sysinfo` OK, app reinstalled
   - [x] 8. Swept the project `*.md` (not vendor, legacy, skills): PLAN message table (TOUCH, SYSINFO), mockups (Task manager, no artboard), spec (vectors regenerate for new optional messages too, not only after a proto bump: corrected), decisions (raw counters row). Checked, no change: DESIGN.md, sidecars, packages, tooling, ideas, pics/ANALYSIS, README (done in step 6)
-- [~] P28 Release v0.1.5 (user 2026-10-30: "why didnt u jus keep both pc app and board firmware updated"): P27 shipped as a release, so the app and board both say v0.1.5 and the Task manager's "0.1.5 and later" holds
-  - [ ] 1. VERSION 0.1.5, tag, push; watch the release run
-  - [ ] 2. Install the release app (`/S` from PowerShell), flash the release firmware with `fenix flash`, check the Task manager live
+- [x] P28 Release v0.1.5 (user 2026-10-30: "why didnt u jus keep both pc app and board firmware updated"): P27 shipped as a release, so the app and board both say v0.1.5 and the Task manager's "0.1.5 and later" holds
+  - [x] 1. VERSION 0.1.5, tag, push. Release run 41024387636 green: firmware 148 s, app 197 s (warm)
+  - [x] 2. Done: app 0.1.5 installed (exit 0), board on v0.1.5 (`fenix flash` of the run's firmware artifact), Task manager live in the app. README and PLAN status lines corrected (they still said v0.1.3). Was: install the release app (`/S` from PowerShell), flash the release firmware with `fenix flash`, check the Task manager live
 
 ## Decisions
 
