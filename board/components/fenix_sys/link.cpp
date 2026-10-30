@@ -210,8 +210,8 @@ static void send_stats() {
   s.free_heap = heap_caps_get_free_size(MALLOC_CAP_8BIT);
   s.min_heap = heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT);
   s.fps_x10 = board_info().fps_x10;
-  s.rx_frames = s_dec.frames;
-  s.rx_errors = s_dec.errors;
+  s.rx_frames = link_rx_frames();  // UART and the remote transport
+  s.rx_errors = link_rx_errors();
   s.stream_dropped = stream_dropped();
   send_with(fnx::ty::STATS, [&](fnx::Writer& w) { fnx::write_stats(w, s); });
 }
