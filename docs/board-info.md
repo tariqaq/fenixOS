@@ -2,7 +2,21 @@
 
 Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
 
-**Current state (2026-10-30): fenixOS** (v0.1.3 and later, flashed with `fenix flash`). Corrected: the board was fully erased on 2026-10-29 (`esptool erase-flash`, a 4 MB read-back all `0xFF`) before fenixOS went on it. Both earlier images are backed up and can be restored (below).
+**Current state (2026-11-01): fenixOS v0.1.12** (flashed with `fenix flash`).
+
+Current numbers (v0.1.12; the sections below are a dated log, so older numbers in them are history):
+
+| What | Value |
+|---|---|
+| Firmware image | 1,117,968 B in the 2 MB factory slot (47% free); IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
+| Heap at boot, Wi-Fi joined | 81.8 KB free of 281 KB (P40) |
+| Heap at boot, radio off | 154.9 KB (P38, before the P40 trims) |
+| Animation fps (`fenix bench 15 nostream`) | 25.5 (P38) |
+| Stream over USB / Wi-Fi (`fenix bench 15`) | 25.0 fps, 43 KB/s / 25.8 fps, 53 KB/s; lowest heap in a Wi-Fi stream 23.9 KB (P40) |
+| Install of a 32 KB package | 0.48 s over USB, 0.41-0.55 s over Wi-Fi; lowest heap 51.3 KB (P39) |
+| App store | LittleFS, 1984 KB (8 KB used when empty) |
+
+ Corrected: the board was fully erased on 2026-10-29 (`esptool erase-flash`, a 4 MB read-back all `0xFF`) before fenixOS went on it. Both earlier images are backed up and can be restored (below).
 
 Since P23, every flash read, write and erase goes through `fenix` (`flash`, `write`, `read-flash`, `erase`), not esptool: esptool's read timeouts take the CH340 driver's crash path (below). The esptool commands further down are a record of what was run before that.
 

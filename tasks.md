@@ -67,9 +67,9 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
   - [x] 4. Done: every type ID matches `msg.rs` and `fenix_proto.h` (script check); reserved Bluetooth values right. `proto/spec.md` (message table against `fenix_proto.h` and `msg.rs`)
   - [x] 5. Done: marked as the v0.1.0 plan as built; Wi-Fi, NTP, Bluetooth, SNTP, element kinds, Wi-Fi fallback corrected. `docs/PLAN.md` (status lines, partitions, limits, task table against code)
   - [x] 6. Done: P30/P33 Bluetooth rows marked superseded; the overnight "keep Bluetooth glyph" row corrected (not app API: dropped); icon weights and bundled firmware size corrected. `docs/decisions.md` (Corrected notes still true; superseded rows marked)
-  - [ ] 7. `docs/board-info.md` (heap and image numbers: latest first, old ones marked history)
-  - [ ] 8. `docs/packages.md`, `docs/registry.md`, `docs/sidecars.md` (against `crates/fenix-pkg`, `tools/registry.py`, `app/src-tauri`)
-  - [ ] 9. `docs/toolchain.md`, `docs/tooling.md` (commands, versions, scripts that exist)
+  - [x] 7. Done: "Current numbers (v0.1.12)" table at the top; the rest is a dated log (history). `docs/board-info.md` (heap and image numbers: latest first, old ones marked history)
+  - [x] 8. Done: fonts, icon sizes, limits, kinds, keys, registry rules (name 24, description 100, permissions, allowed URL), empty index all match the code. `docs/packages.md`, `docs/registry.md`, `docs/sidecars.md` (against `crates/fenix-pkg`, `tools/registry.py`, `app/src-tauri`)
+  - [x] 9. Done: mdns pin, CLI commands and `tcp:` port, `sim_config.py`, cores line; tooling.md header and DESIGN.md line. `docs/toolchain.md`, `docs/tooling.md` (commands, versions, scripts that exist)
   - [ ] 10. `docs/mockups.md`, `design/` references (artboard list against `design/mockups` and `canvas.json`)
   - [ ] 11. `ideas.md`, `pics/ANALYSIS.md`, `app/src-tauri/resources/firmware/README.md`
   - [ ] 12. History docs (`docs/POC-WRITEUP.md`, `docs/legacy/*`): one-line "history, not current" header if missing; no rewrite

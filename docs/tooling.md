@@ -1,6 +1,6 @@
 # fenixOS tooling
 
-Tools set up for fenixOS (the FenixDeck PoC toolchain is in `docs/toolchain.md`, kept for reference).
+Agent tooling for fenixOS. Build tools, versions and commands: `docs/toolchain.md`.
 
 ## Design: hallmark
 
@@ -13,7 +13,7 @@ Tools set up for fenixOS (the FenixDeck PoC toolchain is in `docs/toolchain.md`,
 | Edit-time hook | `node .claude/skills/hallmark/scripts/install-hook.mjs` added a `PostToolUse` hook (`Write|Edit|MultiEdit`) to `.claude/settings.json`. It lints Hallmark HTML/CSS (and Svelte etc. inside a project with a `.hallmark` folder) on write; it advises, never blocks. Remove with `--remove`. The hook path is absolute (this PC) |
 | Self-check | `node .claude/skills/hallmark/scripts/refcheck.mjs` → clean across 101 reference files |
 | Lint a page | `node .claude/skills/hallmark/scripts/sloplint.mjs <file-or-dir> --render` |
-| Locked system | Hallmark obeys a `DESIGN.md` at the repo root when present (it overrides its themes). fenixOS's Apple-dark system will live there once decided |
+| Locked system | Hallmark obeys a `DESIGN.md` at the repo root when present (it overrides its themes). fenixOS's Apple-dark system is locked there |
 
 Reviewed before use (the installer warns that skills run with full agent permissions): its scripts only use local Chrome DevTools and, if `TOGETHER_API_KEY` is set, Together AI's image API (`scripts/imagegen.mjs`). That key is not set here.
 
