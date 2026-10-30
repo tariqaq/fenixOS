@@ -2,7 +2,7 @@
 
 A small operating system for the ESP32-2432S028R ("Cheap Yellow Display", 2.8" 320×240 touch screen), plus its companion app for Windows. Both share one version number.
 
-- **Board:** C++17 on ESP-IDF v5.5.5, LVGL 9 + LovyanGFX. Boot screen, a home screen with time and date, three system apps (Settings, Session, Stream), apps installed from the PC, and burn-in protection for the LCD.
+- **Board:** C++17 on ESP-IDF v5.5.5, LVGL 9 + LovyanGFX. Boot screen, a home screen with time and date, three system apps (Settings, Session, Stream), apps installed from the PC, Wi-Fi (PC link, network time, weather, a status page at http://fenixos.local/) and burn-in protection for the LCD.
 - **PC app:** Rust + Tauri 2 + Svelte 5. Lives in the tray, finds the board over USB (or Wi-Fi at fenixos.local), installs and switches apps, mirrors the board's screen, shows the board's load live (Task manager: CPU per core, memory, storage, the link, threads), keeps the board's firmware and time in step.
 - **Design:** Apple-style dark theme (`DESIGN.md`), Inter and Phosphor icons.
 
@@ -26,7 +26,7 @@ fenixOS lives in the tray and starts with Windows if you leave that on (Settings
 
 An app has two halves:
 
-- **Board half:** a small package (`.fxp`, at most 64 KB) with a layout of labels, buttons, switches, sliders, bars and icons, and named bindings. The board draws it with the system theme. Spec: `docs/packages.md`.
+- **Board half:** a small package (`.fxp`, at most 64 KB) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. The board draws it with the system theme. Spec: `docs/packages.md`.
 - **PC half (optional):** a Windows program that fenixOS starts while the app is switched on. It sets binding values ("cpu = 42") and gets the board's taps and slider moves over named pipes. Rust apps use `crates/fenix-sdk`; the protocol is in `docs/sidecars.md`.
 
 Apps come from the registry (`registry/`, rules in `docs/registry.md`). Switching an app on in the dashboard installs its package on the board and starts its PC half; switching it off removes both. `tools/sample-app` is a complete example.
@@ -36,7 +36,7 @@ Apps come from the registry (`registry/`, rules in `docs/registry.md`). Switchin
 Versions and every command are in `docs/toolchain.md`. In short:
 
 - Clone with submodules: `git clone --recursive https://github.com/tariqaq/fenixOS`.
-- Firmware (ESP-IDF v5.5.5): `pwsh -NoProfile -File board/idf.ps1 build`, `python tools/bundle_firmware.py`, then `cargo run -q -p fenix-cli --release -- flash` with the PC app closed (not `idf.ps1 flash`: see the CH340 note below).
+- Firmware (ESP-IDF v5.5.5): `pwsh -NoProfile -File board/idf.ps1 build`, `python tools/bundle_firmware.py`, then `cargo run -q -p fenix-cli --release -- flash` with the PC app closed (not `idf.ps1 flash`: see the CH340 note above).
 - PC app (Rust, Node 24, pnpm): `python tools/bundle_firmware.py`, then `cd app; pnpm install; pnpm tauri dev`.
 - Board simulator (no board needed, MSVC): `pwsh board/sim/build.ps1`, then `board/sim/build/fenix_sim.exe window`. `python tools/sim_shots.py` checks every board screen against `board/sim/golden/`.
 - Tests: `cargo test --workspace`; CI runs these plus the firmware build, the simulator screens and the generator checks.
@@ -54,7 +54,7 @@ Versions and every command are in `docs/toolchain.md`. In short:
 | `registry/` | Manifests of installable apps (each app lives in its own repo) |
 | `design/` | Design tokens and font sources |
 | `tools/` | Generators and helper scripts |
-| `docs/` | Plan, decisions, hardware facts, toolchain; `docs/legacy/` holds the FenixDeck PoC docs |
+| `docs/` | Plan, decisions, hardware facts, toolchain; `docs/legacy/` holds the FenixDeck PoC docs and the done-task history |
 | `pics/` | Board photos and their analysis |
 
 ## Licence
