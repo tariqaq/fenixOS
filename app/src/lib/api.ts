@@ -20,6 +20,34 @@ export interface Board {
   apps_total_kb: number;
   screen: number;
   app_id: string;
+  /** The board's radio; null before firmware 0.1.8 or before its first report. */
+  radio: RadioState | null;
+}
+
+/** RADIO_STATE (proto/spec.md). mode: 0 off, 1 Bluetooth, 2 Wi-Fi. state: 0 off, 1 starting,
+ *  2 ready, 3 connecting, 4 connected, 5 failed. */
+export interface RadioState {
+  mode: number;
+  state: number;
+  rssi: number;
+  ip: number[];
+  name: string;
+}
+
+/** auth: 0 open, 1 WEP, 2 WPA, 3 WPA2, 4 WPA/WPA2, 5 enterprise, 6 WPA3, 7 WPA2/WPA3, 8 other. */
+export interface WifiAp {
+  ssid: string;
+  rssi: number;
+  channel: number;
+  auth: number;
+  bssid: number[];
+}
+
+export interface WifiScan {
+  scanning: boolean;
+  from_pc: boolean;
+  aps: WifiAp[];
+  error: string;
 }
 
 export interface Silent {
@@ -115,6 +143,10 @@ export const openLogFolder = () => invoke("open_log_folder");
 export const getAutostart = () => invoke<boolean>("get_autostart");
 export const setAutostart = (on: boolean) => invoke<boolean>("set_autostart", { on });
 export const rebootBoard = () => invoke("reboot_board");
+export const setRadio = (mode: number) => invoke("set_radio", { mode });
+export const wifiScan = () => invoke("wifi_scan");
+export const getWifiScan = () => invoke<WifiScan>("get_wifi_scan");
+export const wifiJoin = (ssid: string, password: string) => invoke("wifi_join", { ssid, password });
 export const mirrorSet = (on: boolean) => invoke("mirror_set", { on });
 export const mirrorTouch = (x: number, y: number, down: boolean) => invoke("mirror_touch", { x, y, down });
 /** Raw frame from the engine (see `mirror_frame` in main.rs). */

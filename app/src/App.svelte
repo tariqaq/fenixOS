@@ -87,7 +87,7 @@
             {:else if page === "tasks"}
               <TaskManager board={snap.board} onreinstall={() => (reinstall = true)} />
             {:else}
-              <Settings appVersion={snap.app_version} boardPort={snap.board?.port ?? null} />
+              <Settings appVersion={snap.app_version} boardPort={snap.board?.port ?? null} radio={snap.board?.radio ?? null} />
             {/if}
           </div>
         {/key}

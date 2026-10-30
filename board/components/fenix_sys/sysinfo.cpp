@@ -65,7 +65,11 @@ void sysinfo_write(fnx::Writer& w) {
   s.backlight = b.backlight;
   s.flags = (b.dimmed ? fnx::sysflag::DIMMED : 0) | (b.resting ? fnx::sysflag::RESTING : 0) |
             (settings().burn_guard ? fnx::sysflag::BURN_GUARD : 0) |
-            (stream_active() ? fnx::sysflag::STREAMING : 0);  // no Wi-Fi or Bluetooth stack yet
+            (stream_active() ? fnx::sysflag::STREAMING : 0);
+  RadioInfo ri = radio_info();
+  bool on = ri.state != fnx::radio_state::OFF && ri.state != fnx::radio_state::FAILED;
+  if (on && ri.mode == fnx::radio::WIFI) s.flags |= fnx::sysflag::WIFI;
+  if (on && ri.mode == fnx::radio::BLUETOOTH) s.flags |= fnx::sysflag::BLUETOOTH;
 
   // The run-time clock (esp_timer, µs) also stamps the sample. 0 tasks when the table is full.
   configRUN_TIME_COUNTER_TYPE now = 0;

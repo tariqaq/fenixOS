@@ -213,4 +213,22 @@ bool stream_has_room(size_t) { return true; }
 uint32_t stream_dropped() { return 0; }
 void stream_set_active(bool on) { s_stream = on; }
 
+// Radios (P32): no stacks; a switch takes effect at once instead of after a restart.
+static RadioInfo s_radio{};
+void radio_start() {}
+RadioInfo radio_info() { return s_radio; }
+void radio_report() {}
+void radio_switch(uint8_t mode) {
+  s_settings.radio = s_radio.mode = mode;
+  s_radio.state = mode == fnx::radio::OFF ? fnx::radio_state::OFF : fnx::radio_state::READY;
+}
+bool radio_scan(bool) { return false; }
+bool radio_scanning() { return false; }
+int radio_scan_results(fnx::WifiAp*, int) { return 0; }
+void radio_join(const char*, const char*) {}
+bool radio_saved_network(char* out, size_t cap) {
+  if (cap) out[0] = 0;
+  return false;
+}
+
 }  // namespace fx::sys

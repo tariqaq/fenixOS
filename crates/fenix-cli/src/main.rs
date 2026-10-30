@@ -7,6 +7,9 @@
 //! fenix reboot                     ask the board to restart
 //! fenix sysinfo                    the Task manager's numbers: two SYSINFO 1 s apart, per-core
 //!                                  load, heap, flash, tasks with CPU % and stack free
+//! fenix radio [off|bt|wifi]        show the radio, or switch it (the board restarts)
+//! fenix wifi scan                  networks the board hears (Wi-Fi mode)
+//! fenix wifi join <ssid> [pass]    save a network on the board and connect; wifi forget
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
@@ -31,7 +34,7 @@ use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
-use fenix_proto::{app, BindValue, Msg, Stats, Sysinfo};
+use fenix_proto::{app, radio, scan_status, BindValue, Msg, RadioState, Stats, Sysinfo};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -64,6 +67,31 @@ fn main() {
         "time" => one_shot(opts, Msg::TimeSet(now_s())),
         "reboot" => one_shot(opts, Msg::Reboot),
         "sysinfo" => sysinfo(opts),
+        "radio" => match args.get(1).map(|s| s.as_str()) {
+            None => radio_show(opts),
+            Some("off") => one_shot(opts, Msg::RadioSet(radio::OFF)),
+            Some("bt") => one_shot(opts, Msg::RadioSet(radio::BLUETOOTH)),
+            Some("wifi") => one_shot(opts, Msg::RadioSet(radio::WIFI)),
+            _ => usage(),
+        },
+        "wifi" => match (args.get(1).map(|s| s.as_str()), args.get(2)) {
+            (Some("scan"), _) => wifi_scan(opts),
+            (Some("join"), Some(ssid)) => one_shot(
+                opts,
+                Msg::WifiJoin {
+                    ssid: ssid.clone(),
+                    password: args.get(3).cloned().unwrap_or_default(),
+                },
+            ),
+            (Some("forget"), _) => one_shot(
+                opts,
+                Msg::WifiJoin {
+                    ssid: String::new(),
+                    password: String::new(),
+                },
+            ),
+            _ => usage(),
+        },
         "swipe" => {
             let v: Vec<u16> = args[1..].iter().filter_map(|a| a.parse().ok()).collect();
             if v.len() == 4 {
@@ -351,6 +379,82 @@ fn ask_sysinfo(link: &Link) -> Option<Sysinfo> {
     }
     eprintln!("no SYSINFO answer");
     None
+}
+
+fn radio_text(s: &RadioState) -> String {
+    let mode = ["off", "Bluetooth", "Wi-Fi"].get(s.mode as usize).copied().unwrap_or("?");
+    let state = ["off", "starting", "ready", "connecting", "connected", "failed"]
+        .get(s.state as usize)
+        .copied()
+        .unwrap_or("?");
+    let mut t = format!("radio: {mode}, {state}");
+    if !s.name.is_empty() {
+        t += &format!(", {}", s.name);
+    }
+    if s.ip != [0; 4] {
+        let [a, b, c, d] = s.ip;
+        t += &format!(", {a}.{b}.{c}.{d}, {} dBm", s.rssi);
+    }
+    t
+}
+
+/// The board sends RADIO_STATE right after the handshake (firmware 0.1.8 and later).
+fn radio_show(opts: LinkOptions) -> i32 {
+    let link = Link::spawn(opts);
+    let end = Instant::now() + Duration::from_secs(6);
+    while Instant::now() < end {
+        if let Some(Event::Msg(Msg::RadioState(s))) = link.recv_event(Duration::from_millis(50)) {
+            println!("{}", radio_text(&s));
+            return 0;
+        }
+    }
+    eprintln!("no RADIO_STATE (firmware before 0.1.8?)");
+    1
+}
+
+fn wifi_scan(opts: LinkOptions) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        eprintln!("no board");
+        return 1;
+    }
+    link.send(Msg::WifiScanReq);
+    let end = Instant::now() + Duration::from_secs(10);
+    while Instant::now() < end {
+        match link.recv_event(Duration::from_millis(50)) {
+            Some(Event::Msg(Msg::WifiScan { status, aps })) => {
+                if status == scan_status::NOT_WIFI {
+                    eprintln!("the board is not in Wi-Fi mode (fenix radio wifi)");
+                    return 1;
+                }
+                if status != scan_status::OK {
+                    eprintln!("scan failed");
+                    return 1;
+                }
+                let auth = ["open", "WEP", "WPA", "WPA2", "WPA/WPA2", "enterprise", "WPA3", "WPA2/WPA3", "other"];
+                for a in &aps {
+                    let b = a.bssid.map(|x| format!("{x:02x}")).join(":");
+                    println!(
+                        "{:>4} dBm  ch {:>2}  {:<10} {}  ({b})",
+                        a.rssi,
+                        a.channel,
+                        auth.get(a.auth as usize).copied().unwrap_or("?"),
+                        a.ssid
+                    );
+                }
+                println!("{} network(s)", aps.len());
+                return 0;
+            }
+            Some(Event::Msg(Msg::RadioState(s))) => eprintln!("{}", radio_text(&s)),
+            Some(Event::Msg(Msg::Error { code, text })) => {
+                eprintln!("board error {code}: {text} (firmware before 0.1.8?)");
+                return 1;
+            }
+            _ => {}
+        }
+    }
+    eprintln!("no WIFI_SCAN answer");
+    1
 }
 
 /// Two SYSINFO answers 1 s apart; load and CPU % come from the difference (as the app does).

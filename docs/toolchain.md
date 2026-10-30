@@ -36,11 +36,11 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 
 ## Build commands
 
-- On this laptop, run builds through `pwsh -NoProfile -File tools/capped.ps1 <command>` (user request, P12): at most 4 cores' worth of CPU at normal priority for the command and every process it starts, and `CARGO_BUILD_JOBS=4`. `FENIX_CORES=8` raises both while the user allows it (2026-10-30, until further notice). Example: `pwsh -NoProfile -File tools/capped.ps1 pnpm -C app tauri build --no-bundle` (a one-file change rebuilds in about 45 s; the release profile has no LTO).
+- On this laptop, run builds through `pwsh -NoProfile -File tools/capped.ps1 <command>` (user request, P12): at most 4 cores' worth of CPU at normal priority for the command and every process it starts, and `CARGO_BUILD_JOBS=4`. `FENIX_CORES` raises both only when the user allows it, for that build. Corrected (2026-10-30): the 8-core allowance was withdrawn the same day; builds run on 4 cores. Example: `pwsh -NoProfile -File tools/capped.ps1 pnpm -C app tauri build --no-bundle` (a one-file change rebuilds in about 45 s; the release profile has no LTO).
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `monitor`, `size`; not `flash`, see below). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
 - C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)
-- Radio probe (P29, not for release): `pwsh -NoProfile -File board/idf.ps1 -B build-radio -D SDKCONFIG=build-radio/sdkconfig -D "SDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.radio" build`, then `fenix flash board/build-radio` and `fenix logs 10` (heap per step). Flash the normal firmware back after. Bluedroid probe (P30): the same with `build-bluedroid` and `sdkconfig.bluedroid`; each boot runs one radio, `fenix reboot` switches
+- Radios (P32): the normal firmware has both; one runs per boot. `fenix radio` shows it, `fenix radio off|bt|wifi` switches (the board restarts), `fenix wifi scan` lists networks (Wi-Fi mode), `fenix wifi join <ssid> [pass]` and `fenix wifi forget`. Corrected: the P29/P30 probe builds (`sdkconfig.radio`, `sdkconfig.bluedroid`) are gone.
 - Board load: `fenix sysinfo` (quit the PC app first) prints what the Task manager shows: per-core load, heap, flash, tasks.
 - Spikes: `pwsh -NoProfile -File board/idf.ps1 -C spikes/<name> -B spikes/<name>/build build`, then `fenix flash board/spikes/<name>/build` (reads its `flasher_args.json`), then `python tools/serial_read.py 30 --reset` (reads without a timeout since P23). Corrected (P26): spikes were flashed with `idf.ps1 flash` (esptool)
 - Board fonts: `python tools/gen_fonts.py` (Inter + Phosphor via `lv_font_conv`)

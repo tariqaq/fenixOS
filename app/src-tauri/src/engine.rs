@@ -51,6 +51,8 @@ pub struct Board {
     pub apps_total_kb: u16,
     pub screen: u8,
     pub app_id: String,
+    /// The board's radio (RADIO_STATE, firmware 0.1.8 and later; None before).
+    pub radio: Option<fenix_proto::RadioState>,
 }
 
 /// A CH340 port that did not answer as fenixOS (blank board, other firmware, other protocol).
@@ -76,6 +78,16 @@ pub struct State {
     /// The board streams its screen (P14): started or stopped on the Board page or on the
     /// board's Stream app, which reports every change.
     pub streaming: bool,
+}
+
+/// Settings > Wireless (P34): networks heard by the board (Wi-Fi mode) or, otherwise, this PC.
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct WifiScanView {
+    pub scanning: bool,
+    /// The list came from Windows (`netsh`), not the board.
+    pub from_pc: bool,
+    pub aps: Vec<fenix_proto::WifiAp>,
+    pub error: String,
 }
 
 /// The Task manager's view (P27): the board's latest SYSINFO answer.
@@ -107,6 +119,7 @@ pub struct Engine {
     pub registry: Mutex<Vec<Manifest>>,
     pub mirror: Mutex<Mirror>,
     sysinfo: Mutex<SysinfoView>,
+    wifi: Arc<Mutex<WifiScanView>>,
     fw_dir: Option<std::path::PathBuf>,
     update_started: Mutex<Option<Instant>>,
 }
@@ -150,6 +163,7 @@ impl Engine {
                 version: 0,
             }),
             sysinfo: Mutex::new(SysinfoView::default()),
+            wifi: Arc::new(Mutex::new(WifiScanView::default())),
             fw_dir,
             update_started: Mutex::new(None),
         });
@@ -188,6 +202,54 @@ impl Engine {
             self.link.send(Msg::SysinfoReq);
         }
         si.clone()
+    }
+
+    /// Switch the board's radio; it saves the mode and restarts (P32).
+    pub fn radio_set(&self, app: &AppHandle, mode: u8) {
+        let name = ["off", "Bluetooth", "Wi-Fi"].get(mode as usize).copied().unwrap_or("?");
+        self.log(app, Source::Pc, false, format!("Asked the board to switch its radio to {name} (it restarts)"));
+        self.link.send(Msg::RadioSet(mode));
+    }
+
+    /// Start a Wi-Fi scan: on the board in Wi-Fi mode, else on this PC (2.4 GHz only).
+    pub fn wifi_scan_start(&self) {
+        let board_wifi = {
+            let s = self.state.lock().unwrap();
+            s.status == Status::Connected
+                && s.board.as_ref().and_then(|b| b.radio.as_ref()).is_some_and(|r| r.mode == fenix_proto::radio::WIFI)
+        };
+        let mut w = self.wifi.lock().unwrap();
+        if w.scanning {
+            return;
+        }
+        w.scanning = true;
+        w.error.clear();
+        if board_wifi {
+            self.link.send(Msg::WifiScanReq);
+            return;
+        }
+        let wifi = self.wifi.clone();
+        std::thread::spawn(move || {
+            let r = crate::wifi::scan();
+            let mut w = wifi.lock().unwrap();
+            w.scanning = false;
+            w.from_pc = true;
+            match r {
+                Ok(aps) => w.aps = aps,
+                Err(e) => w.error = e,
+            }
+        });
+    }
+
+    pub fn wifi_scan(&self) -> WifiScanView {
+        self.wifi.lock().unwrap().clone()
+    }
+
+    /// Save a network on the board (plaintext, user choice) and connect; empty SSID forgets.
+    pub fn wifi_join(&self, app: &AppHandle, ssid: String, password: String) {
+        let what = if ssid.is_empty() { "forget its network".to_string() } else { format!("join \"{ssid}\"") };
+        self.log(app, Source::Pc, false, format!("Asked the board to {what}"));
+        self.link.send(Msg::WifiJoin { ssid, password });
     }
 
     pub fn mirror_set(&self, app: &AppHandle, on: bool) {
@@ -508,6 +570,7 @@ impl Engine {
                         apps_total_kb: info.apps_total_kb,
                         screen: 0,
                         app_id: String::new(),
+                        radio: None,
                     });
                 }
                 self.log(app, Source::Pc, false, format!("Board found on {port}"));
@@ -533,6 +596,7 @@ impl Engine {
             }
             Event::Disconnected { reason } => {
                 self.apps.lock().unwrap().board_disconnected();
+                self.wifi.lock().unwrap().scanning = false;
                 self.state.lock().unwrap().streaming = false;
                 *self.sysinfo.lock().unwrap() = SysinfoView::default();
                 let was = {
@@ -607,6 +671,28 @@ impl Engine {
             }
             Event::Msg(Msg::Sysinfo(s)) => {
                 self.sysinfo.lock().unwrap().sample = Some(s);
+                false
+            }
+            Event::Msg(Msg::RadioState(r)) => {
+                let mut s = self.state.lock().unwrap();
+                match s.board.as_mut() {
+                    Some(b) if b.radio.as_ref() != Some(&r) => {
+                        b.radio = Some(r);
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            Event::Msg(Msg::WifiScan { status, aps }) => {
+                let mut w = self.wifi.lock().unwrap();
+                w.scanning = false;
+                w.from_pc = false;
+                w.aps = aps;
+                w.error = match status {
+                    fenix_proto::scan_status::OK => String::new(),
+                    fenix_proto::scan_status::NOT_WIFI => "The board is not in Wi-Fi mode".into(),
+                    _ => "The board could not scan".into(),
+                };
                 false
             }
             Event::Msg(Msg::Error { code, text }) => {

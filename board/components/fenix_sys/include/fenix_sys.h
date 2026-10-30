@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <time.h>
 
+#include "fenix_proto.h"
+
 namespace fx::sys {
 
 // ---- Settings (NVS namespace "fenix", one blob) ----
@@ -22,6 +24,7 @@ struct Settings {
   // New fields go at the end: an older, shorter blob then loads with them at their defaults.
   uint8_t burn_guard = 1;  // burn-in protection (P21); can be turned off only with debug on
   uint8_t debug = 0;       // Settings > Debug: unlocks switches meant for development
+  uint8_t radio = 0;       // fnx::radio mode (P32); applied at boot
 };
 void nvs_start();
 Settings& settings();
@@ -102,9 +105,23 @@ bool bind_poll(BindValue* v);
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
 
-// ---- Radio probe (P29; built only with sdkconfig.radio, which turns Bluetooth on) ----
-// Starts Wi-Fi (station, no network) and BLE advertising; logs the heap each step costs.
-void radio_probe();
+// ---- Radios (P32): one at a time; switching saves the mode and restarts ----
+struct RadioInfo {
+  uint8_t mode, state;  // fnx::radio, fnx::radio_state
+  int8_t rssi;
+  uint8_t ip[4];
+  char name[fnx::SSID_LEN];  // Wi-Fi network or Bluetooth peer
+};
+void radio_start();  // boot, after nvs_start: starts the saved radio, frees Bluetooth memory otherwise
+RadioInfo radio_info();
+void radio_report();              // RADIO_STATE to the PC
+void radio_switch(uint8_t mode);  // saves and restarts (no return) unless the mode is unchanged
+// Wi-Fi only: scan all channels; with for_pc the result goes out as WIFI_SCAN (NOT_WIFI otherwise).
+bool radio_scan(bool for_pc);
+bool radio_scanning();
+int radio_scan_results(fnx::WifiAp* out, int max);  // last scan, strongest first
+void radio_join(const char* ssid, const char* pass);  // saved in plaintext; empty ssid forgets
+bool radio_saved_network(char* out, size_t cap);
 
 // ---- Stream encoder (called from the LVGL flush callback) ----
 bool stream_active();

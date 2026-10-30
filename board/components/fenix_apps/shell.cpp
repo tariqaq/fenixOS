@@ -154,6 +154,7 @@ void tick() {
     nav_root(home_screen, true);
   }
   if (nav_top() == home_screen) home_tick();
+  settings_tick();
   app_tick();
   if (s_shell.streaming && s_last_rot != rotation()) send_stream_info();
   s_last_rot = rotation();

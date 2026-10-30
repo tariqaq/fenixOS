@@ -12,6 +12,7 @@ mod sidecar;
 mod tray;
 mod update;
 mod welcome;
+mod wifi;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -276,6 +277,29 @@ fn sysinfo(engine: tauri::State<Arc<Engine>>) -> engine::SysinfoView {
     engine.sysinfo()
 }
 
+/// Switch the board's radio (P32): 0 off, 1 Bluetooth, 2 Wi-Fi. The board restarts.
+#[tauri::command]
+fn set_radio(app: AppHandle, engine: tauri::State<Arc<Engine>>, mode: u8) {
+    engine.radio_set(&app, mode);
+}
+
+/// Start a Wi-Fi scan (board in Wi-Fi mode, else this PC); poll `get_wifi_scan`.
+#[tauri::command]
+fn wifi_scan(engine: tauri::State<Arc<Engine>>) {
+    engine.wifi_scan_start();
+}
+
+#[tauri::command]
+fn get_wifi_scan(engine: tauri::State<Arc<Engine>>) -> engine::WifiScanView {
+    engine.wifi_scan()
+}
+
+/// Save a network on the board and connect (empty SSID forgets it).
+#[tauri::command]
+fn wifi_join(app: AppHandle, engine: tauri::State<Arc<Engine>>, ssid: String, password: String) {
+    engine.wifi_join(&app, ssid, password);
+}
+
 /// A click on the mirror, in board screen coordinates.
 #[tauri::command]
 fn mirror_touch(engine: tauri::State<Arc<Engine>>, x: u16, y: u16, down: bool) {
@@ -429,6 +453,10 @@ fn main() {
             get_autostart,
             set_autostart,
             reboot_board,
+            set_radio,
+            wifi_scan,
+            get_wifi_scan,
+            wifi_join,
             open_url,
             list_registry,
             add_app,

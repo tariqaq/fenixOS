@@ -210,6 +210,7 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
         post(LinkEv::CONNECTED);
         send_board_state(board_info());
       }
+      radio_report();  // every HELLO: a new PC session may start before the old one timed out
       return;
     }
     case fnx::ty::PING: {
@@ -236,6 +237,22 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
       uint8_t down = r.u8();
       if (!r.done()) return send_error(fnx::err::BAD_BODY, "touch");
       s_remote = ((uint32_t)(x & 0xFFF) << 13) | ((uint32_t)(y & 0xFFF) << 1) | (down ? 1 : 0);
+      return;
+    }
+    case fnx::ty::RADIO_SET: {
+      uint8_t m = r.u8();
+      if (!r.done()) return send_error(fnx::err::BAD_BODY, "radio_set");
+      radio_switch(m);  // restarts unless unchanged
+      radio_report();
+      return;
+    }
+    case fnx::ty::WIFI_SCAN_REQ:
+      radio_scan(true);
+      return;
+    case fnx::ty::WIFI_JOIN: {
+      fnx::WifiJoin j;
+      if (!fnx::read_wifi_join(r, j)) return send_error(fnx::err::BAD_BODY, "wifi_join");
+      radio_join(j.ssid, j.password);
       return;
     }
     case fnx::ty::SYSINFO_REQ:

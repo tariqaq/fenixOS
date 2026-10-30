@@ -15,17 +15,20 @@ using namespace fx::ui;
 static lv_obj_t* s_clock;  // row of 5 cells: digits get equal widths (tabular figures)
 static lv_obj_t* s_cells[5];
 static lv_obj_t* s_date;
+static lv_obj_t* s_radio_icon;
 static lv_obj_t* s_status_icon;
 static lv_obj_t* s_status_text;
 static int s_shown_min = -2;  // minute of day on screen; -1 = "--:--"
 static int s_shown_conn = -1;
+static int s_shown_radio = -1;
 
 // The old Home is deleted after a rebuilt one is made: only forget our own objects.
 static void forget(lv_event_t* e) {
   if (lv_event_get_target(e) != s_clock) return;
-  s_clock = s_date = s_status_icon = s_status_text = nullptr;
+  s_clock = s_date = s_radio_icon = s_status_icon = s_status_text = nullptr;
   s_shown_min = -2;
   s_shown_conn = -1;
+  s_shown_radio = -1;
 }
 
 struct Launch {
@@ -205,14 +208,17 @@ static void clock_show(const char* hhmm, uint32_t color) {
 void home_screen(lv_obj_t* scr) {
   s_shown_min = -2;  // a rebuilt Home has fresh labels: redraw them on the first tick
   s_shown_conn = -1;
+  s_shown_radio = -1;
   bool port = portrait();
   bool dock = sys::settings().home_style == sys::HOME_DOCK;
   int m = port ? FX_MARGIN_PORTRAIT : FX_MARGIN_LANDSCAPE;
 
-  // Status (top right): PC link.
+  // Status (top right): radio (P32), PC link.
   lv_obj_t* st = rowbox(scr, 4);
   lv_obj_add_flag(st, LV_OBJ_FLAG_IGNORE_LAYOUT);
   lv_obj_align(st, LV_ALIGN_TOP_RIGHT, -m, port ? 8 : 10);
+  s_radio_icon = text(st, "", &fx_icon_fill_14, FX_COLOR_LABEL_2);
+  lv_obj_set_style_margin_right(s_radio_icon, 4, 0);
   s_status_icon = text(st, "", &fx_icon_fill_14, FX_COLOR_SUCCESS);
   s_status_text = text(st, "", &fx_font_caption, FX_COLOR_LABEL_2);
 
@@ -296,6 +302,23 @@ void home_tick() {
     lv_label_set_text(s_status_icon, conn ? FX_ICON_PLUGS_CONNECTED : FX_ICON_PLUGS);
     lv_obj_set_style_text_color(s_status_icon, col(conn ? FX_COLOR_SUCCESS : FX_COLOR_WARNING), 0);
     lv_label_set_text(s_status_text, conn ? "PC" : "No PC");
+  }
+  sys::RadioInfo ri = sys::radio_info();
+  int radio = ri.mode << 16 | ri.state << 8 | (uint8_t)ri.rssi;
+  if (radio != s_shown_radio) {
+    s_shown_radio = radio;
+    bool on = ri.mode != fnx::radio::OFF;
+    bool up = ri.state == fnx::radio_state::CONNECTED;
+    const char* icon = FX_ICON_BLUETOOTH;
+    if (ri.mode == fnx::radio::WIFI)
+      icon = !up              ? FX_ICON_WIFI_NONE
+             : ri.rssi >= -60 ? FX_ICON_WIFI_HIGH
+             : ri.rssi >= -75 ? FX_ICON_WIFI_MEDIUM
+                              : FX_ICON_WIFI_LOW;
+    lv_label_set_text(s_radio_icon, on ? icon : "");
+    lv_obj_set_style_text_color(s_radio_icon, col(up ? FX_COLOR_LABEL : FX_COLOR_LABEL_2), 0);
+    if (on) lv_obj_remove_flag(s_radio_icon, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_add_flag(s_radio_icon, LV_OBJ_FLAG_HIDDEN);
   }
 }
 

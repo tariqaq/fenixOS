@@ -9,7 +9,7 @@
 if (-not $args) { Write-Error "usage: pwsh tools/capped.ps1 <command> [args...]"; exit 2 }
 $Command = $args
 
-# FENIX_CORES overrides the cap when the user allows more (2026-10-30: 8 until further notice).
+# FENIX_CORES overrides the cap only when the user allows more, for that build (tasks.md Decisions).
 $Cores = if ($env:FENIX_CORES) { [int]$env:FENIX_CORES } else { 4 }
 Add-Type -Namespace Fenix -Name Job -MemberDefinition @'
 [StructLayout(LayoutKind.Sequential)]

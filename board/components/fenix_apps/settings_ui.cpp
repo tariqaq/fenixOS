@@ -1,5 +1,6 @@
-// Settings tree: Display (+ Rotation), Home screen, Storage, Host PC, About, Debug.
-// Artboards Settings, SettingsDisplay, SettingsHome, SettingsAbout.
+// Settings tree: Display (+ Rotation), Home screen, Storage, Host PC, Wireless, About, Debug.
+// Artboards Settings, SettingsDisplay, SettingsHome, SettingsAbout. Wireless (P32) uses the
+// Rotation list and the Session pop-up (no artboard of its own).
 #include <stdio.h>
 
 #include "esp_app_desc.h"
@@ -288,6 +289,133 @@ static void host_screen(lv_obj_t* scr) {
   lv_obj_set_style_pad_hor(note, 4, 0);
 }
 
+// ---- Wireless (P32) ----
+
+static const char* const RADIO_NAMES[] = {"Off", "Bluetooth", "Wi-Fi"};
+
+static const char* radio_status(const sys::RadioInfo& r) {
+  switch (r.state) {
+    case fnx::radio_state::OFF:
+      return "Off";
+    case fnx::radio_state::STARTING:
+      return "Starting";
+    case fnx::radio_state::READY:
+      return r.mode == fnx::radio::BLUETOOTH ? "Discoverable" : "No network set";
+    case fnx::radio_state::CONNECTING:
+      return "Connecting";
+    case fnx::radio_state::CONNECTED:
+      return "Connected";
+    default:
+      return "Not working";
+  }
+}
+
+static uint8_t s_radio_pick;
+
+static void radio_restart_cb(lv_event_t*) {
+  backlight_fade_out();
+  sys::radio_switch(s_radio_pick);
+  // On the board radio_switch restarts; only the simulator gets here.
+  sheet_close();
+  apply_backlight();
+  nav_rebuild();
+}
+
+static void radio_cancel_cb(lv_event_t*) { sheet_close(); }
+
+// One radio at a time, and switching restarts: confirm first (user 2026-10-30: warning popup).
+static void radio_pick_cb(lv_event_t* e) {
+  uint8_t m = (uint8_t)(intptr_t)lv_event_get_user_data(e);
+  uint8_t cur = sys::radio_info().mode;
+  if (m == cur) return;
+  s_radio_pick = m;
+  char title[32], sub[96];
+  if (m == fnx::radio::OFF) {
+    snprintf(title, sizeof title, "Turn %s off?", RADIO_NAMES[cur]);
+    snprintf(sub, sizeof sub, "fenixOS restarts to turn %s off.", RADIO_NAMES[cur]);
+  } else {
+    snprintf(title, sizeof title, "Switch to %s?", RADIO_NAMES[m]);
+    if (cur == fnx::radio::OFF) snprintf(sub, sizeof sub, "fenixOS restarts to turn %s on.", RADIO_NAMES[m]);
+    else
+      snprintf(sub, sizeof sub, "fenixOS restarts to switch. Only one radio runs at a time, so %s turns off.",
+               RADIO_NAMES[cur]);
+  }
+  lv_obj_t* sh = sheet_open();
+  lv_obj_t* head = column(sh, 2);
+  lv_obj_set_width(head, LV_PCT(100));
+  lv_obj_set_flex_align(head, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  text(head, title, &fx_font_title, FX_COLOR_LABEL);
+  lv_obj_t* s = text(head, sub, &fx_font_caption, FX_COLOR_LABEL_2);
+  lv_obj_set_style_text_align(s, LV_TEXT_ALIGN_CENTER, 0);
+  lv_obj_set_width(s, LV_PCT(100));
+  lv_obj_t* r = rowbox(sh, 8);
+  lv_obj_set_width(r, LV_PCT(100));
+  lv_obj_set_style_margin_top(r, 4, 0);
+  lv_obj_set_flex_grow(capsule(r, FX_ICON_ARROW_CLOCKWISE, &fx_icon_fill_16, "Restart", FX_COLOR_ACCENT_FILL, 40,
+                               radio_restart_cb, nullptr),
+                       1);
+  lv_obj_t* cancel = box(sh);
+  lv_obj_set_size(cancel, LV_PCT(100), 32);
+  lv_obj_add_flag(cancel, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_opa(cancel, LV_OPA_50, LV_STATE_PRESSED);
+  lv_obj_center(text(cancel, "Cancel", &fx_font_body, FX_COLOR_ACCENT));
+  lv_obj_add_event_cb(cancel, radio_cancel_cb, LV_EVENT_CLICKED, nullptr);
+}
+
+static void wireless_screen(lv_obj_t* scr) {
+  sys::RadioInfo ri = sys::radio_info();
+  navbar(scr, "Settings", "Wireless");
+  lv_obj_t* c = content(scr, 12);
+  lv_obj_t* g = group(c);
+  static const char* const icons[] = {FX_ICON_WIFI_NONE, FX_ICON_BLUETOOTH, FX_ICON_WIFI_HIGH};
+  static const uint32_t bgs[] = {FX_COLOR_TILE_GRAY, FX_COLOR_TILE_BLUE, FX_COLOR_TILE_BLUE};
+  for (int i = 0; i < 3; i++) {
+    if (i) separator(g, 44);
+    lv_obj_t* row = list_row(g, icons[i], bgs[i], RADIO_NAMES[i], nullptr, false, radio_pick_cb, (void*)(intptr_t)i);
+    if (i == ri.mode) text(row, FX_ICON_CHECK, &fx_icon_bold_14, FX_COLOR_ACCENT);
+  }
+  const char* tip = "Only one radio runs at a time. Switching restarts fenixOS.";
+  if (ri.mode != fnx::radio::OFF) {
+    g = group(c);
+    info_row(g, "Status", radio_status(ri));
+    char v[40];
+    if (ri.mode == fnx::radio::BLUETOOTH) {
+      separator(g, 10);
+      info_row(g, "Name", "fenixOS");
+      if (ri.state == fnx::radio_state::CONNECTED) {
+        separator(g, 10);
+        info_row(g, "Connected to", ri.name);
+      }
+      tip = "Pair with \"fenixOS\" from your PC or phone. Switching restarts fenixOS.";
+    } else {
+      char net[fnx::SSID_LEN];
+      bool saved = sys::radio_saved_network(net, sizeof net);
+      separator(g, 10);
+      info_row(g, "Network", saved ? net : "None");
+      if (ri.state == fnx::radio_state::CONNECTED) {
+        separator(g, 10);
+        snprintf(v, sizeof v, "%u.%u.%u.%u", ri.ip[0], ri.ip[1], ri.ip[2], ri.ip[3]);
+        info_row(g, "IP address", v);
+        separator(g, 10);
+        snprintf(v, sizeof v, "%d dBm", ri.rssi);
+        info_row(g, "Signal", v);
+      }
+      if (!saved) tip = "Add a network in fenixOS on your PC: Settings, Wireless. Switching restarts fenixOS.";
+    }
+  }
+  note(c, tip);
+}
+
+// Rebuild Wireless when the radio's state changes.
+void settings_tick() {
+  static int shown = -1;
+  sys::RadioInfo ri = sys::radio_info();
+  int key = ri.mode << 8 | ri.state;
+  if (key == shown) return;
+  shown = key;
+  refresh_if_top(wireless_screen);
+}
+
 // ---- About ----
 
 static void about_screen(lv_obj_t* scr) {
@@ -349,6 +477,9 @@ void settings_screen(lv_obj_t* scr) {
   separator(g, 44);
   list_row(g, FX_ICON_DESKTOP_TOWER, FX_COLOR_TILE_TEAL, "Host PC", shell().connected ? "Connected" : "Not connected",
            true, push_cb, (void*)host_screen);
+  separator(g, 44);
+  list_row(g, FX_ICON_WIFI_HIGH, FX_COLOR_TILE_BLUE, "Wireless", RADIO_NAMES[sys::radio_info().mode], true, push_cb,
+           (void*)wireless_screen);
   g = group(c);
   char v[40];
   snprintf(v, sizeof v, "v%s", esp_app_get_description()->version);

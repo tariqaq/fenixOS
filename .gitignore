@@ -30,5 +30,3 @@ node_modules/
 /docs/recordedvids/
 docs/tempcrashlogs/
 .ccache/
-/board/build-radio/
-/board/build-bluedroid/

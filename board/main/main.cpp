@@ -23,20 +23,12 @@ extern "C" void app_main(void) {
   fx::sys::clock_init();
   fx::sys::store_mount();
   fx::sys::link_start();
+  fx::sys::radio_start();
 
   fx::sys::LinkEvent e;
-#if CONFIG_BT_ENABLED
-  bool probed = false;  // radio probe build: start the radios once the PC listens to the logs
-#endif
   for (;;) {
     uint32_t wait = fx::ui::step();
     while (fx::sys::link_poll(&e)) fx::apps::on_link(e);
-#if CONFIG_BT_ENABLED
-    if (!probed && fx::sys::link_connected()) {
-      probed = true;
-      fx::sys::radio_probe();
-    }
-#endif
     fx::apps::tick();
     vTaskDelay(pdMS_TO_TICKS(wait));
   }

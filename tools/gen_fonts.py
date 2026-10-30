@@ -37,6 +37,7 @@ FILL_ICONS = [
     "gear-six", "power", "screencast", "arrow-clockwise", "plugs-connected", "plugs",
     "sun", "moon", "timer", "device-rotate", "hand-tap", "hard-drives", "desktop-tower",
     "info", "squares-four", "warning", "puzzle-piece", "check-circle", "x-circle", "monitor",
+    "wifi-high", "wifi-medium", "wifi-low", "wifi-none", "bluetooth", "lock",
 ]
 FILL_SIZES = [12, 14, 15, 16, 18, 20, 26, 28, 40]
 BOLD_ICONS = ["caret-left", "caret-right", "check", "plus", "x"]

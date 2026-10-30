@@ -244,7 +244,7 @@ From `fenix sysinfo` (two SYSINFO answers 1 s apart), v0.1.4 firmware with run-t
 
 ## RAM for Wi-Fi and Bluetooth (P29, 2026-10-30)
 
-Measured on the board with a probe build: `board/sdkconfig.radio` on top of the defaults (Bluetooth on, NimBLE host, BLE-only controller), built in `board/build-radio`; `fx::sys::radio_probe()` starts Wi-Fi (station, no network) and BLE advertising once the PC connects and logs the heap after each step.
+Measured on the board with a probe build (removed in P32): `board/sdkconfig.radio` on top of the defaults (Bluetooth on, NimBLE host, BLE-only controller), built in `board/build-radio`; `fx::sys::radio_probe()` starts Wi-Fi (station, no network) and BLE advertising once the PC connects and logs the heap after each step.
 
 - **IRAM:** with Wi-Fi's IRAM speed options on (`ESP_WIFI_IRAM_OPT`, `ESP_WIFI_RX_IRAM_OPT`, the defaults) the image does not link: `iram0_0_seg` overflowed by 10,968 B. With both off: IRAM 116 of 128 KB. They only matter for peak Wi-Fi throughput.
 - **Fixed cost at boot:** the BT controller reserves 56 KB of DRAM (`BTDM_RESERVE_DRAM` 0xdb5c) and Wi-Fi/lwIP add ~31 KB static. With the v0.1.5 firmware the heap free at boot fell from 118 KB to 46 KB; Wi-Fi then took the rest and BLE init panicked (boot loop, reset reason 4).
@@ -257,7 +257,7 @@ Measured on the board with a probe build: `board/sdkconfig.radio` on top of the 
 
 ## Radios one at a time, flash and CPU (P30, 2026-10-30)
 
-Measured with a Bluedroid probe: `board/sdkconfig.bluedroid` on top of the defaults (Bluetooth Classic + BLE, Wi-Fi speed options on, size trims), built in `board/build-bluedroid`. The probe in `radio.cpp` runs one radio per boot and alternates (`fenix reboot`): Bluetooth (SPP server and BLE advertising), then Wi-Fi with all Bluetooth memory released.
+Measured with a Bluedroid probe (removed in P32; its settings are now in `sdkconfig.defaults`): `board/sdkconfig.bluedroid` on top of the defaults (Bluetooth Classic + BLE, Wi-Fi speed options on, size trims), built in `board/build-bluedroid`. The probe in `radio.cpp` runs one radio per boot and alternates (`fenix reboot`): Bluetooth (SPP server and BLE advertising), then Wi-Fi with all Bluetooth memory released.
 
 - **IRAM:** Bluedroid plus Wi-Fi's IRAM speed options plus lwIP IRAM overflow IRAM by 25,156 B. Moving FreeRTOS, heap and ringbuf functions to flash and turning `LOG_IN_IRAM` off leaves 4,108 B over. `CONFIG_ESP_SYSTEM_ESP32_SRAM1_REGION_AS_IRAM` then fits: IRAM 135 of 172 KB. The extra IRAM comes out of the heap only as far as it is used (~4 KB). It needs a bootloader from ESP-IDF 5.x; ours is v5.5.5.
 - **Image:** 1.76 MB with Bluedroid's default sizing, 1.60 MB trimmed (76% of the 2 MB slot). Both include the size trims below.
@@ -270,6 +270,16 @@ Measured with a Bluedroid probe: `board/sdkconfig.bluedroid` on top of the defau
 - **Frame-rate caps do not free RAM:** the draw bands are allocated once at their size; a lower frame rate saves CPU time, not memory.
 - **Applied in P31 (v0.1.7):** the trims, `-Os` and UNSCII 8 as LVGL's unused default font (Montserrat 14 out). Image 837 to 549 KB, heap free at boot 179 to 187 KB, about 192 KB with the stream off (stream buffers now exist only while streaming). Under install + stream + Task manager load the stacks keep `link` 992 B and `main` 2064 B free, so they stay 8 KB. CPU: left as is. The link task already blocks on the UART (20 ms timeout); a 100 Hz tick would round LVGL's 16 ms refresh to 10 ms steps; streaming costs ~1 fps, not worth a band copy to core 0; DFS waits for the battery (nothing to measure on USB).
 - **Cores:** the UI (`main`) is on core 1. The link, Wi-Fi and Bluedroid tasks are on core 0; Bluedroid is pinned to core 0 by default. Idle load is 0.4 to 2% per core. Not CPU-bound: a full 320 × 240 frame takes ~31 ms on the 40 MHz SPI bus.
+
+## Radio manager (P32, 2026-10-30)
+
+The normal firmware now carries both radios; Settings > Wireless (`Settings.radio` in NVS: 0 off, 1 Bluetooth, 2 Wi-Fi) picks the one that starts at boot. Switching saves the mode and restarts, because `esp_bt_mem_release` cannot be undone without a reboot.
+
+- **Image:** 1.38 MB (69% of the 2 MB slot), IRAM 130 of 172 KB. Up from 549 KB in v0.1.7: Bluedroid, Wi-Fi, lwIP.
+- **Heap at boot:** off 158 KB free (min 118.6 KB); Bluetooth 48.5 KB (SPP server "fenixOS" and BLE advertising up); Wi-Fi 110 to 116 KB (station, scanning). Corrected: the P30 figure of ~148 KB with no radio running was for the probe; the P32 build with the P31 trims leaves 158 KB.
+- **Wi-Fi:** station with power save off (`WIFI_PS_NONE`) for full speed; network in NVS (`wifi_ssid`, `wifi_pass`, plaintext by user choice) and `WIFI_STORAGE_RAM` so the Wi-Fi driver keeps no second copy. Reconnect backoff 1, 2, 4... up to 30 s; after 5 failures the state shows "failed" and retries continue at 30 s. Scans are asynchronous; results are merged per SSID (strongest kept), sorted by signal, at most 24.
+- **Event task stack:** Wi-Fi events build PC frames (a ~1.2 KB buffer on the stack). The default 2304 B overflowed after a scan (panic, reset reason 4); 4096 left 744 B; now 5120.
+- **PC messages:** RADIO_STATE after every HELLO and on each change, WIFI_SCAN only when asked. Nothing is sent while no PC is connected.
 
 ## Image retention ("burn-in"), 2026-10-29
 
