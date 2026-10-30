@@ -60,7 +60,7 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
 
 ## Now
 
-- [~] P41 Docs audit 1 (user 2026-10-31, overnight goal): every `*.md` and reference file matches the code (rule 7), no stale numbers, versions, removed features or done TODOs, token-optimized. Method per file: read whole, check each fact that names code (paths, constants, commands, sizes) against the code, fix, cut repetition. History docs stay frozen (header note only). Decisions in `docs/decisions.md` "2026-11-01: overnight run"
+- [x] P41 Docs audit 1 (user 2026-10-31, overnight goal): every `*.md` and reference file matches the code (rule 7), no stale numbers, versions, removed features or done TODOs, token-optimized. Method per file: read whole, check each fact that names code (paths, constants, commands, sizes) against the code, fix, cut repetition. History docs stay frozen (header note only). Decisions in `docs/decisions.md` "2026-11-01: overnight run"
   - [x] 1. Done: 88.7 KB to 6.7 KB. `tasks.md`: done phases P0-P40 (verbatim) to `docs/legacy/tasks-history.md`; here one line per done phase, open items kept whole (P21, P34 step 5 and 9, P37 steps 5 and 6), Decisions without the superseded entries
   - [x] 2. Done: README (Wi-Fi in the board line, images in the element list, "CH340 note above"), AGENTS (cores line, history pointer), legacy README (history file). CLAUDE.md is the one-line import. `README.md`, `AGENTS.md`, `CLAUDE.md`
   - [x] 3. Done: board type table matches `tools/gen_fonts.py` weights; icon sizes and the full icon map; unused `bluetooth` glyph dropped from the icon fonts (P38 leftover; firmware build in P42). `DESIGN.md` (tokens against `design/tokens.json`, `tools/gen_tokens.py` output, board `fenix_ui` and app CSS)
@@ -73,8 +73,8 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
   - [x] 10. Done: 25 artboard files match the table; Settings row names Wireless. `docs/mockups.md`, `design/` references (artboard list against `design/mockups` and `canvas.json`)
   - [x] 11. Done: Wi-Fi/NTP/Bluetooth "later" lines corrected; firmware README named a `flash.rs` that never existed in the app (flashing is `crates/fenix-flash`); ANALYSIS board state. `ideas.md`, `pics/ANALYSIS.md`, `app/src-tauri/resources/firmware/README.md`
   - [x] 12. Done: "History, frozen" line on POC-WRITEUP and the three legacy docs. History docs (`docs/POC-WRITEUP.md`, `docs/legacy/*`): one-line "history, not current" header if missing; no rewrite
-  - [ ] 13. Reference text outside `*.md`: CLI usage/help (`fenix-cli`), `tools/*.py` help strings, `board/sim/screens.txt` comments
-  - [ ] 14. Checks (`version.py`, `gen_tokens.py`, `registry.py`, `licenses.py`, `sim_config.py` --check), commit, push
+  - [x] 13. Done: CLI usage lists every command; tools/*.py docstrings match their flags. Reference text outside `*.md`: CLI usage/help (`fenix-cli`), `tools/*.py` help strings, `board/sim/screens.txt` comments
+  - [x] 14. Done: version, tokens, registry, licenses, sim config all ok; CI green from 90e0b03. Checks (`version.py`, `gen_tokens.py`, `registry.py`, `licenses.py`, `sim_config.py` --check), commit, push
 - [ ] P42 File-by-file code audit (user: logic errors, design errors, inefficient or tangled code, stale code; not a security review). Detailed per-file checklist written here before starting. Includes
   - [ ] PC to board traffic that could look odd to anti-cheat (Vanguard and similar): what the app does at runtime (serial port polling, process and hardware queries, LibreHardwareMonitor sidecar, sockets, injected or elevated anything, global hooks); findings and changes in `docs/decisions.md`
   - [ ] PC app page by page (run it, screenshots), board screen by screen (sim and the board): design language (DESIGN.md, hallmark skill), simple QoL, layout of the app and of board Settings
