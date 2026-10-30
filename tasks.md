@@ -283,6 +283,16 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 1. Done: chart colours are tokens `chart-1`/`chart-2` (DESIGN.md, tokens.json, gen_tokens); TitleBar and Welcome strokes use `var(--label-2)`; the first-run canvas (`ootb/screen.ts`) reads every colour from the tokens. Corrected: the "scrim 0.6" items were box-shadows; every scrim already uses `--scrim`. The 600 ms copy fades over the 3D board stay, documented as an exception in DESIGN.md Motion. Was: PC: Task manager chart colours `#3987e5` and `#d95926` to tokens (token source and `tools/gen_tokens.py`); `TitleBar` `#98989F` to the label-2 token; scrim `rgba(0,0,0,0.6)` to the 0.55 token in Settings and UpdateDialog; 600 ms board-screen fades (App, Connect, Welcome) to DESIGN.md durations or a documented exception
   - [ ] 2. Waiting: needs the PC app running for a screenshot (not launched while the user games). Task manager artboard in `docs/mockups.md`
   - [x] 3. Done: the 900 ms boot sweep is a looping progress line and the LED pulse is a physical light; both documented as exceptions in DESIGN.md Motion. Was: Board: check the 900 ms animation in `shell.cpp` and the 300 ms LED fade against DESIGN.md
+- [ ] P37 Known limits, open checks, docs pass (user 2026-10-31: "check on the known limits and find out why and check for more optimization", "what the hell is the issue about cli taps over wifi", "is [the web server] resource intensive", "run another full pass on checking all docs", "complete whatever is pending"; builds may use all 16 threads; the app may take focus)
+  - [ ] 1. CLI taps over Wi-Fi: find the exact cause on the board (dim wake, session end, touch timing), fix it, prove with taps over TCP
+  - [ ] 2. Stream over Wi-Fi: why fps falls 23 to 14 (where the UI task blocks: `send`, lwIP buffers, Nagle/ACK timing); fix and measure
+  - [ ] 3. Heap minimum 24 KB under stream and scans over Wi-Fi: find the consumers (lwIP pbufs, scan list, httpd, stream), cap them, measure
+  - [ ] 4. Web server cost: heap, stacks, CPU, idle and while a page polls; trim or make it start on demand if costly
+  - [ ] 5. More optimization found on the way (measure first)
+  - [ ] 6. PC app checks with the app open: Settings Wireless and Weather screenshots, Task manager artboard for `docs/mockups.md` (P35 step 2), the app over Wi-Fi (fixed port `tcp:fenixos.local`, then the unplugged-USB fallback with the user)
+  - [ ] 7. P33 Bluetooth: BLE GATT service, then SPP and BLE tests with the user pairing the board
+  - [ ] 8. Full docs pass: every `*.md`, code comments, CLI help, tasks.md; fix stale text with "Corrected:" notes
+  - [ ] 9. Release
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [ ] Phone Web Bluetooth page (user: later)
@@ -291,6 +301,7 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 
 ## Decisions
 
+- 2026-10-31: **Builds may use all cores** (user: "u can run builds using all available cores and threads"): `FENIX_CORES=16` with `tools/capped.ps1`, until the user says otherwise. Corrected the 2026-10-30 "back to 4 cores" entry below.
 - 2026-10-30: **Releases are the agent's job** (user: "handle all the versioning changes, release pushes urself"). Flow: bump VERSION, build locally (firmware and app), install the app (`/S` from PowerShell) and flash the board with `fenix flash`, then push the tag and let GitHub build at its own pace (no waiting on the run).
 
 - 2026-10-30 (later): **Builds back to 4 cores** (user: "all builds on 4 cores only like i had said", while gaming). `FENIX_CORES` unset. Corrected: the 8-core allowance below is withdrawn.
