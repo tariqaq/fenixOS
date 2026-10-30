@@ -313,7 +313,21 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 2. Done: UART RX 5 KB, Wi-Fi RX 2 KB, tcp_link 2560; TX kept. Boot heap 71.8 to 81.8 KB; installs 0.41-0.55 s; fps USB 25.0, Wi-Fi 25.8; stream heap min 23.9 KB; 0 RX errors. Was: Trim each to its peak plus margin only where stream fps (USB 23, Wi-Fi 20-22), install time and 0 RX errors hold. Same method as P37 step 3
   - [x] 3. Docs done (board-info P40 section and Corrected lines, packages.md, decisions); released v0.1.12 with P39 (installed /S exit 0, board v0.1.12, 82 KB free at boot on Wi-Fi). CI: the board job was red since 9dbe3b9 (P37) because `board/sim/lv_kconfig.h` was not regenerated after the layer buffer cut; fixed in 90e0b03, AGENTS.md test list now names `sim_config.py`. Was: Docs (board-info heap lines Corrected), release
 
-- [ ] P41 Docs audit 1 (user 2026-10-31, overnight goal): every `*.md` and reference file (README, docs/*, proto/spec.md, DESIGN.md, design/, AGENTS.md, CLAUDE.md, ideas.md, tasks.md, code-adjacent READMEs). Each: matches the code (code wins, rule 7), no stale numbers, versions, removed features or done TODOs; token-optimized (cut repetition, history only where it explains a choice; "Corrected:" kept short). Detailed per-file checklist written here before starting
+- [~] P41 Docs audit 1 (user 2026-10-31, overnight goal): every `*.md` and reference file matches the code (rule 7), no stale numbers, versions, removed features or done TODOs, token-optimized. Method per file: read whole, check each fact that names code (paths, constants, commands, sizes) against the code, fix, cut repetition. History docs stay frozen (header note only). Decisions in `docs/decisions.md` "2026-11-01: overnight run"
+  - [ ] 1. `tasks.md`: done phases P0-P40 (verbatim) to `docs/legacy/tasks-history.md`; here one line per done phase, open items kept whole (P21, P34 step 5 and 9, P37 steps 5 and 6), Decisions without the superseded entries
+  - [ ] 2. `README.md`, `AGENTS.md`, `CLAUDE.md`
+  - [ ] 3. `DESIGN.md` (tokens against `design/tokens.json`, `tools/gen_tokens.py` output, board `fenix_ui` and app CSS)
+  - [ ] 4. `proto/spec.md` (message table against `fenix_proto.h` and `msg.rs`)
+  - [ ] 5. `docs/PLAN.md` (status lines, partitions, limits, task table against code)
+  - [ ] 6. `docs/decisions.md` (Corrected notes still true; superseded rows marked)
+  - [ ] 7. `docs/board-info.md` (heap and image numbers: latest first, old ones marked history)
+  - [ ] 8. `docs/packages.md`, `docs/registry.md`, `docs/sidecars.md` (against `crates/fenix-pkg`, `tools/registry.py`, `app/src-tauri`)
+  - [ ] 9. `docs/toolchain.md`, `docs/tooling.md` (commands, versions, scripts that exist)
+  - [ ] 10. `docs/mockups.md`, `design/` references (artboard list against `design/mockups` and `canvas.json`)
+  - [ ] 11. `ideas.md`, `pics/ANALYSIS.md`, `app/src-tauri/resources/firmware/README.md`
+  - [ ] 12. History docs (`docs/POC-WRITEUP.md`, `docs/legacy/*`): one-line "history, not current" header if missing; no rewrite
+  - [ ] 13. Reference text outside `*.md`: CLI usage/help (`fenix-cli`), `tools/*.py` help strings, `board/sim/screens.txt` comments
+  - [ ] 14. Checks (`version.py`, `gen_tokens.py`, `registry.py`, `licenses.py`, `sim_config.py` --check), commit, push
 - [ ] P42 File-by-file code audit (user: logic errors, design errors, inefficient or tangled code, stale code; not a security review). Detailed per-file checklist written here before starting. Includes
   - [ ] PC to board traffic that could look odd to anti-cheat (Vanguard and similar): what the app does at runtime (serial port polling, process and hardware queries, LibreHardwareMonitor sidecar, sockets, injected or elevated anything, global hooks); findings and changes in `docs/decisions.md`
   - [ ] PC app page by page (run it, screenshots), board screen by screen (sim and the board): design language (DESIGN.md, hallmark skill), simple QoL, layout of the app and of board Settings
