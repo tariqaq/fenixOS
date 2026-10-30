@@ -1,5 +1,7 @@
 # Metrics validation
 
+> History, frozen: the FenixDeck PoC, not current fenixOS facts. Current: `docs/board-info.md`, `docs/PLAN.md`, `proto/spec.md`.
+
 Run on 2026-10-28 with `python tools/validate_metrics.py 15` (final build, LHM running). The script runs `fenix sample` alongside independent sources over the same 15 s window and compares means. It exits non-zero on any FAIL.
 
 Window: 15 s, 14 fenix samples, 14 typeperf, 15 nvidia-smi, 15 LHM.

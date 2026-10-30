@@ -1,5 +1,7 @@
 # FenixDeck v1 plan
 
+> History, frozen: the FenixDeck PoC, not current fenixOS facts. Current: `docs/board-info.md`, `docs/PLAN.md`, `proto/spec.md`.
+
 PC hardware monitor: a **Rust + Tauri 2** PC app collects all stats and does all processing. It pushes compact data to the **ESP32-2432S028R** over USB serial. The board firmware (**C++, ESP-IDF, LovyanGFX**) only receives data and draws it efficiently.
 
 Status: **v0.1 done (2026-10-28).** All phases executed; see `tasks.md` and README "Measured". This doc is updated to describe the system as built; §10 lists where the build departed from the original plan.

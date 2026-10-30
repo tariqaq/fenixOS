@@ -99,4 +99,4 @@ On V1.4, R15/R16/R17/R19/R20 sit in a row between the module and P3, and their v
 ## First flash (done 2026-10-28)
 - The CH340 driver (`docs/vendor/CH340/CH341SER.EXE`, local only) is installed; the board shows up as `COM9`.
 - The stock firmware (vendor LVGL demo) was backed up before flashing: `firmware/stock/` (local only), restore steps in `docs/board-info.md`.
-- The board then ran the FenixDeck firmware. Since 2026-10-29 the flash is erased, ready for fenixOS.
+- The board then ran the FenixDeck firmware. Since 2026-10-29 it runs fenixOS (`docs/board-info.md`).

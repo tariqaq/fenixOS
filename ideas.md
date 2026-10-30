@@ -73,7 +73,7 @@ Example (an illustration only; not part of v0.1): a stream-deck app is switched 
 
 ### 5.2 Flow
 
-1. Find and connect to the board. USB first; Wi-Fi and Bluetooth later.
+1. Find and connect to the board. USB first; Wi-Fi since P34 (Bluetooth was tried in P33 and removed in P38).
 2. Once connected: the **home dashboard** shows every installed app as a tile, in the style of Apple Shortcuts tiles but bigger (colour tile, icon top left, name bottom left). Each tile has an **on/off switch at its bottom right**.
 3. **Switch on** means the app's board part may run when it is opened on the board, and it gets installed to the board (section 4.5). **Switch off** means the board part says it is turned off on the host, and it is removed from the board.
 4. **Click a tile** to open that app's settings and customization. **Back** returns to the dashboard.
@@ -105,13 +105,13 @@ Example (an illustration only; not part of v0.1): a stream-deck app is switched 
 
 These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. They change parts of the idea, so each one is a question in section 11.
 
-- **C1. The board cannot keep time across power loss.** The 40 MHz crystal keeps time only while powered, at about ±1–2 s per day (typical ±10–20 ppm). There is no RTC battery and no 32 kHz crystal. Unplug or power loss means the time is gone; a soft reboot or deep sleep keeps it. A time source is needed: sync from the PC on connect (no Wi-Fi needed), Wi-Fi NTP (later), or set it by hand in Settings.
+- **C1. The board cannot keep time across power loss.** The 40 MHz crystal keeps time only while powered, at about ±1–2 s per day (typical ±10–20 ppm). There is no RTC battery and no 32 kHz crystal. Unplug or power loss means the time is gone; a soft reboot or deep sleep keeps it. A time source is needed: sync from the PC on connect (no Wi-Fi needed), SNTP over Wi-Fi (since P34), or set it by hand in Settings (not built).
 - **C2. Raw 10 fps screen streaming does not fit over USB serial.**
   - A full frame is 240 × 320 × 2 = 153,600 B. At 460800 baud (~46 KB/s) that is ~0.3 fps. Even at the CH340C's 2 Mbps peak (~200 KB/s, untested here) it is ~1.3 fps.
   - Ways to get ~10 fps:
     - Send only changed regions (the UI library's flush rectangles), compressed. A flat dark UI compresses very well.
     - Or have the PC rebuild the screen from UI state.
-    - Or Wi-Fi later.
+    - Or Wi-Fi (since P34 the stream runs over TCP too, at about the USB rate).
   - The board has no RAM for a full framebuffer (no PSRAM), so streaming must hook into the drawing path or read the LCD back (proven, but slow).
 - **C3. The board cannot run arbitrary native code downloaded at run time the easy way.** Options for the board half of an app:
   - Declarative packages: layout, assets and bindings that the firmware's UI engine renders, with the logic on the PC. Smallest and safest.
@@ -122,7 +122,7 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
 - **C6. Apple's fonts and SF Symbols can't be used.** Apple's license limits SF fonts to Apple platforms. It does not allow embedding them in a non-Apple app or firmware, nor even mock-ups of software for non-Apple systems. Use **Inter** (Google Fonts, OFL, designed in a similar spirit to SF Pro) or a similar open font. Icons need an open set too (for example Lucide, Phosphor, Material Symbols Rounded).
 - **C7. Private repo vs. central registry** (resolved: the repo is now public). This repo was private, so the PC app cannot read the registry from it without a GitHub token. Options: a token in the PC app, a separate public registry repo, or making this repo public.
 - **C8. Flash budget.** 4 MB total. The current plan has room for the firmware plus about 1.9 MB of app storage (LittleFS). Firmware updates through the PC app (by serial bootloader) need no OTA partitions. On-board OTA slots would take ~1.5 MB more.
-- **C9. RAM budget.** ~260 KB of heap before our own buffers, no PSRAM. The UI library choice (LVGL 9 vs a custom renderer), render buffers, an app runtime and later Wi-Fi (~45 KB+) all share it.
+- **C9. RAM budget.** ~260 KB of heap before our own buffers, no PSRAM. The UI library choice (LVGL 9 vs a custom renderer), render buffers, an app runtime and Wi-Fi all share it (measured: `docs/board-info.md` "Current numbers").
 - **C10. Installing apps from GitHub runs code on the PC.** Each app's PC half needs a runtime (WASM plugin, separate process, or script) and a trust model: pinned versions, checksums, and only the user's own repos.
 
 ## 10. Things that may be missing (suggested)
@@ -151,7 +151,7 @@ Details and the options offered: `docs/decisions.md`.
 - Orientation: **switchable in Settings**, all 4 rotations; every layout adapts.
 - Versions: stay on IDF 5.5.5, LovyanGFX 1.2.35. Corrected 2026-10-29: update the CH340 driver (3.3.2011.11 crashed Windows; `docs/board-info.md`).
 - Navigation: iOS-style **top nav bar** (`< Home`, centred title).
-- Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, Wi-Fi NTP later; no manual set. `--:--` until the first sync after power-up.
+- Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, SNTP in Wi-Fi mode since P34; no manual set. `--:--` until the first sync after power-up.
 - Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE/LZ); ~10 fps in normal use.
 - Shut down (C4): **deep sleep, tap to wake** (touch IRQ GPIO36) or RST. Corrected (P19): light sleep, then a restart on the tap.
 - PC app: **Rust + Tauri 2 + Svelte 5**.

@@ -1,5 +1,7 @@
 # FenixDeck PoC write-up: everything learned
 
+> History, frozen: the FenixDeck PoC, not current fenixOS facts. Current: `docs/board-info.md`, `docs/PLAN.md`, `proto/spec.md`.
+
 Written 2026-10-29 at the end of the FenixDeck proof of concept (v0.1, 2026-10-23 to 2026-10-28).
 
 This is the hand-over document for the next project: a new repo that builds "an OS of sorts" for the same board. It is meant to be read on its own, without the FenixDeck code next to it. Every number here was measured on the real hardware or checked against a named source, unless it is marked as an estimate or as unverified.

@@ -1,5 +1,7 @@
 # FenixDeck wire protocol v1
 
+> History, frozen: the FenixDeck PoC, not current fenixOS facts. Current: `docs/board-info.md`, `docs/PLAN.md`, `proto/spec.md`.
+
 Source of truth for both sides:
 - Rust: `crates/fenix-proto`
 - C++: `board/components/fenix_proto`

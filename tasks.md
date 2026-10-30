@@ -70,9 +70,9 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
   - [x] 7. Done: "Current numbers (v0.1.12)" table at the top; the rest is a dated log (history). `docs/board-info.md` (heap and image numbers: latest first, old ones marked history)
   - [x] 8. Done: fonts, icon sizes, limits, kinds, keys, registry rules (name 24, description 100, permissions, allowed URL), empty index all match the code. `docs/packages.md`, `docs/registry.md`, `docs/sidecars.md` (against `crates/fenix-pkg`, `tools/registry.py`, `app/src-tauri`)
   - [x] 9. Done: mdns pin, CLI commands and `tcp:` port, `sim_config.py`, cores line; tooling.md header and DESIGN.md line. `docs/toolchain.md`, `docs/tooling.md` (commands, versions, scripts that exist)
-  - [ ] 10. `docs/mockups.md`, `design/` references (artboard list against `design/mockups` and `canvas.json`)
-  - [ ] 11. `ideas.md`, `pics/ANALYSIS.md`, `app/src-tauri/resources/firmware/README.md`
-  - [ ] 12. History docs (`docs/POC-WRITEUP.md`, `docs/legacy/*`): one-line "history, not current" header if missing; no rewrite
+  - [x] 10. Done: 25 artboard files match the table; Settings row names Wireless. `docs/mockups.md`, `design/` references (artboard list against `design/mockups` and `canvas.json`)
+  - [x] 11. Done: Wi-Fi/NTP/Bluetooth "later" lines corrected; firmware README named a `flash.rs` that never existed in the app (flashing is `crates/fenix-flash`); ANALYSIS board state. `ideas.md`, `pics/ANALYSIS.md`, `app/src-tauri/resources/firmware/README.md`
+  - [x] 12. Done: "History, frozen" line on POC-WRITEUP and the three legacy docs. History docs (`docs/POC-WRITEUP.md`, `docs/legacy/*`): one-line "history, not current" header if missing; no rewrite
   - [ ] 13. Reference text outside `*.md`: CLI usage/help (`fenix-cli`), `tools/*.py` help strings, `board/sim/screens.txt` comments
   - [ ] 14. Checks (`version.py`, `gen_tokens.py`, `registry.py`, `licenses.py`, `sim_config.py` --check), commit, push
 - [ ] P42 File-by-file code audit (user: logic errors, design errors, inefficient or tangled code, stale code; not a security review). Detailed per-file checklist written here before starting. Includes

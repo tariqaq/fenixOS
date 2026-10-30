@@ -5,7 +5,7 @@ https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji
 
 Source copies of every artboard: `design/mockups/` (`*.dc.html` + `canvas.json`; they render only inside the canvas). Built from the locked design system in `DESIGN.md` (Apple dark, Inter, Phosphor). Board screens are drawn at 2x (320×240 shown as 640×480). PC screens are 1280×800 with the custom dark title bar.
 
-Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with the round 7 changes below applied. New screens come in design round 2 (`docs/PLAN.md` P2).
+Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with the round 7 changes below applied. 25 artboards, all in `design/mockups/`. Screens added later without an artboard are noted in their rows.
 
 ## Artboards
 
@@ -16,7 +16,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 2b | HomeB | Home, landscape: clock + date, icon dock (second style, picked in Settings › Home screen) |
 | 2c | HomePortrait | Home, portrait 240×320 |
 | 2d | HomeNoTime | Home before the first PC time sync (`--:--`) |
-| 3 | Settings | Settings list: Display, Home screen (Tiles / Dock), Storage, Host PC, About (P21 added a Debug switch at the end, no artboard) |
+| 3 | Settings | Settings list: Display, Home screen (Tiles / Dock), Storage, Host PC, About (added without artboards: Wireless, P32, a Wi-Fi / Off list with the scan list; Debug switch at the end, P21) |
 | 3a | SettingsDisplay | Brightness, auto-dim level, dim after, rotation, calibrate touch (P21 added a Burn-in protection switch below them, no artboard) |
 | 3b | SettingsAbout | Board, chip, CPU, memory free, flash, display |
 | 4 | Session | Shut down / Restart pop-up |
