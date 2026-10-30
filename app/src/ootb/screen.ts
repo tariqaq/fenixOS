@@ -11,8 +11,13 @@ export type ScreenMode = "off" | "boot" | "install" | "home";
 const W = 640;
 const H = 480;
 const FONT = '"Inter Variable", Inter, system-ui, sans-serif';
-const LABEL_2 = "#98989F";
-const SURFACE_3 = "#3A3A3C";
+// Canvas fills cannot use CSS variables: read the design tokens once (fallbacks: DESIGN.md).
+const token = (name: string, fallback: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+const LABEL_2 = token("--label-2", "#98989F");
+const SURFACE_3 = token("--surface-3", "#3A3A3C");
+const BG = token("--bg", "#000000");
+const LABEL = token("--label", "#FFFFFF");
 
 function icon(svg: string, color: string): HTMLImageElement {
   const img = new Image();
@@ -23,10 +28,10 @@ function icon(svg: string, color: string): HTMLImageElement {
 }
 
 const icons = {
-  gear: icon(gearSvg, "#FFFFFF"),
-  power: icon(powerSvg, "#FFFFFF"),
-  cast: icon(castSvg, "#FFFFFF"),
-  plug: icon(plugSvg, "#30D158"),
+  gear: icon(gearSvg, token("--label", "#FFFFFF")),
+  power: icon(powerSvg, token("--label", "#FFFFFF")),
+  cast: icon(castSvg, token("--label", "#FFFFFF")),
+  plug: icon(plugSvg, token("--success", "#30D158")),
 };
 
 // A broken image is also `complete`, and drawImage throws on it.
@@ -49,7 +54,7 @@ export class Screen {
   /** Draw `mode` at time `t` (ms). `progress` is 0..1 for "install". */
   draw(mode: ScreenMode, t: number, progress = 0) {
     const g = this.g;
-    g.fillStyle = "#000";
+    g.fillStyle = BG;
     g.fillRect(0, 0, W, H);
     if (mode === "off") return;
     if (mode === "home") return this.home();
@@ -57,7 +62,7 @@ export class Screen {
     const top = 170;
     g.textAlign = "center";
     g.textBaseline = "alphabetic";
-    g.fillStyle = "#FFF";
+    g.fillStyle = LABEL;
     g.font = `600 44px ${FONT}`;
     g.fillText("fenixOS", W / 2, top + 40);
     g.fillStyle = LABEL_2;
@@ -70,7 +75,7 @@ export class Screen {
     g.fillStyle = SURFACE_3;
     g.fill();
     g.clip();
-    g.fillStyle = "#FFF";
+    g.fillStyle = LABEL;
     if (mode === "install") {
       g.fillRect(tx, ty, 240 * Math.min(1, Math.max(0, progress)), 6);
     } else {
@@ -92,7 +97,7 @@ export class Screen {
     const mm = String(now.getMinutes()).padStart(2, "0");
     g.textAlign = "left";
     g.textBaseline = "alphabetic";
-    g.fillStyle = "#FFF";
+    g.fillStyle = LABEL;
     g.font = `600 128px ${FONT}`;
     g.fillText(`${hh}:${mm}`, 20, 156);
     g.fillStyle = LABEL_2;
@@ -104,9 +109,9 @@ export class Screen {
     g.font = `400 24px ${FONT}`;
     g.fillText("PC", 586, 68);
     const tiles: [string, string, HTMLImageElement][] = [
-      ["Settings", "#636366", icons.gear],
-      ["Session", "#4B48C9", icons.power],
-      ["Stream", "#0062CC", icons.cast],
+      ["Settings", token("--tile-gray", "#636366"), icons.gear],
+      ["Session", token("--tile-indigo", "#4B48C9"), icons.power],
+      ["Stream", token("--tile-blue", "#0062CC"), icons.cast],
     ];
     tiles.forEach(([name, color, img], i) => {
       const x = 24 + i * 200;
@@ -115,7 +120,7 @@ export class Screen {
       g.fillStyle = color;
       g.fill();
       if (ready(img)) g.drawImage(img, x + 22, y + 22, 40, 40);
-      g.fillStyle = "#FFF";
+      g.fillStyle = LABEL;
       g.font = `600 28px ${FONT}`;
       g.fillText(name, x + 22, y + 108);
     });

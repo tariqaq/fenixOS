@@ -11,8 +11,8 @@
   const LEN = 60;
   // The USB link: 921,600 baud, 10 bits a byte.
   const LINK_BPS = 92160;
-  const SERIES_1 = "#3987e5";
-  const SERIES_2 = "#d95926";
+  const SERIES_1 = "var(--chart-1)";
+  const SERIES_2 = "var(--chart-2)";
 
   let cur = $state<Sysinfo | null>(null);
   let unsupported = $state(false);

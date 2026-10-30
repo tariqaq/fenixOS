@@ -10,13 +10,13 @@
   <p data-tauri-drag-region>fenixOS</p>
   <div class="buttons">
     <button type="button" aria-label="Minimize" onclick={() => win.minimize()}>
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="0" y1="5" x2="10" y2="5" stroke="#98989F" stroke-width="1" /></svg>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="0" y1="5" x2="10" y2="5" stroke="var(--label-2)" stroke-width="1" /></svg>
     </button>
     <button type="button" aria-label="Maximize" onclick={() => win.toggleMaximize()}>
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="#98989F" stroke-width="1" /></svg>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="0.5" y="0.5" width="9" height="9" fill="none" stroke="var(--label-2)" stroke-width="1" /></svg>
     </button>
     <button type="button" class="close" aria-label="Close to tray" onclick={() => win.close()}>
-      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0 L10 10 M10 0 L0 10" stroke="#98989F" stroke-width="1" /></svg>
+      <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0 L10 10 M10 0 L0 10" stroke="var(--label-2)" stroke-width="1" /></svg>
     </button>
   </div>
 </header>

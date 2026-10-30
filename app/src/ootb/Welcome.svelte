@@ -162,10 +162,10 @@
 <header data-tauri-drag-region>
   <button type="button" class="skip" onclick={skip}>Skip</button>
   <button type="button" class="ctl" aria-label="Minimize" onclick={() => win.minimize()}>
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="0" y1="5" x2="10" y2="5" stroke="#98989F" /></svg>
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><line x1="0" y1="5" x2="10" y2="5" stroke="var(--label-2)" /></svg>
   </button>
   <button type="button" class="ctl" aria-label="Close" onclick={close}>
-    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0 L10 10 M10 0 L0 10" stroke="#98989F" /></svg>
+    <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M0 0 L10 10 M10 0 L0 10" stroke="var(--label-2)" /></svg>
   </button>
 </header>
 

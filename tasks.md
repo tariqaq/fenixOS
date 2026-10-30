@@ -279,10 +279,10 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [x] 7. Done: `web.cpp`, http://fenixos.local/ status page (status only: no password on the network), /status.json; tested with curl. No artboard: grouped rows from the tokens. Was: Phone web page: `esp_http_server` on port 80, small status and control page in the design language (artboard first)
   - [x] 8. Done: stream over TCP 47.3 KB/s, 0 drops, board fps 14.4 (UI blocks in send); max RTT 138 ms (USB 11 ms); heap 65-67 KB with all services, min 24 KB after streams and scans (board-info). Install over TCP: sample app 1643 B in 0.10 s (`fenix --port tcp:fenixos.local install`). Measure: TCP throughput and RTT against USB (`fenix bench` over TCP), heap under traffic, fps while streaming over Wi-Fi
   - [ ] 9. Docs, release
-- [ ] P35 Design-language fixes (P30 audit)
-  - [ ] 1. PC: Task manager chart colours `#3987e5` and `#d95926` to tokens (token source and `tools/gen_tokens.py`); `TitleBar` `#98989F` to the label-2 token; scrim `rgba(0,0,0,0.6)` to the 0.55 token in Settings and UpdateDialog; 600 ms board-screen fades (App, Connect, Welcome) to DESIGN.md durations or a documented exception
-  - [ ] 2. Task manager artboard in `docs/mockups.md`
-  - [ ] 3. Board: check the 900 ms animation in `shell.cpp` and the 300 ms LED fade against DESIGN.md
+- [~] P35 Design-language fixes (P30 audit)
+  - [x] 1. Done: chart colours are tokens `chart-1`/`chart-2` (DESIGN.md, tokens.json, gen_tokens); TitleBar and Welcome strokes use `var(--label-2)`; the first-run canvas (`ootb/screen.ts`) reads every colour from the tokens. Corrected: the "scrim 0.6" items were box-shadows; every scrim already uses `--scrim`. The 600 ms copy fades over the 3D board stay, documented as an exception in DESIGN.md Motion. Was: PC: Task manager chart colours `#3987e5` and `#d95926` to tokens (token source and `tools/gen_tokens.py`); `TitleBar` `#98989F` to the label-2 token; scrim `rgba(0,0,0,0.6)` to the 0.55 token in Settings and UpdateDialog; 600 ms board-screen fades (App, Connect, Welcome) to DESIGN.md durations or a documented exception
+  - [ ] 2. Waiting: needs the PC app running for a screenshot (not launched while the user games). Task manager artboard in `docs/mockups.md`
+  - [x] 3. Done: the 900 ms boot sweep is a looping progress line and the LED pulse is a physical light; both documented as exceptions in DESIGN.md Motion. Was: Board: check the 900 ms animation in `shell.cpp` and the 300 ms LED fade against DESIGN.md
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [ ] Phone Web Bluetooth page (user: later)
