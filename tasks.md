@@ -63,7 +63,7 @@ Releases: v0.1.0 (P10) to v0.1.12 (P39, P40); tags on GitHub.
 - [~] P41 Docs audit 1 (user 2026-10-31, overnight goal): every `*.md` and reference file matches the code (rule 7), no stale numbers, versions, removed features or done TODOs, token-optimized. Method per file: read whole, check each fact that names code (paths, constants, commands, sizes) against the code, fix, cut repetition. History docs stay frozen (header note only). Decisions in `docs/decisions.md` "2026-11-01: overnight run"
   - [x] 1. Done: 88.7 KB to 6.7 KB. `tasks.md`: done phases P0-P40 (verbatim) to `docs/legacy/tasks-history.md`; here one line per done phase, open items kept whole (P21, P34 step 5 and 9, P37 steps 5 and 6), Decisions without the superseded entries
   - [x] 2. Done: README (Wi-Fi in the board line, images in the element list, "CH340 note above"), AGENTS (cores line, history pointer), legacy README (history file). CLAUDE.md is the one-line import. `README.md`, `AGENTS.md`, `CLAUDE.md`
-  - [ ] 3. `DESIGN.md` (tokens against `design/tokens.json`, `tools/gen_tokens.py` output, board `fenix_ui` and app CSS)
+  - [x] 3. Done: board type table matches `tools/gen_fonts.py` weights; icon sizes and the full icon map; unused `bluetooth` glyph dropped from the icon fonts (P38 leftover; firmware build in P42). `DESIGN.md` (tokens against `design/tokens.json`, `tools/gen_tokens.py` output, board `fenix_ui` and app CSS)
   - [ ] 4. `proto/spec.md` (message table against `fenix_proto.h` and `msg.rs`)
   - [ ] 5. `docs/PLAN.md` (status lines, partitions, limits, task table against code)
   - [ ] 6. `docs/decisions.md` (Corrected notes still true; superseded rows marked)

@@ -56,7 +56,6 @@ LV_FONT_DECLARE(fx_icon_bold_14)
 #define FX_ICON_WIFI_MEDIUM "\xEE\x93\xAE"
 #define FX_ICON_WIFI_LOW "\xEE\x93\xAC"
 #define FX_ICON_WIFI_NONE "\xEE\x93\xB0"
-#define FX_ICON_BLUETOOTH "\xEE\x83\x9A"
 #define FX_ICON_LOCK "\xEE\x8B\xBA"
 #define FX_ICON_CARET_LEFT "\xEE\x84\xB8"
 #define FX_ICON_CARET_RIGHT "\xEE\x84\xBA"

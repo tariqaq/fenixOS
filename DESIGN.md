@@ -75,9 +75,9 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 | `clock` | 64 px Inter Display Semibold, tabular | Home time (portrait 56 px) |
 | `title-l` | 22 px Semibold | Boot wordmark, sheet titles |
 | `title` | 17 px Semibold | Nav bar title, primary buttons |
-| `body` | 15 px Regular / Medium | List rows, messages |
-| `label` | 13 px Semibold | Tile names, date line (Medium) |
-| `caption` | 12 px Regular | Footnotes, values in small rows |
+| `body` | 15 px Regular / Semibold | List rows, messages; Semibold for button text |
+| `label` | 13 px Regular / Medium / Semibold | Tile names (Semibold), date line (Medium), small rows |
+| `caption` | 12 px Regular / Medium | Footnotes, values in small rows |
 
 ### PC app (CSS px)
 
@@ -92,7 +92,7 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 
 ## Icons
 
-**Phosphor** (MIT), v2.1.1. Fill weight on tiles and status glyphs; bold weight for chevrons, plus and close. On the board, the used glyphs are packed into an icon font (`lv_font_conv`) at 20 px and 28 px.
+**Phosphor** (MIT), v2.1.1. Fill weight on tiles and status glyphs; bold weight for chevrons, plus and close. On the board, the used glyphs are packed into icon fonts by `tools/gen_fonts.py`: fill at 12, 14, 15, 16, 18, 20, 26, 28 and 40 px, bold at 10 and 14 px. The first 20 fill icons (Settings to Monitor below) are also the built-in icons apps can use (`docs/packages.md`).
 
 | Meaning | Phosphor name |
 |---|---|
@@ -102,9 +102,13 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 | Reboot | `arrow-clockwise` |
 | Back | `caret-left` |
 | Host connected / not connected | `plugs-connected` / `plugs` |
-| Brightness / auto-dim / dim timeout | `sun` / `moon` / `timer` |
+| Display and brightness / auto-dim / dim timeout | `sun` / `moon` / `timer` |
 | Rotation / touch calibration | `device-rotate` / `hand-tap` |
 | Storage / host PC / about | `hard-drives` / `desktop-tower` / `info` |
+| Home screen / debug / app without icon | `squares-four` / `warning` / `puzzle-piece` |
+| Done / failed or stop / burn-in protection | `check-circle` / `x-circle` / `monitor` |
+| Wi-Fi strength / secured network | `wifi-high`, `wifi-medium`, `wifi-low`, `wifi-none` / `lock` |
+| Back, forward, selected, add, close (bold) | `caret-left`, `caret-right`, `check`, `plus`, `x` |
 
 ## Shape and space
 
