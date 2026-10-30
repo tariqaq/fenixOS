@@ -250,6 +250,8 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
 
 ## Decisions
 
+- 2026-10-30: **Releases are the agent's job** (user: "handle all the versioning changes, release pushes urself"). Flow: bump VERSION, build locally (firmware and app), install the app (`/S` from PowerShell) and flash the board with `fenix flash`, then push the tag and let GitHub build at its own pace (no waiting on the run).
+
 - 2026-10-30: **Builds may use 8 cores at normal priority until further notice** (user: "your free to do builds on 8 cores at default priority untill further notice"): `$env:FENIX_CORES = 8` before `tools/capped.ps1`. Default stays 4.
 
 - 2026-10-29: **The agent may bump the version, tag and push releases at any time** (user: "i permit u at all times").
