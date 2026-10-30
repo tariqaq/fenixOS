@@ -12,6 +12,10 @@ static void show(Builder b, lv_screen_load_anim_t anim) {
   sheet_close();
   lv_obj_t* scr = screen_new();
   b(scr);
+  // Lay out now: a press read before the next refresh would hit-test rows still at 0,0 with
+  // no size and land on the scroll area, losing the tap (P37: a CLI tap right after the
+  // connect rebuild).
+  lv_obj_update_layout(scr);
   // Always through lv_screen_load_anim with auto-delete: it also finishes a slide still
   // running, so the old screen is never deleted twice or left half moved.
   uint32_t ms = anim == LV_SCREEN_LOAD_ANIM_NONE ? 0 : FX_MOTION_BASE_MS;

@@ -115,7 +115,7 @@ struct RemoteLink {
 void link_remote_start(const RemoteLink* t, size_t rx_buf);  // once, from radio_start
 void link_remote_rx(const uint8_t* d, size_t n);             // transport task; waits while full
 void link_remote_closed();                                   // the peer went away
-bool link_via_remote();                                      // the session runs over the radio
+const char* link_remote_name();  // the session's radio ("Wi-Fi", "Bluetooth"), or nullptr on USB
 
 // ---- Radios (P32): one at a time; switching saves the mode and restarts ----
 struct RadioInfo {

@@ -29,6 +29,9 @@ CONFIG_LV_USE_CLIB_MALLOC=y
 CONFIG_LV_USE_CLIB_STRING=y
 CONFIG_LV_USE_CLIB_SPRINTF=y
 CONFIG_LV_DEF_REFR_PERIOD=16
+# Widgets with style opacity draw through this layer in strips (P37): 24 KB by default was the
+# peak that ran the heap out during a stream over Wi-Fi; 8 KB means more, shorter strips.
+CONFIG_LV_DRAW_LAYER_SIMPLE_BUF_SIZE=8192
 # Rendering speed (P4 profiling, docs/board-info.md): corner masks for many radii, style lookups.
 CONFIG_LV_DRAW_SW_CIRCLE_CACHE_SIZE=16
 CONFIG_LV_OBJ_STYLE_CACHE=y
@@ -93,10 +96,23 @@ CONFIG_BT_SMP_MAX_BONDS=4
 CONFIG_BT_STACK_NO_LOG=y
 # CONFIG_BT_BLE_42_DTM_TEST_EN is not set
 # CONFIG_BT_BLE_42_SCAN_EN is not set
-# Wi-Fi at full speed: IRAM speed options and default buffers stay on; lwIP hot paths in IRAM.
-# Wi-Fi events (scan results, state) are framed for the PC on the event task: 1.2 KB frame
-# buffer on its stack. 2304 overflowed after a scan; 4096 left 744 B (P32).
-CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=5120
+# Wi-Fi at full speed: IRAM speed options stay on; lwIP hot paths in IRAM.
+# Dynamic Wi-Fi buffers capped at 16 each way (default 32, P37): a stream over Wi-Fi held
+# ~26 KB in flight and ran the heap down to 2 KB.
+CONFIG_ESP_WIFI_DYNAMIC_TX_BUFFER_NUM=10
+CONFIG_ESP_WIFI_DYNAMIC_RX_BUFFER_NUM=10
+# Static RX buffers stay allocated in Wi-Fi mode (1.6 KB each): 8, still above the 6-frame
+# block-ack window (default 10, P37).
+CONFIG_ESP_WIFI_STATIC_RX_BUFFER_NUM=8
+# Stacks with KBs unused (P37 high-water marks): esp_timer used ~0.7 KB, mDNS ~1.5 KB.
+CONFIG_ESP_TIMER_TASK_STACK_SIZE=2560
+CONFIG_MDNS_TASK_STACK_SIZE=3072
+# Each small send() got a whole-MSS (1.5 KB) pbuf, and 16 of them queue: a quarter MSS keeps
+# a pbuf near the size of its data (P37; off is not allowed with single-pbuf Wi-Fi TX).
+CONFIG_LWIP_TCP_OVERSIZE_QUARTER_MSS=y
+# Wi-Fi events (scan results, state) are framed for the PC on the event task. Frames are built
+# in a static buffer since P34, so the task peaks at ~1.1 KB: 3072 (was 5120, P32).
+CONFIG_ESP_SYSTEM_EVENT_TASK_STACK_SIZE=3072
 CONFIG_LWIP_IRAM_OPTIMIZATION=y
 # IRAM: Bluedroid with Wi-Fi's speed options overflows by 25 KB. These go to flash, and SRAM1
 # as IRAM covers the rest from the heap (only what is used, ~4 KB; needs an IDF 5.x bootloader).

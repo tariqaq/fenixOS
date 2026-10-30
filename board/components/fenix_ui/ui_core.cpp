@@ -193,6 +193,7 @@ void backlight_fade_out() {
 // ---- Touch ----
 // The first touch while dimmed (or resting) only wakes the screen: it is swallowed until released.
 static bool s_swallow;
+static bool s_pressed;  // the last read was a press (touch or the PC's)
 
 static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
   int16_t x, y;
@@ -211,6 +212,7 @@ static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
     lv_display_trigger_activity(s_disp);  // a swallowed press does not count as activity
     bl_fade(s_level, FX_MOTION_FAST_MS);
   }
+  s_pressed = down;
   if (s_swallow) {
     if (!down) s_swallow = false;
     d->state = LV_INDEV_STATE_RELEASED;
@@ -222,6 +224,8 @@ static void touch_cb(lv_indev_t*, lv_indev_data_t* d) {
   }
   d->state = down ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
 }
+
+bool pressed() { return s_pressed; }
 
 // ---- Core ----
 

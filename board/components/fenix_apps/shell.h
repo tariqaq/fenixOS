@@ -26,6 +26,7 @@ constexpr uint8_t STREAM_FPS = 10;
 void stream_start_local();
 void stream_stop_local();
 uint8_t current_screen();  // fnx::screen value
+void link_text(char* out, size_t cap);  // "USB, 921600 baud" or the session's radio
 
 // RGB LED status (PLAN §3: host connected = short green pulse, busy = dim blue, error = dim red).
 void led_pulse_connected();

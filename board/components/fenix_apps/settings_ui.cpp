@@ -280,7 +280,7 @@ static void host_screen(lv_obj_t* scr) {
   info_row(g, "Status", conn ? "Connected" : "Not connected");
   separator(g, 10);
   char v[32];
-  snprintf(v, sizeof v, "USB, %u baud", (unsigned)fnx::BAUD);
+  link_text(v, sizeof v);
   info_row(g, "Link", v);
   separator(g, 10);
   info_row(g, "Time", sys::clock_valid() ? "Set by your PC" : "Not set");

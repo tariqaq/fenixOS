@@ -57,7 +57,7 @@ void stream_screen(lv_obj_t* scr) {
   snprintf(v, sizeof v, "%u fps", (unsigned)sh.stream_fps);
   info_row(g, "Rate", v);
   separator(g, 10);
-  snprintf(v, sizeof v, "USB, %u baud", (unsigned)fnx::BAUD);
+  link_text(v, sizeof v);
   info_row(g, "Link", v);
   lv_obj_t* b = capsule(c, FX_ICON_X_CIRCLE, &fx_icon_fill_14, "Stop streaming", FX_COLOR_SURFACE_2, 36, stop_cb,
                         nullptr);

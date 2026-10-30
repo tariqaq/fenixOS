@@ -96,7 +96,7 @@ void web_start() {
   c.max_open_sockets = 3;  // a phone or two; each socket costs lwIP buffers
   c.lru_purge_enable = true;
   c.core_id = 0;           // the UI keeps core 1
-  c.stack_size = 4096;
+  c.stack_size = 3072;     // P37: the status handler peaks at 1.3 KB
   httpd_handle_t h = nullptr;
   if (httpd_start(&h, &c) != ESP_OK) return;
   httpd_uri_t u = {};

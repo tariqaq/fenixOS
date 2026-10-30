@@ -11,6 +11,7 @@
 #include "fenix_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/stream_buffer.h"
 #include "freertos/task.h"
 #include "lwip/netdb.h"
 #include "lwip/sockets.h"
@@ -24,27 +25,49 @@ namespace fx::sys {
 static volatile int s_client = -1;
 static SemaphoreHandle_t s_sock_lock;  // a send never runs on a socket being closed
 
-// Whole frame or none: a send that stalls (500 ms) or fails ends the connection, so the
-// PC never sees half a frame followed by the next.
+// Frames go into a send ring that the tcp_tx task drains (P37). A send() into lwIP's 5.7 KB
+// buffer blocks while Wi-Fi catches up; from the UI task (the stream) that stalled the UI and
+// dropped the board's frame rate from 23 to 14 fps. The ring reports its real free room, so
+// the stream skips a band instead of waiting.
+static constexpr size_t TX_RING = 6144;  // one 4 KB stream band and a few small frames
+static StreamBufferHandle_t s_tx;
+
+// Whole frame or none. Callers hold the link TX lock, so frames never interleave. A frame
+// that finds no room for 500 ms ends the connection: the PC is not reading.
 static bool tcp_write(const uint8_t* d, size_t n) {
-  xSemaphoreTake(s_sock_lock, portMAX_DELAY);
-  int c = s_client;
-  bool ok = c >= 0;
-  for (size_t off = 0; ok && off < n;) {
-    int k = send(c, d + off, n - off, 0);
-    if (k <= 0) {
-      shutdown(c, SHUT_RDWR);  // the reader sees the close and cleans up
-      ok = false;
-    } else {
-      off += k;
-    }
+  if (s_client < 0 || n > TX_RING) return false;
+  for (int i = 0; i < 50 && xStreamBufferSpacesAvailable(s_tx) < n; i++) vTaskDelay(pdMS_TO_TICKS(10));
+  if (s_client < 0) return false;
+  if (xStreamBufferSpacesAvailable(s_tx) < n) {
+    xSemaphoreTake(s_sock_lock, portMAX_DELAY);
+    if (s_client >= 0) shutdown(s_client, SHUT_RDWR);  // the reader sees the close and cleans up
+    xSemaphoreGive(s_sock_lock);
+    return false;
   }
-  xSemaphoreGive(s_sock_lock);
-  return ok;
+  xStreamBufferSend(s_tx, d, n, 0);
+  return true;
 }
 
-// lwIP does not report free send-buffer space; Wi-Fi drains faster than the stream fills it.
-static size_t tcp_tx_free() { return s_client >= 0 ? 8192 : 0; }
+static size_t tcp_tx_free() { return s_client >= 0 ? xStreamBufferSpacesAvailable(s_tx) : 0; }
+
+// Drains the ring into the socket. Bytes left from a closed connection are thrown away.
+static void tcp_tx_task(void*) {
+  static uint8_t buf[1440];  // one TCP segment
+  for (;;) {
+    size_t n = xStreamBufferReceive(s_tx, buf, sizeof buf, portMAX_DELAY);
+    xSemaphoreTake(s_sock_lock, portMAX_DELAY);
+    int c = s_client;
+    for (size_t off = 0; c >= 0 && off < n;) {
+      int k = send(c, buf + off, n - off, 0);  // SO_SNDTIMEO: 500 ms
+      if (k <= 0) {
+        shutdown(c, SHUT_RDWR);
+        break;
+      }
+      off += k;
+    }
+    xSemaphoreGive(s_sock_lock);
+  }
+}
 
 static const RemoteLink TCP_LINK = {"Wi-Fi", tcp_write, tcp_tx_free};
 
@@ -71,14 +94,18 @@ static void tcp_task(void*) {
     setsockopt(c, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof one);
     timeval tv = {0, 500000};
     setsockopt(c, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+    // The new client never gets the old one's unsent bytes: wait for tcp_tx to drop them.
+    while (!xStreamBufferIsEmpty(s_tx)) vTaskDelay(pdMS_TO_TICKS(10));
     s_client = c;
     for (;;) {
       int n = recv(c, buf, sizeof buf, 0);
       if (n <= 0) break;
       link_remote_rx(buf, n);
     }
-    xSemaphoreTake(s_sock_lock, portMAX_DELAY);
+    // Cleared before the lock: tcp_tx retakes it after each segment, and the stream refills
+    // the ring while s_client is set, so waiting for the lock first could wait forever.
     s_client = -1;
+    xSemaphoreTake(s_sock_lock, portMAX_DELAY);
     close(c);
     xSemaphoreGive(s_sock_lock);
     link_remote_closed();
@@ -233,8 +260,10 @@ static void wx_task(void*) {
 
 void net_start() {
   s_sock_lock = xSemaphoreCreateMutex();
+  s_tx = xStreamBufferCreate(TX_RING, 1);
   link_remote_start(&TCP_LINK, 8192);  // as the UART: 4 install chunks in flight
   xTaskCreatePinnedToCore(tcp_task, "tcp_link", 3072, nullptr, 5, nullptr, 0);
+  xTaskCreatePinnedToCore(tcp_tx_task, "tcp_tx", 2560, nullptr, 5, nullptr, 0);
   if (mdns_init() == ESP_OK) {
     mdns_hostname_set("fenixos");
     mdns_instance_name_set("fenixOS");
@@ -248,7 +277,7 @@ void net_start() {
   c.sync_cb = sntp_synced;
   esp_netif_sntp_init(&c);
   place_load();
-  xTaskCreatePinnedToCore(wx_task, "weather", 4096, nullptr, 2, &s_wx_task, 0);
+  xTaskCreatePinnedToCore(wx_task, "weather", 3072, nullptr, 2, &s_wx_task, 0);
 }
 
 // Each new address (radio.cpp, GOT_IP): ask for the time now.

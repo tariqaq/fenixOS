@@ -1,4 +1,5 @@
 // Shell: boot screen, link events, board state reporting.
+#include <stdio.h>
 #include <string.h>
 
 #include "esp_app_desc.h"
@@ -13,8 +14,26 @@ using namespace fx::ui;
 static Shell s_shell;
 Shell& shell() { return s_shell; }
 
+// A rebuild under a press deletes the pressed object and loses the click (P37: link events
+// rebuild Settings, and a CLI run over Wi-Fi connects right before its tap). So it waits for
+// the release; tick() runs it then.
+static Builder s_rebuild_after_press;
+
 void refresh_if_top(Builder b) {
-  if (nav_top() == b) nav_rebuild();
+  if (nav_top() != b) return;
+  if (pressed()) {
+    s_rebuild_after_press = b;
+    return;
+  }
+  nav_rebuild();
+}
+
+void link_text(char* out, size_t cap) {
+  const char* radio = sys::link_remote_name();
+  if (radio)
+    snprintf(out, cap, "%s", radio);
+  else
+    snprintf(out, cap, "USB, %u baud", (unsigned)fnx::BAUD);
 }
 
 uint8_t current_screen() {
@@ -152,6 +171,11 @@ void tick() {
   if (nav_top() == boot_screen && esp_timer_get_time() >= s_boot_until) {
     apps_reload();  // the store is mounted while the boot line plays (main.cpp)
     nav_root(home_screen, true);
+  }
+  if (s_rebuild_after_press && !pressed()) {
+    Builder b = s_rebuild_after_press;
+    s_rebuild_after_press = nullptr;
+    refresh_if_top(b);
   }
   if (nav_top() == home_screen) home_tick();
   settings_tick();

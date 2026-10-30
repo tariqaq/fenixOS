@@ -23,6 +23,7 @@ uint16_t fps_x10();
 // Backlight: brightness level 16..255; auto-dim after `dim_after_s` (0 = never) to `dim_pct`.
 void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s);
 bool dimmed();
+bool pressed();  // a finger or the PC holds a press: screen rebuilds wait (shell.cpp)
 uint8_t backlight_now();  // the level right now, fades included
 // Fade the backlight to 0 (blocking, ~FX_MOTION_SLOW_MS).
 void backlight_fade_out();

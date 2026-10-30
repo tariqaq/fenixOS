@@ -7,3 +7,7 @@ string(STRIP "${FENIX_VERSION}" FENIX_VERSION)
 set(PROJECT_VER "${FENIX_VERSION}")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(fenixos)
+# An LVGL assert (a failed allocation) restarts the board instead of LVGL's default while(1),
+# which froze the UI for good (P37). Private: passed on to other targets the escape breaks.
+idf_component_get_property(lvgl_lib lvgl__lvgl COMPONENT_LIB)
+target_compile_definitions(${lvgl_lib} PRIVATE "LV_ASSERT_HANDLER=abort()\;")

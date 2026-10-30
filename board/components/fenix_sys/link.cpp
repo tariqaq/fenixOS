@@ -157,7 +157,7 @@ bool remote_touch(int16_t* x, int16_t* y) {
 }
 uint32_t link_rx_frames() { return s_dec.frames + (s_rdec ? s_rdec->frames : 0); }
 uint32_t link_rx_errors() { return s_dec.errors + (s_rdec ? s_rdec->errors : 0); }
-bool link_via_remote() { return s_connected && s_via == VIA_REMOTE; }
+const char* link_remote_name() { return s_connected && s_via == VIA_REMOTE && s_rl ? s_rl->name : nullptr; }
 
 void link_remote_start(const RemoteLink* t, size_t rx_buf) {
   if (s_rl) return;
