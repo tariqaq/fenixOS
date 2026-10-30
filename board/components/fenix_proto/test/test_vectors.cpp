@@ -85,6 +85,35 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       if (!r.done()) return false;
       break;
     }
+    case ty::RADIO_STATE: {
+      RadioState s;
+      if (!read_radio_state(r, s)) return false;
+      write_radio_state(w, s);
+      break;
+    }
+    case ty::RADIO_SET:
+      w.u8(r.u8());
+      if (!r.done()) return false;
+      break;
+    case ty::WIFI_SCAN: {
+      w.u8(r.u8());
+      uint8_t cnt = r.u8();
+      w.u8(cnt);
+      for (int i = 0; i < cnt; i++) {
+        WifiAp a;
+        if (!read_wifi_ap(r, a)) return false;
+        write_wifi_ap(w, a);
+      }
+      if (!r.done()) return false;
+      break;
+    }
+    case ty::WIFI_JOIN: {
+      WifiJoin j;
+      if (!read_wifi_join(r, j)) return false;
+      write_wifi_join(w, j);
+      break;
+    }
+    case ty::WIFI_SCAN_REQ:
     case ty::SYSINFO_REQ:
     case ty::REBOOT:
     case ty::APP_LIST_REQ:

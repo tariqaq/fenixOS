@@ -18,6 +18,7 @@ constexpr size_t ID_LEN = 64;  // app ids and versions are cut to 63 bytes + NUL
 namespace ty {
 constexpr uint8_t HELLO = 0x01, HELLO_ACK = 0x02, PING = 0x03, PONG = 0x04, LOG = 0x05, ERROR = 0x06, STATS = 0x07;
 constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12, TOUCH = 0x13, SYSINFO_REQ = 0x14, SYSINFO = 0x15;
+constexpr uint8_t RADIO_STATE = 0x16, RADIO_SET = 0x17, WIFI_SCAN_REQ = 0x18, WIFI_SCAN = 0x19, WIFI_JOIN = 0x1A;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
 constexpr uint8_t HOST_STATE = 0x2A;
@@ -130,7 +131,7 @@ void write_stats(Writer& w, const Stats& s);
 
 // SYSINFO: the fixed part, then a task count (u8) and that many TaskInfo.
 namespace sysflag {
-constexpr uint8_t DIMMED = 1, RESTING = 2, BURN_GUARD = 4, STREAMING = 8, WIFI = 16, BLUETOOTH = 32;
+constexpr uint8_t DIMMED = 1, RESTING = 2, BURN_GUARD = 4, STREAMING = 8, WIFI = 16, BLUETOOTH = 32;  // radios: running
 }
 struct Sysinfo {
   uint32_t time_us;
@@ -153,6 +154,45 @@ struct TaskInfo {
 };
 bool read_task_info(Reader& r, TaskInfo& t);
 void write_task_info(Writer& w, const TaskInfo& t);
+
+// Radios (P32): one at a time, switched by a restart.
+namespace radio {
+constexpr uint8_t OFF = 0, BLUETOOTH = 1, WIFI = 2;
+}
+namespace radio_state {
+// READY: Bluetooth discoverable with nothing connected; Wi-Fi with no network set.
+constexpr uint8_t OFF = 0, STARTING = 1, READY = 2, CONNECTING = 3, CONNECTED = 4, FAILED = 5;
+}
+namespace wifi_auth {
+constexpr uint8_t OPEN = 0, WEP = 1, WPA = 2, WPA2 = 3, WPA_WPA2 = 4, ENTERPRISE = 5, WPA3 = 6, WPA2_WPA3 = 7,
+                  OTHER = 8;
+}
+namespace scan_status {
+constexpr uint8_t OK = 0, NOT_WIFI = 1, FAILED = 2;
+}
+constexpr size_t SSID_LEN = 33, PASS_LEN = 65;  // 32 / 64 bytes + NUL
+struct RadioState {
+  uint8_t mode, state;
+  int8_t rssi;     // dBm, 0 unknown
+  uint8_t ip[4];   // all zero: none
+  char name[SSID_LEN];  // Wi-Fi network, or the Bluetooth peer
+};
+bool read_radio_state(Reader& r, RadioState& s);
+void write_radio_state(Writer& w, const RadioState& s);
+// WIFI_SCAN: status:u8, count:u8, then that many WifiAp.
+struct WifiAp {
+  char ssid[SSID_LEN];
+  int8_t rssi;
+  uint8_t channel, auth;
+  uint8_t bssid[6];
+};
+bool read_wifi_ap(Reader& r, WifiAp& a);
+void write_wifi_ap(Writer& w, const WifiAp& a);
+struct WifiJoin {
+  char ssid[SSID_LEN], password[PASS_LEN];
+};
+bool read_wifi_join(Reader& r, WifiJoin& j);
+void write_wifi_join(Writer& w, const WifiJoin& j);
 
 struct BoardState {
   uint8_t screen, dimmed, rotation;

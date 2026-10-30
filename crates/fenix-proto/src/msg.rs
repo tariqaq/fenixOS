@@ -17,6 +17,11 @@ pub mod ty {
     pub const TOUCH: u8 = 0x13;
     pub const SYSINFO_REQ: u8 = 0x14;
     pub const SYSINFO: u8 = 0x15;
+    pub const RADIO_STATE: u8 = 0x16;
+    pub const RADIO_SET: u8 = 0x17;
+    pub const WIFI_SCAN_REQ: u8 = 0x18;
+    pub const WIFI_SCAN: u8 = 0x19;
+    pub const WIFI_JOIN: u8 = 0x1A;
     pub const APP_LIST_REQ: u8 = 0x20;
     pub const APP_LIST: u8 = 0x21;
     pub const APP_INSTALL_BEGIN: u8 = 0x22;
@@ -115,7 +120,9 @@ pub mod sysflag {
     pub const RESTING: u8 = 2;
     pub const BURN_GUARD: u8 = 4;
     pub const STREAMING: u8 = 8;
+    /// Wi-Fi is running (before P32: built in; no firmware set it).
     pub const WIFI: u8 = 16;
+    /// Bluetooth is running (before P32: built in).
     pub const BLUETOOTH: u8 = 32;
 }
 
@@ -195,6 +202,72 @@ pub struct StreamRect {
     pub data: Vec<u8>,
 }
 
+/// `RADIO_STATE` / `RADIO_SET` modes: one radio at a time, switched by a restart.
+pub mod radio {
+    pub const OFF: u8 = 0;
+    pub const BLUETOOTH: u8 = 1;
+    pub const WIFI: u8 = 2;
+}
+
+/// `RADIO_STATE` states.
+pub mod radio_state {
+    pub const OFF: u8 = 0;
+    pub const STARTING: u8 = 1;
+    /// Bluetooth: discoverable, nothing connected. Wi-Fi: no network set.
+    pub const READY: u8 = 2;
+    pub const CONNECTING: u8 = 3;
+    pub const CONNECTED: u8 = 4;
+    pub const FAILED: u8 = 5;
+}
+
+/// `WIFI_SCAN` security of an access point.
+pub mod wifi_auth {
+    pub const OPEN: u8 = 0;
+    pub const WEP: u8 = 1;
+    pub const WPA: u8 = 2;
+    pub const WPA2: u8 = 3;
+    pub const WPA_WPA2: u8 = 4;
+    pub const ENTERPRISE: u8 = 5;
+    pub const WPA3: u8 = 6;
+    pub const WPA2_WPA3: u8 = 7;
+    pub const OTHER: u8 = 8;
+}
+
+/// `WIFI_SCAN` status.
+pub mod scan_status {
+    pub const OK: u8 = 0;
+    pub const NOT_WIFI: u8 = 1;
+    pub const FAILED: u8 = 2;
+}
+
+/// The board's radio: which one runs and how it is doing.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct RadioState {
+    /// `radio` mode.
+    pub mode: u8,
+    /// `radio_state`.
+    pub state: u8,
+    /// Wi-Fi signal in dBm; 0 when unknown.
+    pub rssi: i8,
+    /// Wi-Fi IPv4 address, all zero when none.
+    pub ip: [u8; 4],
+    /// Wi-Fi network name, or the connected Bluetooth peer.
+    pub name: String,
+}
+
+/// One access point in `WIFI_SCAN`.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct WifiAp {
+    pub ssid: String,
+    pub rssi: i8,
+    pub channel: u8,
+    /// `wifi_auth`.
+    pub auth: u8,
+    pub bssid: [u8; 6],
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Msg {
     Hello {
@@ -214,6 +287,19 @@ pub enum Msg {
     Stats(Stats),
     SysinfoReq,
     Sysinfo(Sysinfo),
+    RadioState(RadioState),
+    /// Switch the radio: the board saves the mode and restarts.
+    RadioSet(u8),
+    WifiScanReq,
+    WifiScan {
+        status: u8,
+        aps: Vec<WifiAp>,
+    },
+    /// Join a network (saved on the board in plaintext); an empty SSID forgets it.
+    WifiJoin {
+        ssid: String,
+        password: String,
+    },
     TimeSet(u32),
     Reboot,
     /// Remote touch from the PC (mirror clicks, tests), in current screen coordinates.
@@ -385,6 +471,11 @@ impl Msg {
             Stats(_) => ty::STATS,
             SysinfoReq => ty::SYSINFO_REQ,
             Sysinfo(_) => ty::SYSINFO,
+            RadioState(_) => ty::RADIO_STATE,
+            RadioSet(_) => ty::RADIO_SET,
+            WifiScanReq => ty::WIFI_SCAN_REQ,
+            WifiScan { .. } => ty::WIFI_SCAN,
+            WifiJoin { .. } => ty::WIFI_JOIN,
             TimeSet(_) => ty::TIME_SET,
             Reboot => ty::REBOOT,
             Touch { .. } => ty::TOUCH,
@@ -488,7 +579,22 @@ impl Msg {
                         .str(&t.name);
                 }
             }
-            Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq => {}
+            RadioState(s) => {
+                w.u8(s.mode).u8(s.state).u8(s.rssi as u8).bytes(&s.ip).str(&s.name);
+            }
+            RadioSet(m) => {
+                w.u8(*m);
+            }
+            WifiScan { status, aps } => {
+                w.u8(*status).u8(aps.len() as u8);
+                for a in aps {
+                    w.str(&a.ssid).u8(a.rssi as u8).u8(a.channel).u8(a.auth).bytes(&a.bssid);
+                }
+            }
+            WifiJoin { ssid, password } => {
+                w.str(ssid).str(password);
+            }
+            Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq | WifiScanReq => {}
             Touch { x, y, down } => {
                 w.u16(*x).u16(*y).u8(*down as u8);
             }
@@ -625,6 +731,34 @@ impl Msg {
                 stream_dropped: r.u32()?,
             }),
             ty::SYSINFO_REQ => Msg::SysinfoReq,
+            ty::RADIO_STATE => Msg::RadioState(RadioState {
+                mode: r.u8()?,
+                state: r.u8()?,
+                rssi: r.u8()? as i8,
+                ip: r.arr()?,
+                name: r.str()?,
+            }),
+            ty::RADIO_SET => Msg::RadioSet(r.u8()?),
+            ty::WIFI_SCAN_REQ => Msg::WifiScanReq,
+            ty::WIFI_SCAN => {
+                let status = r.u8()?;
+                let n = r.u8()?;
+                let mut aps = Vec::with_capacity(n as usize);
+                for _ in 0..n {
+                    aps.push(WifiAp {
+                        ssid: r.str()?,
+                        rssi: r.u8()? as i8,
+                        channel: r.u8()?,
+                        auth: r.u8()?,
+                        bssid: r.arr()?,
+                    });
+                }
+                Msg::WifiScan { status, aps }
+            }
+            ty::WIFI_JOIN => Msg::WifiJoin {
+                ssid: r.str()?,
+                password: r.str()?,
+            },
             ty::SYSINFO => {
                 let mut s = Sysinfo {
                     time_us: r.u32()?,

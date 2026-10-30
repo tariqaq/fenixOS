@@ -320,6 +320,50 @@ void write_board_state(Writer& w, const BoardState& s) {
   w.str(s.app_id);
 }
 
+bool read_radio_state(Reader& r, RadioState& s) {
+  s.mode = r.u8();
+  s.state = r.u8();
+  s.rssi = (int8_t)r.u8();
+  const uint8_t* ip = r.take(4);
+  if (ip) memcpy(s.ip, ip, 4);
+  r.str(s.name, sizeof s.name);
+  return r.done();
+}
+void write_radio_state(Writer& w, const RadioState& s) {
+  w.u8(s.mode);
+  w.u8(s.state);
+  w.u8((uint8_t)s.rssi);
+  w.bytes(s.ip, 4);
+  w.str(s.name);
+}
+
+bool read_wifi_ap(Reader& r, WifiAp& a) {
+  r.str(a.ssid, sizeof a.ssid);
+  a.rssi = (int8_t)r.u8();
+  a.channel = r.u8();
+  a.auth = r.u8();
+  const uint8_t* b = r.take(6);
+  if (b) memcpy(a.bssid, b, 6);
+  return r.ok();
+}
+void write_wifi_ap(Writer& w, const WifiAp& a) {
+  w.str(a.ssid);
+  w.u8((uint8_t)a.rssi);
+  w.u8(a.channel);
+  w.u8(a.auth);
+  w.bytes(a.bssid, 6);
+}
+
+bool read_wifi_join(Reader& r, WifiJoin& j) {
+  r.str(j.ssid, sizeof j.ssid);
+  r.str(j.password, sizeof j.password);
+  return r.done();
+}
+void write_wifi_join(Writer& w, const WifiJoin& j) {
+  w.str(j.ssid);
+  w.str(j.password);
+}
+
 bool read_app_entry(Reader& r, AppEntry& e) {
   r.str(e.id, sizeof e.id);
   r.str(e.version, sizeof e.version);

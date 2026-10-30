@@ -105,6 +105,47 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 ],
             }),
         ),
+        (
+            "radio_state",
+            Msg::RadioState(RadioState {
+                mode: radio::WIFI,
+                state: radio_state::CONNECTED,
+                rssi: -58,
+                ip: [192, 168, 1, 42],
+                name: "Home".into(),
+            }),
+        ),
+        ("radio_set", Msg::RadioSet(radio::BLUETOOTH)),
+        ("wifi_scan_req", Msg::WifiScanReq),
+        (
+            "wifi_scan",
+            Msg::WifiScan {
+                status: scan_status::OK,
+                aps: vec![
+                    WifiAp {
+                        ssid: "Home".into(),
+                        rssi: -58,
+                        channel: 6,
+                        auth: wifi_auth::WPA2_WPA3,
+                        bssid: [0x10, 0x20, 0x30, 0x40, 0x50, 0x60],
+                    },
+                    WifiAp {
+                        ssid: "Cafe".into(),
+                        rssi: -81,
+                        channel: 11,
+                        auth: wifi_auth::OPEN,
+                        bssid: [1, 2, 3, 4, 5, 6],
+                    },
+                ],
+            },
+        ),
+        (
+            "wifi_join",
+            Msg::WifiJoin {
+                ssid: "Home".into(),
+                password: "hunter22".into(),
+            },
+        ),
         ("time_set", Msg::TimeSet(1_793_200_000)),
         ("reboot", Msg::Reboot),
         (
