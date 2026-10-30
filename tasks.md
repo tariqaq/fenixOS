@@ -270,19 +270,21 @@ Unattended-run rules (user, 2026-10-29; details in `docs/decisions.md`): one UAC
   - [ ] 4. Measure: `fenix bench` over SPP (throughput, RTT), BLE notify rate, heap while streaming and installing. Gate >= 25 KB free
   - [ ] 5. Docs, release
 - [ ] P34 Wi-Fi: PC link, internet, phone web page
-  - [ ] 1. Credentials typed in the PC app (Settings > Wireless), sent over the link, stored in NVS in plaintext (user: no encryption anywhere). On-board keyboard in P36
-  - [ ] 2. Station at full speed: power save off (`WIFI_PS_NONE`) for latency, AMPDU on, default buffers; reconnect with backoff; state in the Task manager
-  - [ ] 3. PC link over TCP: the same frames, `TCP_NODELAY`; the board announces `fenixos.local` (mDNS); the PC app connects there when no USB board is found. Plain TCP, no TLS (user)
-  - [ ] 4. Time by SNTP (the board says "time unset" without the PC). Weather from Open-Meteo over plain HTTP (no key, no TLS; check the API answers on http), location set in the PC app; weather on Home (artboard first)
-  - [ ] 5. Phone web page: `esp_http_server` on port 80, small status and control page in the design language (artboard first)
-  - [ ] 6. Measure: TCP throughput and RTT against USB (`fenix bench` over TCP), heap under traffic, fps while streaming over Wi-Fi
-  - [ ] 7. Docs, release
+  - [ ] 1. Network scan (user 2026-10-30: "scan and return all availkabe wifi neearby with signal and their encryption"): the board scans (`esp_wifi_scan_start`, all channels, ~2 to 3 s) and reports each AP: SSID, signal (RSSI, shown as bars), channel, security (open, WEP, WPA, WPA2, WPA3, WPA2/WPA3, enterprise), BSSID. Same SSID on several APs shown once, strongest first. 2.4 GHz only (the ESP32 has no 5 GHz). Scans need Wi-Fi mode; in Off or Bluetooth mode the PC app falls back to Windows' own scan (2.4 GHz entries only), marked as seen by the PC. New optional messages WIFI_SCAN_REQ / WIFI_SCAN (spec, vectors, both codecs)
+  - [ ] 2. Credentials: pick a network in the PC app's list (Settings > Wireless) or type a hidden SSID, enter the password, sent over the link, stored in NVS in plaintext (user: no encryption anywhere). Enterprise (802.1X) networks listed but not joinable. On-board password entry in P36
+  - [ ] 3. Board UI: Settings > Wireless > Wi-Fi shows the same scan list (signal bars, lock icon, connected tick) and joins saved or open networks with a tap (artboard first)
+  - [ ] 4. Station at full speed: power save off (`WIFI_PS_NONE`) for latency, AMPDU on, default buffers; reconnect with backoff; state in the Task manager
+  - [ ] 5. PC link over TCP: the same frames, `TCP_NODELAY`; the board announces `fenixos.local` (mDNS); the PC app connects there when no USB board is found. Plain TCP, no TLS (user)
+  - [ ] 6. Time by SNTP (the board says "time unset" without the PC). Weather from Open-Meteo over plain HTTP (no key, no TLS; check the API answers on http), location set in the PC app; weather on Home (artboard first)
+  - [ ] 7. Phone web page: `esp_http_server` on port 80, small status and control page in the design language (artboard first)
+  - [ ] 8. Measure: TCP throughput and RTT against USB (`fenix bench` over TCP), heap under traffic, fps while streaming over Wi-Fi
+  - [ ] 9. Docs, release
 - [ ] P35 Design-language fixes (P30 audit)
   - [ ] 1. PC: Task manager chart colours `#3987e5` and `#d95926` to tokens (token source and `tools/gen_tokens.py`); `TitleBar` `#98989F` to the label-2 token; scrim `rgba(0,0,0,0.6)` to the 0.55 token in Settings and UpdateDialog; 600 ms board-screen fades (App, Connect, Welcome) to DESIGN.md durations or a documented exception
   - [ ] 2. Task manager artboard in `docs/mockups.md`
   - [ ] 3. Board: check the 900 ms animation in `shell.cpp` and the 300 ms LED fade against DESIGN.md
 - [ ] P36 Later
-  - [ ] On-board Wi-Fi keyboard (scan and password entry; needs LVGL keyboard and textarea, which P31 turns off: more flash)
+  - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [ ] Phone Web Bluetooth page (user: later)
   - [ ] OTA over Wi-Fi after the SD card (user). A/B slots need ~2 x 1.6 MB; the 4 MB flash fits that only with the apps partition (1.94 MB) moved to the SD card
   - Not planned: both radios at once (P29: ~40 KB free), LCD SPI at 80 MHz (garbles the panel, P10), fps caps for RAM (no gain), A2DP and HID (user)
