@@ -36,7 +36,7 @@ Tools installed on 2026-10-28 (Windows 11); libraries pinned for fenixOS on 2026
 
 ## Build commands
 
-- On this laptop, run builds through `pwsh -NoProfile -File tools/capped.ps1 <command>` (user request, P12): at most 4 cores' worth of CPU at normal priority for the command and every process it starts, and `CARGO_BUILD_JOBS=4`. `FENIX_CORES` raises both only when the user allows it, for that build. Corrected (2026-10-30): the 8-core allowance was withdrawn the same day; builds run on 4 cores. Example: `pwsh -NoProfile -File tools/capped.ps1 pnpm -C app tauri build --no-bundle` (a one-file change rebuilds in about 45 s; the release profile has no LTO).
+- On this laptop, run builds through `pwsh -NoProfile -File tools/capped.ps1 <command>` (user request, P12): at most 4 cores' worth of CPU at normal priority for the command and every process it starts, and `CARGO_BUILD_JOBS=4`. `FENIX_CORES` raises both only when the user allows it, for that build. Corrected (2026-10-30): the 8-core allowance was withdrawn the same day; builds run on 4 cores. Corrected (2026-10-31): the user allows all cores again (`FENIX_CORES=16`, `tasks.md` Decisions). Example: `pwsh -NoProfile -File tools/capped.ps1 pnpm -C app tauri build --no-bundle` (a one-file change rebuilds in about 45 s; the release profile has no LTO).
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build` (also `monitor`, `size`; not `flash`, see below). First time: `idf.ps1 set-target esp32`.
 - Rust tests: `cargo test --workspace`
 - C++ protocol test (MSVC): `pwsh -NoProfile -File board/components/fenix_proto/test/run.ps1` (checks `proto/vectors.txt`)
