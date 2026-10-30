@@ -31,3 +31,4 @@ node_modules/
 docs/tempcrashlogs/
 .ccache/
 /board/build-radio/
+/board/build-bluedroid/

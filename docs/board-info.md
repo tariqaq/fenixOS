@@ -255,6 +255,21 @@ Measured on the board with a probe build: `board/sdkconfig.radio` on top of the 
 - **Flash:** the image grows from 0.84 MB to 1.60 MB, 76% of the 2 MB app slot.
 - **Core 1 for the UI:** `CONFIG_ESP_MAIN_TASK_AFFINITY_CPU1` (P29) moves `main` off core 0, where the link and the radio tasks run. No fps change without radios (24.2 vs 24.0): slides are bound by the SPI display (~31 ms for a full 320 × 240 frame at 40 MHz), not by CPU.
 
+## Radios one at a time, flash and CPU (P30, 2026-10-30)
+
+Measured with a Bluedroid probe: `board/sdkconfig.bluedroid` on top of the defaults (Bluetooth Classic + BLE, Wi-Fi speed options on, size trims), built in `board/build-bluedroid`. The probe in `radio.cpp` runs one radio per boot and alternates (`fenix reboot`): Bluetooth (SPP server and BLE advertising), then Wi-Fi with all Bluetooth memory released.
+
+- **IRAM:** Bluedroid plus Wi-Fi's IRAM speed options plus lwIP IRAM overflow IRAM by 25,156 B. Moving FreeRTOS, heap and ringbuf functions to flash and turning `LOG_IN_IRAM` off leaves 4,108 B over. `CONFIG_ESP_SYSTEM_ESP32_SRAM1_REGION_AS_IRAM` then fits: IRAM 135 of 172 KB. The extra IRAM comes out of the heap only as far as it is used (~4 KB). It needs a bootloader from ESP-IDF 5.x; ours is v5.5.5.
+- **Image:** 1.76 MB with Bluedroid's default sizing, 1.60 MB trimmed (76% of the 2 MB slot). Both include the size trims below.
+- **Bluetooth boot, Bluedroid defaults:** 83 KB free at boot. The controller takes 21 KB, Bluedroid 22 KB, SPP 1.7 KB: 38.6 KB free, later 34.7 KB. `BTC_TASK` ran out of stack (32 B left; heap blocks corrupted, a panic followed): the probe logs from SPP and GAP callbacks, which run on `BTC_TASK`. `CONFIG_BT_BTC_TASK_STACK_SIZE=4096` fixed it (908 B left).
+- **Bluetooth boot, trimmed** (1 BLE and 1 BR/EDR connection, no GATT client, dynamic env memory, 4 bonds, no Bluetooth logs): static DRAM 82.6 to 57.6 KB. 108 KB free at boot; controller -17.6 KB, Bluedroid -40 KB, SPP -7.9 KB: 42.4 KB free with SPP and BLE advertising, settling at 38.7 KB (min 35.5 KB, largest block 36.8 KB). New tasks on core 0: `BTU_TASK`, `BTC_TASK`, `hciT`, `btController`. Idle load ~1% per core.
+- **Wi-Fi boot, same image:** 104 KB free at boot. `esp_bt_mem_release(ESP_BT_MODE_BTDM)` gives back 44 KB (148 KB free); it is one-way until a reboot, hence restart-to-switch. Wi-Fi station start with default buffers, AMPDU and IRAM options: -45 KB, 102.7 KB free (min 99 KB). Not joined to a network yet; traffic will use more (dynamic buffers).
+- **Static cost of radio code with no radio running:** ~148 KB free after the release, against 187 KB for the trimmed normal firmware.
+- **Size trims, normal firmware** (trial A): unused LVGL widgets, themes and observer off, `LOG_DEFAULT_LEVEL_NONE`, `ESP_ERR_TO_NAME_LOOKUP` off, newlib nano printf, silent assertions. Image 837 to 664 KB (-21%), IRAM 68 to 61.6 KB, heap free at boot 179 to 187 KB. LVGL's examples and demos must be off with the widgets, or the build fails. With `-Os` too (`CONFIG_COMPILER_OPTIMIZATION_SIZE`): 562 KB (-33%), IRAM 58 KB, slides 24.4 fps against 24.5 (`fenix bench 15 nostream`): no loss, because the slide is SPI-bound.
+- **Largest flash users (trial A):** LVGL 263 KB; fenix_ui 110 KB, of which fonts and icons are ~103 KB. The biggest are LVGL's Montserrat 14 (13.6 KB), `fx_icon_fill_40` (11.4 KB) and `fx_font_title_l` (10 KB). Montserrat 14 is linked only as LVGL's default font; no fenixOS code uses it. Then LovyanGFX 37 KB, newlib nano 29 KB, LittleFS 24 KB. Corrected: a P30 note had `esp_app_format` at 47 KB; it is 384 B.
+- **Frame-rate caps do not free RAM:** the draw bands are allocated once at their size; a lower frame rate saves CPU time, not memory.
+- **Cores:** the UI (`main`) is on core 1. The link, Wi-Fi and Bluedroid tasks are on core 0; Bluedroid is pinned to core 0 by default. Idle load is 0.4 to 2% per core. Not CPU-bound: a full 320 × 240 frame takes ~31 ms on the 40 MHz SPI bus.
+
 ## Image retention ("burn-in"), 2026-10-29
 
 - **Seen:** after long sessions on Home, a faint ghost of the clock stays on the panel (user: "a moderate level of screen burn in right where the clock is").
