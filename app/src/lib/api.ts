@@ -143,6 +143,9 @@ export const openLogFolder = () => invoke("open_log_folder");
 export const getAutostart = () => invoke<boolean>("get_autostart");
 export const setAutostart = (on: boolean) => invoke<boolean>("set_autostart", { on });
 export const rebootBoard = () => invoke("reboot_board");
+/** "USB on COM9" or "Wi-Fi, fenixos.local" (P34: ports named tcp:<host>). */
+export const linkText = (port: string, sep = " on ") =>
+  port.startsWith("tcp:") ? `Wi-Fi, ${port.slice(4)}` : `USB${sep}${port}`;
 export const setRadio = (mode: number) => invoke("set_radio", { mode });
 export const wifiScan = () => invoke("wifi_scan");
 export const getWifiScan = () => invoke<WifiScan>("get_wifi_scan");

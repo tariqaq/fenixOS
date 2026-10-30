@@ -61,6 +61,7 @@ def board():
         {"name": "LovyanGFX", "version": lgfx["version"], "license": lgfx["license"]},
         {"name": "esp_littlefs (joltwallet)", "version": locked("joltwallet/littlefs"), "license": "MIT"},
         {"name": "littlefs (in esp_littlefs)", "version": "", "license": "BSD-3-Clause"},
+        {"name": "mDNS (espressif/mdns)", "version": locked("espressif/mdns"), "license": "Apache-2.0"},
         {"name": "Inter (board fonts)", "version": "", "license": "OFL-1.1"},
         {"name": "Phosphor Icons (board icons)", "version": "", "license": "MIT"},
     ]

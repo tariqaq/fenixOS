@@ -9,6 +9,7 @@ namespace fnx {
 
 constexpr uint8_t PROTO_VERSION = 1;
 constexpr uint32_t BAUD = 921600;
+constexpr uint16_t TCP_PORT = 7350;  // the same frames over Wi-Fi (P34)
 constexpr size_t MAX_PAYLOAD = 1200;
 constexpr size_t MAX_CHUNK = 1024;
 // Worst-case wire size of one frame: COBS overhead + CRC + delimiter.
@@ -246,15 +247,21 @@ void write_rect_header(Writer& w, const RectHeader& h);
 
 // Build a whole wire frame: type, seq, then body written by fn(Writer&).
 // Returns wire length (0 if the body did not fit).
+// `payload` is scratch space of MAX_PAYLOAD bytes: pass a static one from small stacks.
 template <typename F>
-size_t build_frame(uint8_t type, uint8_t seq, uint8_t* wire, size_t cap, F fn) {
-  uint8_t payload[MAX_PAYLOAD];
-  Writer w(payload, sizeof payload);
+size_t build_frame_in(uint8_t* payload, uint8_t type, uint8_t seq, uint8_t* wire, size_t cap, F fn) {
+  Writer w(payload, MAX_PAYLOAD);
   w.u8(type);
   w.u8(seq);
   fn(w);
   if (!w.ok()) return 0;
   return encode_frame(payload, w.size(), wire, cap);
+}
+
+template <typename F>
+size_t build_frame(uint8_t type, uint8_t seq, uint8_t* wire, size_t cap, F fn) {
+  uint8_t payload[MAX_PAYLOAD];
+  return build_frame_in(payload, type, seq, wire, cap, fn);
 }
 
 }  // namespace fnx

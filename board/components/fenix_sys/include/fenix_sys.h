@@ -104,6 +104,18 @@ struct BindValue {
 bool bind_poll(BindValue* v);
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
+// Remote transports (P33 SPP, P34 TCP): one radio runs per boot, so at most one exists. The
+// transport moves bytes; the link task decodes and frames. A session belongs to the transport
+// that opened it (HELLO); the other one gets ERROR busy until it ends.
+struct RemoteLink {
+  const char* name;                           // "Bluetooth", "Wi-Fi"
+  bool (*write)(const uint8_t* d, size_t n);  // one whole frame or none; may block briefly
+  size_t (*tx_free)();                        // room for frames without blocking
+};
+void link_remote_start(const RemoteLink* t, size_t rx_buf);  // once, from radio_start
+void link_remote_rx(const uint8_t* d, size_t n);             // transport task; waits while full
+void link_remote_closed();                                   // the peer went away
+bool link_via_remote();                                      // the session runs over the radio
 
 // ---- Radios (P32): one at a time; switching saves the mode and restarts ----
 struct RadioInfo {
@@ -122,6 +134,8 @@ bool radio_scanning();
 int radio_scan_results(fnx::WifiAp* out, int max);  // last scan, strongest first
 void radio_join(const char* ssid, const char* pass);  // saved in plaintext; empty ssid forgets
 bool radio_saved_network(char* out, size_t cap);
+void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
+void net_up();     // the station got an address
 
 // ---- Stream encoder (called from the LVGL flush callback) ----
 bool stream_active();

@@ -14,6 +14,9 @@ The framing is kept from the FenixDeck PoC (`docs/legacy/protocol.md`), where it
 - The PC opens the port with **DTR and RTS released**. Asserting them can reset the board through its auto-reset circuit.
 - After a reset the ROM bootloader prints text at 115200. Receivers drop bytes until a valid frame arrives.
 - Only `fenix-link` resets the board on purpose (reboot request, flashing).
+- Bluetooth (P33): the same frames over the SPP server "fenixOS" (Windows gives it an outgoing COM port after pairing).
+- Wi-Fi (P34): the same frames over TCP port **7350** (`TCP_PORT`), `TCP_NODELAY`, no TLS (user choice). The board announces `fenixos.local` by mDNS. One client at a time.
+- One session at a time: the board answers a frame from another transport while a session is open with `ERROR` code 4 (busy). The session ends on its heartbeat timeout or when its SPP or TCP connection closes.
 
 ## Framing
 

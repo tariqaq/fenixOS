@@ -26,6 +26,11 @@
    "license": "BSD-3-Clause"
   },
   {
+   "name": "mDNS (espressif/mdns)",
+   "version": "1.13.1",
+   "license": "Apache-2.0"
+  },
+  {
    "name": "Inter (board fonts)",
    "version": "",
    "license": "OFL-1.1"

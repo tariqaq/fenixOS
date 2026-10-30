@@ -1,4 +1,5 @@
-// PC link on UART0 (CH340C), protocol in proto/spec.md.
+// PC link on UART0 (CH340C), or over the radio (SPP, TCP) through a remote transport;
+// protocol in proto/spec.md.
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "freertos/stream_buffer.h"
 #include "freertos/task.h"
 
 namespace fx::sys {
@@ -34,20 +36,43 @@ static volatile bool s_connected;
 static volatile uint32_t s_rx_bytes, s_tx_bytes;  // for SYSINFO; wrap at 2^32
 static fnx::FrameDecoder s_dec;
 static uint8_t s_wire[fnx::MAX_WIRE];
+static uint8_t s_payload[fnx::MAX_PAYLOAD];  // under s_tx_lock: senders on small stacks (Wi-Fi, lwIP, Bluetooth tasks)
+
+// Remote transport: decoder and RX buffer exist only once a radio registers one.
+enum : uint8_t { VIA_UART = 0, VIA_REMOTE = 1 };
+static volatile uint8_t s_via;  // where the session's frames go
+static const RemoteLink* s_rl;
+static fnx::FrameDecoder* s_rdec;
+static StreamBufferHandle_t s_rrx;
+static volatile bool s_rclosed;
 
 static portMUX_TYPE s_info_mux = portMUX_INITIALIZER_UNLOCKED;
 static BoardInfo s_info;
 
 // ---- TX ----
 
-// Frame under the TX lock, then one uart_write_bytes so frames never interleave.
+// Caller holds the TX lock. A remote write sends the whole frame or drops it.
+static void write_via(uint8_t via, const uint8_t* d, size_t n) {
+  if (via == VIA_REMOTE) {
+    if (!s_rl || !s_rl->write(d, n)) return;
+  } else {
+    uart_write_bytes(UART, d, n);
+  }
+  s_tx_bytes += n;
+}
+
+// Frame under the TX lock, then one write so frames never interleave.
+template <typename F>
+static void send_to(uint8_t via, uint8_t type, F fn) {
+  xSemaphoreTake(s_tx_lock, portMAX_DELAY);
+  size_t n = fnx::build_frame_in(s_payload, type, s_seq++, s_wire, sizeof s_wire, fn);
+  if (n) write_via(via, s_wire, n);
+  xSemaphoreGive(s_tx_lock);
+}
+
 template <typename F>
 static void send_with(uint8_t type, F fn) {
-  xSemaphoreTake(s_tx_lock, portMAX_DELAY);
-  size_t n = fnx::build_frame(type, s_seq++, s_wire, sizeof s_wire, fn);
-  if (n) uart_write_bytes(UART, s_wire, n);
-  s_tx_bytes += n;
-  xSemaphoreGive(s_tx_lock);
+  send_to(s_via, type, fn);
 }
 
 void link_send(uint8_t type, const uint8_t* body, size_t n) {
@@ -70,15 +95,13 @@ void link_log(uint8_t level, const char* fmt, ...) {
 
 // Used by stream.cpp: write a ready wire frame without blocking on a full buffer.
 size_t link_tx_free() {
+  if (s_via == VIA_REMOTE) return s_rl ? s_rl->tx_free() : 0;
   size_t f = 0;
   uart_get_tx_buffer_free_size(UART, &f);
   return f;
 }
 
-void link_write_locked(const uint8_t* wire, size_t n) {
-  uart_write_bytes(UART, wire, n);
-  s_tx_bytes += n;
-}
+void link_write_locked(const uint8_t* wire, size_t n) { write_via(s_via, wire, n); }
 void link_lock() { xSemaphoreTake(s_tx_lock, portMAX_DELAY); }
 void link_unlock() { xSemaphoreGive(s_tx_lock); }
 uint8_t link_next_seq() { return s_seq++; }
@@ -132,8 +155,26 @@ bool remote_touch(int16_t* x, int16_t* y) {
   *y = (v >> 1) & 0xFFF;
   return true;
 }
-uint32_t link_rx_frames() { return s_dec.frames; }
-uint32_t link_rx_errors() { return s_dec.errors; }
+uint32_t link_rx_frames() { return s_dec.frames + (s_rdec ? s_rdec->frames : 0); }
+uint32_t link_rx_errors() { return s_dec.errors + (s_rdec ? s_rdec->errors : 0); }
+bool link_via_remote() { return s_connected && s_via == VIA_REMOTE; }
+
+void link_remote_start(const RemoteLink* t, size_t rx_buf) {
+  if (s_rl) return;
+  s_rdec = new fnx::FrameDecoder();
+  s_rrx = xStreamBufferCreate(rx_buf, 1);
+  s_rl = t;  // last: the link task polls s_rrx
+}
+
+void link_remote_rx(const uint8_t* d, size_t n) {
+  while (n) {
+    size_t k = xStreamBufferSend(s_rrx, d, n, pdMS_TO_TICKS(100));
+    d += k;
+    n -= k;
+  }
+}
+
+void link_remote_closed() { s_rclosed = true; }
 uint32_t link_rx_bytes() { return s_rx_bytes; }
 uint32_t link_tx_bytes() { return s_tx_bytes; }
 void sysinfo_write(fnx::Writer& w);  // sysinfo.cpp
@@ -175,6 +216,13 @@ static void send_stats() {
   send_with(fnx::ty::STATS, [&](fnx::Writer& w) { fnx::write_stats(w, s); });
 }
 
+static void send_error_to(uint8_t via, uint8_t code, const char* text) {
+  send_to(via, fnx::ty::ERROR, [&](fnx::Writer& w) {
+    w.u8(code);
+    w.bytes(text, strlen(text));
+  });
+}
+
 static void send_error(uint8_t code, const char* text) {
   send_with(fnx::ty::ERROR, [&](fnx::Writer& w) {
     w.u8(code);
@@ -194,8 +242,12 @@ static void send_app_result(uint8_t op, uint8_t code, const char* id, const char
   });
 }
 
-static void on_frame(const uint8_t* p, size_t n, void*) {
+static void on_frame(const uint8_t* p, size_t n, void* ctx) {
   if (n < 2) return;
+  uint8_t via = (uint8_t)(uintptr_t)ctx;
+  // One PC at a time: the other transport waits until this session ends.
+  if (s_connected && via != s_via) return send_error_to(via, fnx::err::BUSY, "busy");
+  s_via = via;
   uint8_t type = p[0];
   fnx::Reader r(p + 2, n - 2);
   s_last_rx = esp_timer_get_time();
@@ -230,7 +282,8 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
       return;
     }
     case fnx::ty::REBOOT:
-      uart_wait_tx_done(UART, pdMS_TO_TICKS(100));
+      if (s_via == VIA_UART) uart_wait_tx_done(UART, pdMS_TO_TICKS(100));
+      else vTaskDelay(pdMS_TO_TICKS(100));
       esp_restart();
     case fnx::ty::TOUCH: {
       uint16_t x = r.u16(), y = r.u16();
@@ -351,22 +404,40 @@ static void on_frame(const uint8_t* p, size_t n, void*) {
   }
 }
 
+static void end_session() {
+  s_connected = false;
+  s_remote = 0;
+  store_abort();
+  post(LinkEv::DISCONNECTED);
+}
+
 static void link_task(void*) {
   static uint8_t buf[512];
   int64_t next_stats = esp_timer_get_time() + STATS_PERIOD_US;
   for (;;) {
-    int n = uart_read_bytes(UART, buf, sizeof buf, pdMS_TO_TICKS(20));
+    // With a remote transport, wait less on the UART so its bytes are not held back.
+    int n = uart_read_bytes(UART, buf, sizeof buf, pdMS_TO_TICKS(s_rrx ? 4 : 20));
     if (n > 0) {
       s_rx_bytes += n;
-      s_dec.push(buf, n, on_frame, nullptr);
+      s_dec.push(buf, n, on_frame, (void*)(uintptr_t)VIA_UART);
+    }
+    if (s_rrx) {
+      while ((n = xStreamBufferReceive(s_rrx, buf, sizeof buf, 0)) > 0) {
+        s_rx_bytes += n;
+        s_rdec->push(buf, n, on_frame, (void*)(uintptr_t)VIA_REMOTE);
+      }
+      if (s_rclosed) {
+        s_rclosed = false;
+        // Drop a half-received frame; keep the counters.
+        uint32_t f = s_rdec->frames, e = s_rdec->errors;
+        *s_rdec = fnx::FrameDecoder();
+        s_rdec->frames = f;
+        s_rdec->errors = e;
+        if (s_connected && s_via == VIA_REMOTE) end_session();
+      }
     }
     int64_t now = esp_timer_get_time();
-    if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) {
-      s_connected = false;
-      s_remote = 0;
-      store_abort();
-      post(LinkEv::DISCONNECTED);
-    }
+    if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) end_session();
     if (store_installing(nullptr) && now - s_install_rx > INSTALL_TIMEOUT_US) store_abort();
     if (now >= next_stats) {
       next_stats = now + STATS_PERIOD_US;

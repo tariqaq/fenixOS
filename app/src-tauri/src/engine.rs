@@ -137,6 +137,8 @@ impl Engine {
         let cfg = crate::config::Config::load();
         let link = Link::spawn(LinkOptions {
             port: cfg.port.clone(),
+            // No USB board: try the board's Wi-Fi link every 5 s (P34).
+            net: Some("fenixos.local".into()),
             ..LinkOptions::default()
         });
         let apps = Apps::new(link.sender(), tx.clone());
@@ -298,14 +300,19 @@ impl Engine {
     }
 
     /// The port to flash or probe: the connected board, else the first CH340 port that did not
-    /// answer as fenixOS.
+    /// answer as fenixOS. Flashing needs USB: a board linked over Wi-Fi is refused.
     fn target_port(&self) -> Result<String, String> {
         let s = self.state.lock().unwrap();
-        s.board
+        let port = s
+            .board
             .as_ref()
             .map(|b| b.port.clone())
             .or_else(|| s.silent.first().map(|x| x.port.clone()))
-            .ok_or_else(|| "no board found".into())
+            .ok_or_else(|| "no board found".to_string())?;
+        if port.starts_with("tcp:") {
+            return Err("the board is linked over Wi-Fi; connect it by USB to flash".into());
+        }
+        Ok(port)
     }
 
     /// First run: ask the bootloader of a board that does not answer as fenixOS what it is.

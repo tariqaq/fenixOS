@@ -1,18 +1,20 @@
 //! Board link manager: finds the CH340 board, handshakes, keeps a heartbeat and
-//! reconnects on unplug/reset. Plain std threads, no async runtime.
+//! reconnects on unplug/reset. Plain std threads, no async runtime. The same session also runs
+//! over Wi-Fi (P34): a port named `tcp:<host>[:<port>]` connects to the board's TCP link.
 //! Ported from the FenixDeck PoC (single-thread serial I/O, see `docs/toolchain.md`).
 //!
 //! Usage: `let link = Link::spawn(LinkOptions::default());` then `link.send(msg)` and
 //! read `link.events()`.
 
 use std::io::{Read, Write};
+use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use fenix_proto::{err, FrameDecoder, HelloAck, Msg, BAUD, PROTO_VERSION, USB_PID, USB_VID};
+use fenix_proto::{err, FrameDecoder, HelloAck, Msg, BAUD, PROTO_VERSION, TCP_PORT, USB_PID, USB_VID};
 use serialport::{SerialPort, SerialPortType};
 
 #[derive(Debug, Clone)]
@@ -42,8 +44,12 @@ pub enum Event {
 
 #[derive(Debug, Clone)]
 pub struct LinkOptions {
-    /// Force a port (e.g. "COM9"); None = auto-detect by USB VID:PID. `Link::set_port` changes it.
+    /// Force a port (e.g. "COM9", or "tcp:192.168.1.20" for Wi-Fi); None = auto-detect by USB
+    /// VID:PID. `Link::set_port` changes it.
     pub port: Option<String>,
+    /// Wi-Fi fallback (P34): a host (e.g. "fenixos.local") tried every `NET_RETRY` when no USB
+    /// board port exists. None = USB only.
+    pub net: Option<String>,
     pub baud: u32,
     pub heartbeat: Duration,
     pub timeout: Duration,
@@ -54,6 +60,7 @@ impl Default for LinkOptions {
     fn default() -> Self {
         Self {
             port: None,
+            net: None,
             baud: BAUD,
             heartbeat: Duration::from_secs(1),
             timeout: Duration::from_secs(3),
@@ -139,6 +146,60 @@ fn no_wait_reads(p: &serialport::COMPort) -> serialport::Result<()> {
 #[cfg(not(windows))]
 fn no_wait_reads(_: &serialport::TTYPort) -> serialport::Result<()> {
     Ok(())
+}
+
+/// A link to the board: a serial port or a TCP stream.
+pub trait Conn: Read + Write + Send {}
+impl<T: Read + Write + Send + ?Sized> Conn for T {}
+
+/// The board over Wi-Fi. Reads behave like the serial port's: `TimedOut` when nothing has
+/// arrived; a closed connection is an error, not an empty read.
+struct Tcp(TcpStream);
+
+impl Read for Tcp {
+    fn read(&mut self, b: &mut [u8]) -> std::io::Result<usize> {
+        use std::io::{Error, ErrorKind};
+        match self.0.read(b) {
+            Ok(0) if !b.is_empty() => Err(Error::new(ErrorKind::ConnectionAborted, "closed by the board")),
+            Err(e) if e.kind() == ErrorKind::WouldBlock => Err(Error::new(ErrorKind::TimedOut, e)),
+            r => r,
+        }
+    }
+}
+
+impl Write for Tcp {
+    fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
+        self.0.write(b)
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.flush()
+    }
+}
+
+/// How often the Wi-Fi fallback is tried while no USB board port exists.
+const NET_RETRY: Duration = Duration::from_secs(5);
+
+/// `tcp:<host>[:<port>]` (port 7350 by default), IPv4.
+fn open_tcp(spec: &str) -> std::io::Result<Tcp> {
+    use std::io::{Error, ErrorKind};
+    let host = spec.trim_start_matches("tcp:");
+    let target = if host.contains(':') { host.to_string() } else { format!("{host}:{TCP_PORT}") };
+    let addr = target
+        .to_socket_addrs()?
+        .find(|a| a.is_ipv4())
+        .ok_or_else(|| Error::new(ErrorKind::NotFound, format!("{host}: no IPv4 address")))?;
+    let s = TcpStream::connect_timeout(&addr, Duration::from_secs(2))?;
+    s.set_nodelay(true)?;
+    s.set_read_timeout(Some(Duration::from_millis(1)))?;
+    s.set_write_timeout(Some(Duration::from_secs(2)))?;
+    Ok(Tcp(s))
+}
+
+fn open_conn(name: &str, baud: u32) -> Result<Box<dyn Conn>, String> {
+    if name.starts_with("tcp:") {
+        return open_tcp(name).map(|t| Box::new(t) as Box<dyn Conn>).map_err(|e| e.to_string());
+    }
+    open_port(name, baud).map(|p| Box::new(p) as Box<dyn Conn>).map_err(|e| e.to_string())
 }
 
 /// Sleep between reads that found nothing: short while bytes are flowing (stream, install),
@@ -256,6 +317,7 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
     let mut announced_search = false;
     let mut announced_pause = false;
     let mut unresponsive: std::collections::HashMap<String, String> = Default::default();
+    let mut next_net = Instant::now();
     while !stop.load(Ordering::Relaxed) {
         if paused.load(Ordering::Relaxed) {
             if !announced_pause {
@@ -270,9 +332,18 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
         announced_pause = false;
         ctl.retarget.store(false, Ordering::Relaxed);
         let fixed = ctl.port.lock().map(|p| p.clone()).unwrap_or(None);
-        let candidates = match fixed {
+        let candidates = match fixed.clone() {
             Some(p) => vec![p],
-            None => find_board_ports(),
+            None => {
+                let mut c = find_board_ports();
+                if let (true, Some(h)) = (c.is_empty(), &opts.net) {
+                    if Instant::now() >= next_net {
+                        next_net = Instant::now() + NET_RETRY;
+                        c.push(format!("tcp:{h}"));
+                    }
+                }
+                c
+            }
         };
         let mut connected = false;
         for name in candidates {
@@ -292,6 +363,8 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
                     connected = true;
                     break;
                 }
+                // A Wi-Fi fallback that finds nothing is not a board that failed to answer.
+                Err(_) if fixed.is_none() && name.starts_with("tcp:") => continue,
                 Err(detail) => {
                     if unresponsive.get(&name) != Some(&detail) {
                         let _ = ev.send(Event::Unresponsive {
@@ -323,10 +396,10 @@ fn sleep_unless_stopped(d: Duration, stop: &AtomicBool) {
     }
 }
 
-type Handshake = (Box<dyn SerialPort>, FrameDecoder, HelloAck, Vec<Msg>);
+type Handshake = (Box<dyn Conn>, FrameDecoder, HelloAck, Vec<Msg>);
 
 fn handshake(name: &str, opts: &LinkOptions) -> Result<Handshake, String> {
-    let mut port = open_port(name, opts.baud).map_err(|e| e.to_string())?;
+    let mut port = open_conn(name, opts.baud)?;
     let mut dec = FrameDecoder::new();
     let mut buf = [0u8; 512];
     let deadline = Instant::now() + Duration::from_millis(2500);
@@ -379,7 +452,7 @@ fn handshake(name: &str, opts: &LinkOptions) -> Result<Handshake, String> {
 }
 
 fn session(
-    mut port: Box<dyn SerialPort>,
+    mut port: Box<dyn Conn>,
     mut dec: FrameDecoder,
     opts: &LinkOptions,
     rx_out: &Receiver<Msg>,

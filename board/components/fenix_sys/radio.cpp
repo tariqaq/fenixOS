@@ -3,9 +3,11 @@
 // back to the heap (esp_bt_mem_release) returns only on reboot. Off and Wi-Fi release it first:
 // +44 KB (docs/board-info.md "Radios one at a time").
 //
-// Bluetooth: Classic SPP server "fenixOS" (Just Works pairing) and BLE advertising.
+// Bluetooth: Classic SPP server "fenixOS" (Just Works pairing), the PC link over it (P33), and
+// BLE advertising.
 // Wi-Fi: station at full speed (power save off), the network saved in NVS in plaintext
-// (user choice: no encryption anywhere), reconnect with backoff, scans for the PC and the UI.
+// (user choice: no encryption anywhere), reconnect with backoff, scans for the PC and the UI;
+// its services (PC link over TCP, time) are in net.cpp.
 //
 // State changes come from the Bluetooth and Wi-Fi tasks; the state is copied under a spinlock
 // and sent to the PC as RADIO_STATE. Nothing here calls LVGL.
@@ -28,6 +30,7 @@
 #include "fenix_proto.h"
 #include "fenix_sys.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "nvs.h"
 
@@ -133,6 +136,43 @@ static void gap_bt_cb(esp_bt_gap_cb_event_t e, esp_bt_gap_cb_param_t* p) {
   }
 }
 
+// PC link over SPP. Bluedroid copies and queues every write without a limit, so at most
+// SPP_PENDING writes are in flight and none while RFCOMM reports congestion.
+static constexpr int SPP_PENDING = 6;
+static volatile uint32_t s_spp;  // open connection, 0 = none
+static volatile int s_spp_pending;
+static volatile bool s_spp_cong;
+static SemaphoreHandle_t s_spp_room;  // given on every write completion or congestion change
+
+static bool spp_write(const uint8_t* d, size_t n) {
+  int64_t end = esp_timer_get_time() + 500000;
+  while (s_spp && (s_spp_cong || s_spp_pending >= SPP_PENDING)) {
+    xSemaphoreTake(s_spp_room, pdMS_TO_TICKS(20));
+    if (esp_timer_get_time() > end) return false;
+  }
+  uint32_t h = s_spp;
+  if (!h) return false;
+  portENTER_CRITICAL(&s_mux);
+  s_spp_pending++;
+  portEXIT_CRITICAL(&s_mux);
+  if (esp_spp_write(h, n, (uint8_t*)d) == ESP_OK) return true;
+  portENTER_CRITICAL(&s_mux);
+  s_spp_pending--;
+  portEXIT_CRITICAL(&s_mux);
+  return false;
+}
+
+static size_t spp_tx_free() {
+  if (!s_spp || s_spp_cong) return 0;
+  return (SPP_PENDING - s_spp_pending) * fnx::MAX_WIRE;
+}
+
+static const RemoteLink SPP_LINK = {"Bluetooth", spp_write, spp_tx_free};
+
+static void spp_room() {
+  if (s_spp_room) xSemaphoreGive(s_spp_room);
+}
+
 static void spp_cb(esp_spp_cb_event_t e, esp_spp_cb_param_t* p) {
   switch (e) {
     case ESP_SPP_INIT_EVT:
@@ -144,11 +184,31 @@ static void spp_cb(esp_spp_cb_event_t e, esp_spp_cb_param_t* p) {
     case ESP_SPP_SRV_OPEN_EVT: {
       char a[18];
       bda_text(p->srv_open.rem_bda, a, sizeof a);
+      s_spp_pending = 0;
+      s_spp_cong = false;
+      s_spp = p->srv_open.handle;
       set_state(fnx::radio_state::CONNECTED, a);
       break;
     }
     case ESP_SPP_CLOSE_EVT:
+      s_spp = 0;
+      spp_room();
+      link_remote_closed();
       set_state(fnx::radio_state::READY, "");
+      break;
+    case ESP_SPP_DATA_IND_EVT:
+      link_remote_rx(p->data_ind.data, p->data_ind.len);
+      break;
+    case ESP_SPP_WRITE_EVT:
+      portENTER_CRITICAL(&s_mux);
+      if (s_spp_pending > 0) s_spp_pending--;
+      portEXIT_CRITICAL(&s_mux);
+      s_spp_cong = p->write.cong;
+      spp_room();
+      break;
+    case ESP_SPP_CONG_EVT:
+      s_spp_cong = p->cong.cong;
+      spp_room();
       break;
     default:
       break;
@@ -179,6 +239,8 @@ static bool bt_start() {
   esp_bt_io_cap_t io = ESP_BT_IO_CAP_NONE;  // Just Works: the board has no keypad
   esp_bt_gap_set_security_param(ESP_BT_SP_IOCAP_MODE, &io, sizeof io);
   esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
+  s_spp_room = xSemaphoreCreateBinary();
+  link_remote_start(&SPP_LINK, 4096);  // ~48 KB free in Bluetooth mode: half the UART's buffer
   esp_spp_register_callback(spp_cb);
   esp_spp_cfg_t sc = {.mode = ESP_SPP_MODE_CB, .enable_l2cap_ertm = true, .tx_buffer_size = 0};
   if (esp_spp_enhanced_init(&sc) != ESP_OK) return false;
@@ -313,6 +375,7 @@ static void wifi_event(void*, esp_event_base_t base, int32_t id, void* data) {
     wifi_ap_record_t ap;
     int8_t rssi = esp_wifi_sta_get_ap_info(&ap) == ESP_OK ? ap.rssi : 0;
     set_state(fnx::radio_state::CONNECTED, s_ssid, rssi, ip);
+    net_up();
   } else if (base == WIFI_EVENT && id == WIFI_EVENT_SCAN_DONE) {
     scan_done();
   }
@@ -335,6 +398,7 @@ static bool wifi_start() {
   esp_wifi_set_mode(WIFI_MODE_STA);
   if (esp_wifi_start() != ESP_OK) return false;
   esp_wifi_set_ps(WIFI_PS_NONE);  // lowest latency (P30: best latency and speed)
+  net_start();
   return true;
 }
 

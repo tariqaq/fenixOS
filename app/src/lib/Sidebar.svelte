@@ -4,7 +4,7 @@
   // (250 ms).
   import Icon from "./Icon.svelte";
   import type { IconName } from "./icons";
-  import type { Board, Page } from "./api";
+  import { linkText, type Board, type Page } from "./api";
 
   let { page = $bindable(), board }: { page: Page; board: Board | null } = $props();
 
@@ -35,7 +35,7 @@
     <div class="lines">
       <p class="title">{board ? "Board connected" : "Board not connected"}</p>
       {#if board}
-        <p>USB on {board.port}</p>
+        <p>{linkText(board.port)}</p>
         <p>fenixOS v{board.firmware}</p>
       {:else}
         <p>Looking for the board</p>

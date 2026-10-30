@@ -28,7 +28,7 @@
 //! fenix erase <offset> <size>      erase a flash region (0x9000 0x6000: settings)
 //! The flash commands replace esptool and `idf.py flash`, whose read timeouts take the CH340
 //! driver's crash path (P23).
-//! Common option: --port COMx (default: auto-detect).
+//! Common option: --port COMx, or --port tcp:<host> for the Wi-Fi link (default: auto-detect USB).
 
 use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};

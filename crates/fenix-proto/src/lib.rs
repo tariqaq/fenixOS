@@ -21,3 +21,5 @@ pub const BAUD: u32 = 921_600;
 /// CH340 USB ids of the ESP32-2432S028R.
 pub const USB_VID: u16 = 0x1A86;
 pub const USB_PID: u16 = 0x7523;
+/// The same frames over Wi-Fi (P34): the board listens on this TCP port.
+pub const TCP_PORT: u16 = 7350;

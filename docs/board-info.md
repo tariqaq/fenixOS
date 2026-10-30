@@ -280,6 +280,18 @@ The normal firmware now carries both radios; Settings > Wireless (`Settings.radi
 - **Wi-Fi:** station with power save off (`WIFI_PS_NONE`) for full speed; network in NVS (`wifi_ssid`, `wifi_pass`, plaintext by user choice) and `WIFI_STORAGE_RAM` so the Wi-Fi driver keeps no second copy. Reconnect backoff 1, 2, 4... up to 30 s; after 5 failures the state shows "failed" and retries continue at 30 s. Scans are asynchronous; results are merged per SSID (strongest kept), sorted by signal, at most 24.
 - **Event task stack:** Wi-Fi events build PC frames (a ~1.2 KB buffer on the stack). The default 2304 B overflowed after a scan (panic, reset reason 4); 4096 left 744 B; now 5120.
 - **PC messages:** RADIO_STATE after every HELLO and on each change, WIFI_SCAN only when asked. Nothing is sent while no PC is connected.
+- **Frames from small stacks (P34):** `build_frame` kept a 1200 B payload buffer on the caller's stack. The SNTP callback (lwIP task, 3 KB stack) logged through it and panicked the board (reset reason 4) at the first time sync. Now `link.cpp` frames into a static buffer under the TX lock (`build_frame_in`), so any task can send; callbacks on lwIP still do not log.
+
+## Wi-Fi link, mDNS, SNTP (P34, 2026-10-30)
+
+Measured with the board on a Windows Mobile Hotspot (2.4 GHz, -39 dBm), PC on the same hotspot.
+
+- **TCP link:** port 7350, one client, `TCP_NODELAY`, 500 ms send timeout (a stalled frame ends the connection rather than leaving half a frame). `fenix --port tcp:fenixos.local ...` works for every link command; a USB session still open answers the TCP HELLO with ERROR busy until it times out (3 s).
+- **Stream over TCP** (`fenix bench 10`): 47.3 KB/s, 0 dropped, 0 RX errors, same as USB (the board's encoder is the limit). Board fps falls from ~23 to 14.4: the UI task blocks in `send()`. Heap minimum 34 KB during the stream (lwIP buffers).
+- **Heap, Wi-Fi joined, TCP server, mDNS, SNTP:** 80 to 90 KB free (108 KB before the services: 8 KB link RX buffer, 2.4 KB decoder, task stacks, mDNS).
+- **mDNS:** `fenixos.local` resolves on Windows 11 (`Resolve-DnsName`, getaddrinfo) within a few seconds of the board joining; service `_fenixos._tcp`. No UPnP: nothing is opened on the router; the link is reachable only from the same network.
+- **SNTP:** synced in about 10 s after boot. One cold boot did not sync within 74 s while DNS through the hotspot worked; a second server (`time.cloudflare.com`, `LWIP_SNTP_MAX_SERVERS=2`) covers a pool address that does not answer. SNTP starts on each new address (`net_up`); before an address its DNS query fails and backs off.
+- **Open-Meteo:** answers plain HTTP (`http://api.open-meteo.com/v1/forecast?...&current=temperature_2m,weather_code`, 200, no redirect, checked 2026-10-30), so weather needs no TLS.
 
 ## Image retention ("burn-in"), 2026-10-29
 
