@@ -7,6 +7,7 @@
 #include "driver/uart.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
+#include "esp_attr.h"
 #include "esp_mac.h"
 #include "esp_system.h"
 #include "esp_timer.h"
@@ -158,6 +159,7 @@ bool remote_touch(int16_t* x, int16_t* y) {
 uint32_t link_rx_frames() { return s_dec.frames + (s_rdec ? s_rdec->frames : 0); }
 uint32_t link_rx_errors() { return s_dec.errors + (s_rdec ? s_rdec->errors : 0); }
 const char* link_remote_name() { return s_connected && s_via == VIA_REMOTE && s_rl ? s_rl->name : nullptr; }
+bool link_can_stream() { return !(s_connected && s_via == VIA_REMOTE && s_rl && !s_rl->stream); }
 
 void link_remote_start(const RemoteLink* t, size_t rx_buf) {
   if (s_rl) return;
@@ -180,6 +182,8 @@ uint32_t link_tx_bytes() { return s_tx_bytes; }
 void sysinfo_write(fnx::Writer& w);  // sysinfo.cpp
 
 // ---- RX dispatch ----
+
+static void report_oom();  // below link_start
 
 static void send_hello_ack() {
   fnx::HelloAck a{};
@@ -261,6 +265,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
         s_connected = true;
         post(LinkEv::CONNECTED);
         send_board_state(board_info());
+        report_oom();
       }
       radio_report();  // every HELLO: a new PC session may start before the old one timed out
       return;
@@ -377,6 +382,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
     }
     case fnx::ty::STREAM_START: {
       uint8_t fps = r.u8();
+      if (!link_can_stream()) return send_error(fnx::err::UNAVAILABLE, "no stream over Bluetooth");
       post(LinkEv::STREAM_START, fps ? fps : 10);
       return;
     }
@@ -452,7 +458,32 @@ static void link_task(void*) {
   }
 }
 
+// The last failed malloc, kept across the restart that often follows it (an LVGL allocation
+// that fails aborts, board/CMakeLists.txt), so the next session can name it (P33). There is no
+// console and no core dump: this is the only trace of an out-of-memory restart.
+static RTC_NOINIT_ATTR uint32_t s_oom_magic, s_oom_size, s_oom_free, s_oom_count;
+static RTC_NOINIT_ATTR const char* s_oom_fn;
+static constexpr uint32_t OOM_MAGIC = 0xF3E10003;
+
+static void on_alloc_failed(size_t size, uint32_t, const char* fn) {
+  if (s_oom_magic != OOM_MAGIC) s_oom_count = 0;
+  s_oom_magic = OOM_MAGIC;
+  s_oom_size = size;
+  s_oom_free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  s_oom_fn = fn;  // a literal in flash: still valid after the restart
+  s_oom_count = s_oom_count + 1;
+}
+
+static void report_oom() {
+  if (s_oom_magic != OOM_MAGIC) return;
+  s_oom_magic = 0;
+  link_log(2, "out of memory before this session: %u B in %s with %u B free (%u failures)",
+           (unsigned)s_oom_size, s_oom_fn ? s_oom_fn : "?", (unsigned)s_oom_free, (unsigned)s_oom_count);
+}
+
 void link_start() {
+  if (esp_reset_reason() == ESP_RST_POWERON) s_oom_magic = 0;
+  heap_caps_register_failed_alloc_callback(on_alloc_failed);
   s_tx_lock = xSemaphoreCreateMutex();
   s_events = xQueueCreate(16, sizeof(LinkEvent));
   s_binds = xQueueCreate(16, sizeof(BindValue));

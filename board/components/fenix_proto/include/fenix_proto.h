@@ -29,7 +29,8 @@ constexpr uint8_t STREAM_START = 0x40, STREAM_STOP = 0x41, STREAM_RECT = 0x42, S
 }  // namespace ty
 
 namespace err {
-constexpr uint8_t PROTO_MISMATCH = 1, UNKNOWN_TYPE = 2, BAD_BODY = 3, BUSY = 4, NO_SESSION = 5;
+constexpr uint8_t PROTO_MISMATCH = 1, UNKNOWN_TYPE = 2, BAD_BODY = 3, BUSY = 4, NO_SESSION = 5,
+                  UNAVAILABLE = 6;  // not over this transport (stream over Bluetooth)
 }
 namespace app {
 constexpr uint8_t OP_INSTALL = 1, OP_REMOVE = 2;

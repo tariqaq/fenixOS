@@ -166,7 +166,8 @@ static size_t spp_tx_free() {
   return (SPP_PENDING - s_spp_pending) * fnx::MAX_WIRE;
 }
 
-static const RemoteLink SPP_LINK = {"Bluetooth", spp_write, spp_tx_free};
+// No stream: a stream over SPP took the heap from ~21 KB to 7.9 KB and then the board panicked (P33).
+static const RemoteLink SPP_LINK = {"Bluetooth", spp_write, spp_tx_free, false};
 
 static void spp_room() {
   if (s_spp_room) xSemaphoreGive(s_spp_room);
@@ -224,7 +225,9 @@ static bool bt_start() {
   esp_bt_gap_set_security_param(ESP_BT_SP_IOCAP_MODE, &io, sizeof io);
   esp_bt_gap_set_scan_mode(ESP_BT_CONNECTABLE, ESP_BT_GENERAL_DISCOVERABLE);
   s_spp_room = xSemaphoreCreateBinary();
-  link_remote_start(&SPP_LINK, 4096);  // ~48 KB free in Bluetooth mode: half the UART's buffer
+  // The PC keeps 4 KB of install chunks in flight; with framing that overflowed 4 KB, and a full
+  // buffer blocks BTC_TASK, which also confirms our writes: the board's ACKs then timed out (P37).
+  link_remote_start(&SPP_LINK, 6144);
   esp_spp_register_callback(spp_cb);
   esp_spp_cfg_t sc = {.mode = ESP_SPP_MODE_CB, .enable_l2cap_ertm = true, .tx_buffer_size = 0};
   if (esp_spp_enhanced_init(&sc) != ESP_OK) return false;

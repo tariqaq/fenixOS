@@ -111,11 +111,13 @@ struct RemoteLink {
   const char* name;                           // "Bluetooth", "Wi-Fi"
   bool (*write)(const uint8_t* d, size_t n);  // one whole frame or none; may block briefly
   size_t (*tx_free)();                        // room for frames without blocking
+  bool stream;  // carries the screen stream (Bluetooth: no, too little heap)
 };
 void link_remote_start(const RemoteLink* t, size_t rx_buf);  // once, from radio_start
 void link_remote_rx(const uint8_t* d, size_t n);             // transport task; waits while full
 void link_remote_closed();                                   // the peer went away
 const char* link_remote_name();  // the session's radio ("Wi-Fi", "Bluetooth"), or nullptr on USB
+bool link_can_stream();          // false while the session runs over a transport without stream
 
 // ---- Radios (P32): one at a time; switching saves the mode and restarts ----
 struct RadioInfo {

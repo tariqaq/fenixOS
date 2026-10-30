@@ -276,7 +276,7 @@ Measured with a Bluedroid probe (removed in P32; its settings are now in `sdkcon
 The normal firmware now carries both radios; Settings > Wireless (`Settings.radio` in NVS: 0 off, 1 Bluetooth, 2 Wi-Fi) picks the one that starts at boot. Switching saves the mode and restarts, because `esp_bt_mem_release` cannot be undone without a reboot.
 
 - **Image:** 1.38 MB (69% of the 2 MB slot), IRAM 130 of 172 KB. Up from 549 KB in v0.1.7: Bluedroid, Wi-Fi, lwIP.
-- **Heap at boot:** off 158 KB free (min 118.6 KB); Bluetooth 48.5 KB (SPP server "fenixOS" and BLE advertising up); Wi-Fi 110 to 116 KB (station, scanning); joined to a network (Windows hotspot, -40 dBm) 108.7 KB, min 105.9 KB. The saved network is rejoined within ~8 s of boot. Corrected: the P30 figure of ~148 KB with no radio running was for the probe; the P32 build with the P31 trims leaves 158 KB.
+- **Heap at boot:** off 158 KB free (min 118.6 KB); Bluetooth 48.5 KB (SPP server "fenixOS" and BLE advertising up; 23 to 24 KB since P33, see "Bluetooth link"); Wi-Fi 110 to 116 KB (station, scanning); joined to a network (Windows hotspot, -40 dBm) 108.7 KB, min 105.9 KB. The saved network is rejoined within ~8 s of boot. Corrected: the P30 figure of ~148 KB with no radio running was for the probe; the P32 build with the P31 trims leaves 158 KB.
 - **Wi-Fi:** station with power save off (`WIFI_PS_NONE`) for full speed; network in NVS (`wifi_ssid`, `wifi_pass`, plaintext by user choice) and `WIFI_STORAGE_RAM` so the Wi-Fi driver keeps no second copy. Reconnect backoff 1, 2, 4... up to 30 s; after 5 failures the state shows "failed" and retries continue at 30 s. Scans are asynchronous; results are merged per SSID (strongest kept), sorted by signal, at most 24.
 - **Event task stack:** Wi-Fi events build PC frames. With a ~1.2 KB buffer on the stack the default 2304 B overflowed after a scan (panic, reset reason 4); 4096 left 744 B; 5120 then. Corrected (P37): frames are built in static buffers since P34, so the task uses ~1.7 KB after scans: 3072.
 - **PC messages:** RADIO_STATE after every HELLO and on each change, WIFI_SCAN only when asked. Nothing is sent while no PC is connected.
@@ -300,6 +300,18 @@ Measured with the board on a Windows Mobile Hotspot (2.4 GHz, -39 dBm), PC on th
 - **Heartbeat RTT** (`fenix soak 1`, max of 60 pings): TCP over the hotspot 138 ms, USB 11 ms. Fine for the link (timeout 3 s); Wi-Fi latency spikes come from the PC's hotspot side, the board has power save off.
 - **STATS counters:** fixed in P34 to count frames from both transports (they counted the UART only, so a TCP session showed 0 frames).
 - **Heap under stream + scans over TCP:** minimum 24 KB seen after several streamed screenshots and scans (free 64 KB). Watch this before adding more Wi-Fi services.
+
+## Bluetooth link and BLE status (P33, 2026-10-31)
+
+Measured with the board paired to this PC (Intel adapter, Windows 11). Pairing makes an outgoing Bluetooth COM port (here COM10, `BTHENUM\DEV_B4A64AA0BE56`, Microsoft's RFCOMM driver, not CH340).
+
+- **SPP link:** `fenix --port COM10 hello|sysinfo|time|list|install` work. Sample app install 1643 B in 0.15 s. Heartbeat RTT max 182 ms (`fenix soak`).
+- **Opening the COM port is slow and unreliable:** each open makes Windows page the board and set up RFCOMM. Opens took 2 to 46 s, and many failed after ~40 s with "The semaphore timeout period has expired" or "The network location cannot be reached". A reopen within a few seconds of a close is fast (2 s). The CLI waits only 6 s for a board, so a cold run often says "no board"; run it again. The app keeps its port open, so it pays this once. No failed malloc on the board during these attempts.
+- **Stream refused over Bluetooth:** a stream over SPP gave ~1 KB/s and took the heap from ~21 KB to 7.9 KB. The board then panicked (reset reason 4). The board now answers STREAM_START over Bluetooth with `ERROR` 6 (unavailable), and its Stream screen says "Not over Bluetooth". Screenshots (`fenix shot`) stream too, so they need USB or Wi-Fi.
+- **Two panics after a Bluetooth bench session** (reset reason 4, `fenix bench` with its taps between Home and Settings). One had the stream refused, so the stream is not the only cause. They did not repeat in a third run. No console and no core dump exist, so `link.cpp` now keeps the last failed malloc (size, function, free heap) in RTC memory. The next session logs "out of memory before this session: ...". Check that log first when a Bluetooth restart comes back.
+- **RX buffer 6 KB:** the PC keeps 4 install chunks (4 KB) in flight; with framing that overflowed a 4 KB buffer. A full buffer blocks `BTC_TASK`, which also confirms the board's own writes, so its ACKs waited out their 500 ms and were lost.
+- **Heap in Bluetooth mode:** 23 to 24 KB free at idle with the BLE service and the 6 KB RX buffer; 19 KB with an SPP session; minimum seen 14 to 16 KB. Corrected: P32's 48.5 KB was before the remote link layer, the BLE service and the P37 caps were in.
+- **BLE status service** (`ble.cpp`): found by `bleak` as "fenixOS" (`B4:A6:4A:A0:BE:56`), MTU 517, the status JSON (98 B without Wi-Fi fields) read in one go and notified every 2 s. 25.4 KB free with a BLE client.
 
 ## Image retention ("burn-in"), 2026-10-29
 

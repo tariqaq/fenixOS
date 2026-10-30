@@ -207,6 +207,7 @@ bool bind_poll(BindValue* v) {
 uint32_t link_rx_frames() { return 0; }
 uint32_t link_rx_errors() { return 0; }
 const char* link_remote_name() { return nullptr; }
+bool link_can_stream() { return true; }
 static bool s_stream;
 bool stream_active() { return s_stream; }
 bool stream_rect(int, int, int, int, const uint8_t*) { return true; }

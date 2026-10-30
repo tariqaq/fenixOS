@@ -51,6 +51,8 @@ pub mod err {
     pub const BUSY: u8 = 4;
     /// PING before HELLO: the board restarted and the PC must handshake again.
     pub const NO_SESSION: u8 = 5;
+    /// Not over this transport: STREAM_START over Bluetooth (too little heap).
+    pub const UNAVAILABLE: u8 = 6;
 }
 
 /// `APP_RESULT` ops and codes.

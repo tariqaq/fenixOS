@@ -38,6 +38,11 @@ void stream_screen(lv_obj_t* scr) {
             "Connect the board by USB and open fenixOS on your PC to stream this screen.");
     return;
   }
+  if (!sh.streaming && !sys::link_can_stream()) {
+    message(centre_column(scr, 6, 24, 16), FX_ICON_SCREENCAST, "Not over Bluetooth",
+            "Bluetooth leaves too little memory to stream. Use USB or Wi-Fi.");
+    return;
+  }
   if (!sh.streaming) {
     lv_obj_t* c = centre_column(scr, 6, 24, 16);
     message(c, FX_ICON_SCREENCAST, "Not streaming",

@@ -111,6 +111,7 @@ static void report_stream() {
 }
 
 static void stream_set(bool on, uint8_t fps) {
+  if (on && !sys::link_can_stream()) return;  // Bluetooth: link.cpp refuses the PC's start too
   s_shell.streaming = on;
   s_shell.stream_fps = fps;
   report_stream();
