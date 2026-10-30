@@ -55,7 +55,7 @@ Hard rules for any AI agent in this repo. No exceptions.
 ## Testing
 
 What CI runs; run the parts your change touches:
-- `python tools/version.py --check`, `tools/gen_tokens.py --check`, `tools/registry.py --check`, `tools/licenses.py --check`
+- `python tools/version.py --check`, `tools/gen_tokens.py --check`, `tools/registry.py --check`, `tools/app_template.py --check`, `tools/licenses.py --check`
 - `cargo test --workspace`
 - `pnpm -C app exec svelte-check`, `pnpm -C app build`
 - Firmware: `pwsh -NoProfile -File board/idf.ps1 build`; after any `sdkconfig` LVGL change, `python tools/sim_config.py` (CI checks it); simulator screens: `board/sim/build.ps1`, then `python tools/sim_shots.py`

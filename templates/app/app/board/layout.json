@@ -1,0 +1,22 @@
+{
+  "type": "box", "w": "100%", "pad": 12, "gap": 10, "portrait": { "pad": 10 },
+  "children": [
+    {
+      "type": "box", "w": "100%", "bg": "surface_1", "radius": 12, "pad": 10, "gap": 4,
+      "children": [
+        { "type": "label", "text": "--", "font": "label", "color": "label_2", "bind": "greeting" },
+        { "type": "label", "text": "--", "font": "title_l", "bind": "count_text" },
+        { "type": "bar", "min": 0, "max": 60, "bind": "count", "w": "100%", "h": 6 }
+      ]
+    },
+    {
+      "type": "box", "flow": "row", "w": "100%", "gap": 10, "cross": "center",
+      "children": [
+        { "type": "icon", "icon": "timer", "size": 18, "color": "label_2" },
+        { "type": "label", "text": "Counting", "grow": 1 },
+        { "type": "switch", "bind": "running", "event": "running" }
+      ]
+    },
+    { "type": "button", "text": "Reset", "icon": "arrow-clockwise", "bg": "surface_2", "w": "100%", "event": "reset" }
+  ]
+}

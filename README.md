@@ -41,6 +41,8 @@ An app has two halves:
 
 Apps come from the registry (`registry/`, rules in `docs/registry.md`). Switching an app on in the dashboard installs its package on the board and starts its PC half; switching it off removes both. `tools/sample-app` is a complete example.
 
+**Make an app:** unzip `fenixos-app-template.zip` (source: `templates/app/`) into a new repo under `github.com/tariqaq/`, open Claude Code there and describe the app. The zip holds the agent rules, the format, design, PC-half and registry guides, a working starter app (board screen, Rust PC half, manifest) and the build, test and release tools.
+
 ## Build from source
 
 Versions and every command are in `docs/toolchain.md`. In short:
@@ -62,6 +64,7 @@ Versions and every command are in `docs/toolchain.md`. In short:
 | `third_party/` | serialport, patched so reads never arm the CH340 driver's crashing timeout |
 | `proto/` | Link protocol spec and test vectors |
 | `registry/` | Manifests of installable apps (each app lives in its own repo) |
+| `templates/app/` | App repo template; `fenixos-app-template.zip` is it zipped (`tools/app_template.py`) |
 | `design/` | Design tokens and font sources |
 | `tools/` | Generators and helper scripts |
 | `docs/` | Plan, decisions, hardware facts, toolchain; `docs/legacy/` holds the FenixDeck PoC docs and the done-task history |

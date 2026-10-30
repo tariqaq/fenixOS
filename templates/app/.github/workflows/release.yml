@@ -1,0 +1,34 @@
+# Tag v<version> (matching manifest.json and app/board/app.toml): build the app, attach app.fxp and
+# app.exe to the GitHub release, and upload the filled registry manifest (docs/fenixos/registry.md).
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.13 fenix-pkg
+      - run: pwsh tools/build.ps1
+      - run: python tools/app.py release ${{ github.ref_name }}
+      - name: release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $files = @("dist/app.fxp") + @(Get-ChildItem dist/app.exe -ErrorAction SilentlyContinue | ForEach-Object FullName)
+          gh release create "${{ github.ref_name }}" @files --title "${{ github.ref_name }}" --notes "fenixOS app release"
+      - uses: actions/upload-artifact@v6
+        with:
+          name: registry-manifest
+          path: dist/*.json

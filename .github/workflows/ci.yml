@@ -16,6 +16,7 @@ jobs:
       - run: python tools/version.py --check
       - run: python tools/gen_tokens.py --check
       - run: python tools/registry.py --check
+      - run: python tools/app_template.py --check
 
   board:
     runs-on: ubuntu-latest

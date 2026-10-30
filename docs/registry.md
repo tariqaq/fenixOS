@@ -1,5 +1,7 @@
 # App registry
 
+New app? Start from `fenixos-app-template.zip` (`templates/app/`): it builds the files and the filled manifest this page describes.
+
 The PC app lists apps from the registry in this repo. Each app lives in its own GitHub repo; the registry only holds its manifest. Plan: `docs/PLAN.md` §3.7.
 
 ## Layout

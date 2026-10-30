@@ -1,0 +1,7 @@
+# Board half (docs/fenixos/app-format.md). id and version must match manifest.json.
+id = "io.github.tariqaq.starter"
+name = "Starter"
+version = "0.1.0"
+min_fenixos = "0.1.13"
+color = "teal"
+icon = "icon.png"

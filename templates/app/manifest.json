@@ -1,0 +1,18 @@
+{
+  "id": "io.github.tariqaq.starter",
+  "name": "Starter",
+  "description": "Template app: a counter the PC sends to the board, with a switch and a button",
+  "version": "0.1.0",
+  "min_fenixos": "0.1.13",
+  "color": "teal",
+  "icon": "timer",
+  "repo": "https://github.com/tariqaq/fenixos-starter",
+  "board": {},
+  "pc": { "elevated": false },
+  "permissions": [],
+  "settings": [
+    { "key": "greeting", "type": "text", "label": "Greeting", "default": "Seconds counted on your PC", "max_len": 40 },
+    { "key": "step", "type": "choice", "label": "Count every", "default": "1", "options": [
+      { "value": "1", "label": "1 s" }, { "value": "2", "label": "2 s" }, { "value": "5", "label": "5 s" } ] }
+  ]
+}

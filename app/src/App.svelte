@@ -20,9 +20,13 @@
   let snap = $state<State | null>(null);
   let page = $state<Page>("apps");
   let mainEl = $state<HTMLElement>();
+  // The current sidebar item clicked again: rebuild its page, leaving a sub-page (P42: Apps stayed
+  // on Add app or an app's settings).
+  let fresh = $state(0);
   // A new page starts at its top, not at the old page's scroll position (P42).
   $effect(() => {
     void page;
+    void fresh;
     mainEl?.scrollTo(0, 0);
   });
   let logs = $state(false);
@@ -75,10 +79,10 @@
   <TitleBar />
   {#if snap && connected && snap.board}
     <div class="body">
-      <Sidebar bind:page board={snap.board} />
+      <Sidebar bind:page board={snap.board} onreselect={() => fresh++} />
       <main bind:this={mainEl}>
         <!-- A new page fades in rising 8 px; the old one leaves at once, so the two never stack. -->
-        {#key page}
+        {#key `${page}:${fresh}`}
           <div in:enter>
             {#if page === "apps"}
               <Apps apps={snap.apps} />

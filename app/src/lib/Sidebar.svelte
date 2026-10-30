@@ -6,7 +6,11 @@
   import type { IconName } from "./icons";
   import { linkText, type Board, type Page } from "./api";
 
-  let { page = $bindable(), board }: { page: Page; board: Board | null } = $props();
+  let {
+    page = $bindable(),
+    board,
+    onreselect,
+  }: { page: Page; board: Board | null; onreselect?: () => void } = $props();
 
   const items: { id: Page; label: string; icon: IconName }[] = [
     { id: "apps", label: "Apps", icon: "squares-four" },
@@ -24,7 +28,7 @@
       type="button"
       class:current={page === it.id}
       aria-current={page === it.id ? "page" : undefined}
-      onclick={() => (page = it.id)}
+      onclick={() => (page === it.id ? onreselect?.() : (page = it.id))}
     >
       <Icon name={it.icon} size={18} color={page === it.id ? "var(--accent)" : "var(--label-2)"} />
       <span>{it.label}</span>
