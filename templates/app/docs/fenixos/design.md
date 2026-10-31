@@ -41,6 +41,7 @@ Sentence case, untracked. No all-caps labels, no eyebrow text. Keep words few: t
 - 4 px grid. Screen margin 12 px landscape, 10 px portrait (the root box's `pad`).
 - Cards: `bg: surface_1`, `radius: 12`, `pad: 10`, gap 4 to 10. Never a card inside a card.
 - Buttons are capsules (the `button` element). Primary: `bg: accent_fill`; secondary: `bg: surface_2`; destructive: `bg: danger_fill`.
+- `accent` text only on `bg` and `surface_1`: on `surface_2` it is 3.8:1, too low; text there is `label` (secondary buttons included).
 - Touch targets at least 40 px tall (buttons, switches, slider rows).
 - No shadows, gradients or blur on the board.
 

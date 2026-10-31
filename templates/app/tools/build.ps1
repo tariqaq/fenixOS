@@ -10,7 +10,9 @@ try {
   if (Test-Path app/pc/Cargo.toml) {
     cargo build --release -p app
     if ($LASTEXITCODE) { throw "cargo build failed" }
-    Copy-Item target/release/app.exe dist/app.exe
+    # Cargo's target folder, wherever CARGO_TARGET_DIR or a config puts it.
+    $target = (cargo metadata --format-version 1 --no-deps | ConvertFrom-Json).target_directory
+    Copy-Item (Join-Path $target "release/app.exe") dist/app.exe
   }
   python tools/app.py check
   if ($LASTEXITCODE) { throw "manifest check failed" }
