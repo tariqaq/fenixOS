@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **done; v0.1.0 released 2026-10-29, now v0.1.14.** Follow-ups after the release (P11 to P42: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, P37 fixes for taps and the stream over Wi-Fi, Bluetooth tried in P33 and removed in P38, app packages read in pieces and link buffers trimmed in P39 and P40, the P42 code audit) are in `tasks.md` (done ones in full: `docs/legacy/tasks-history.md`). This file is the v0.1.0 plan as built, with Corrected notes where later phases changed it; measured numbers live in `docs/board-info.md`.
+Status: **done; v0.1.0 released 2026-10-29, now v0.1.14.** Follow-ups after the release (P11 to P42: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, P37 fixes for taps and the stream over Wi-Fi, Bluetooth tried in P33 and removed in P38, app packages read in pieces and link buffers trimmed in P39 and P40, the P42 and P45 audits, the app repo template in P44) are in `tasks.md` (done ones in full: `docs/legacy/tasks-history.md`). This file is the v0.1.0 plan as built, with Corrected notes where later phases changed it; measured numbers live in `docs/board-info.md`.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.
@@ -170,7 +170,7 @@ docs/, pics/
   - Limits checked at compile time and again on the board: 64 KB per package (corrected 2026-10-29 from 256 KB; since P39 the board reads it in pieces), element count, and an RAM estimate.
 - **Board runtime:**
   - One host app is open at a time.
-  - Its LVGL objects are built from the package when it opens and freed when it closes.
+  - Its LVGL objects are built from the package when it opens and freed when it closes. Corrected (P45): the package itself is freed when the app screen is deleted, after its slide out (labels point into it).
   - Bindings update objects; touches on interactive elements send `EVENT`.
 - **Store:** LittleFS on the `apps` partition (~1.9 MB), `/apps/<id>.fxp` plus `/apps/<id>.sha` (corrected 2026-10-29: no separate index). An install writes to a temp file, checks sha256 and renames it, so a broken install never leaves a half app.
 - **Host states:**
@@ -195,7 +195,7 @@ docs/, pics/
   - Enable or disable, push packages, run sidecars.
 - **Sidecars:**
   - Started only while their app is switched on.
-  - One named pipe per app (`\\.\pipe\fenixos-<id>-<nonce>`) carries length-prefixed JSON messages: `hello`, `settings`, `opened`, `closed`, `event`, `set`, `log`.
+  - One named pipe per app (`\\.\pipe\fenixos-<id>-<nonce>`) carries length-prefixed JSON messages: `hello`, `settings`, `opened`, `closed`, `event`, `set`, `log`. Corrected (P8): two one-way pipes (`.down`, `.up`) and more messages (`board`, `button`, `stop`); `docs/sidecars.md` is the spec.
   - Crash means restart with back-off (3 tries, then the tile shows an error).
   - `fenix-sdk` wraps this for Rust; the protocol is documented for other languages.
 - **Elevation:**
@@ -244,7 +244,7 @@ docs/, pics/
 
 ### 3.9 First-run experience (OOTB)
 
-Shown on the first launch, and again from PC Settings › Show welcome again. Creative direction (user: free hand, must fit the design language):
+Shown on the first launch, and again from PC Settings › Show welcome again or, since P45, the Connect screen's "Set up this board" (a board that does not answer as fenixOS). Creative direction (user: free hand, must fit the design language):
 
 - **Look:**
   - Black stage with soft studio light.
@@ -449,7 +449,7 @@ Accept: a clean install from the GitHub release on this PC goes through OOTB on 
 - **Board UI:** sim screenshot tests per screen and rotation. Hardware fps and heap logs come from `STATS`.
 - **Rust:** unit tests per crate; `fenix-pkg` round-trip and limit tests; registry manifest validation.
 - **End to end:** the `fenix` CLI and the sample app on the real board; `fenix soak` 1 h.
-- **PC UI:** checked by eye against the canvas, with screenshots kept in `docs/screens/` for the README.
+- **PC UI:** checked by eye against the canvas, `svelte-check`, and Hallmark's `sloplint` on `app/src/app.css` (P45). Corrected: `docs/screens/` holds board screens only (the simulator's golden set); no PC screenshots are kept.
 
 ## 7. Risks
 

@@ -50,11 +50,11 @@ From `libraries/TFT_eSPI/User_Setup.h`:
 
 ## Vendor LovyanGFX demo (`7_1_Touch_button_ILI9341_LovyanGFX`)
 
-The LCD and backlight settings are right, and they match what FenixDeck proved on the board: HSPI, SCLK 14, MOSI 13, MISO 12, DC 2, CS 15, RST -1, write 55 MHz, read 20 MHz, `invert = false`, `rgb_order = false`, backlight 21 at 44.1 kHz. Touch: VSPI, 2.5 MHz, SCLK 25, MOSI 32, MISO 39, CS 33, INT 36.
+The LCD and backlight settings are right, and they match what FenixDeck proved on the board: HSPI, SCLK 14, MOSI 13, MISO 12, DC 2, CS 15, RST -1, write 55 MHz, read 20 MHz, `invert = false`, `rgb_order = false`, backlight 21 at 44.1 kHz. Touch: VSPI, 2.5 MHz, SCLK 25, MOSI 32, MISO 39, CS 33, INT 36. Corrected (2026-10-29): the SPI clock is 80 MHz / (n + 1), so "55 MHz" runs at 40 MHz; fenixOS sets 40 MHz (`fenix_lgfx.hpp`).
 
 Two touch settings are wrong for this board (checked 2026-10-29):
 
 | Setting | Vendor demo | Use instead | Why |
 |---|---|---|---|
-| `x_min`/`x_max`, `y_min`/`y_max` | 0–239, 0–319 | x 300–3900, y 200–3900 (or run `calibrateTouch`) | These are **raw** XPT2046 values (12-bit, 0–4095), not pixels. The demo never calls `calibrateTouch`, so its mapping is wrong. FenixDeck ran 300–3900 / 200–3900 on this board with no stored calibration (NVS has no `tcal` key), see `docs/board-info.md` |
+| `x_min`/`x_max`, `y_min`/`y_max` | 0–239, 0–319 | x 300–3900, y 200–3900 (or run `calibrateTouch`) | These are **raw** XPT2046 values (12-bit, 0–4095), not pixels. The demo never calls `calibrateTouch`, so its mapping is wrong. FenixDeck ran 300–3900 / 200–3900 on this board with no stored calibration (NVS has no `tcal` key), see `docs/board-info.md`. Corrected (2026-10-29): raw y runs right to left in landscape, so fenixOS uses `y_min = 3900`, `y_max = 200` (`fenix_lgfx.hpp`) |
 | touch `bus_shared` | `true` | `false` | Touch has its own SPI host (VSPI). `true` only adds bus locking; it is not needed |
