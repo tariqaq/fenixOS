@@ -12,7 +12,7 @@ Current numbers (v0.1.12 unless marked; the sections below are a dated log, so o
 | Heap at boot, Wi-Fi joined | 81.8 KB free of 281 KB (P40); 82.2 KB at v0.1.15 (`fenix hello`, 8 s after boot) |
 | Heap at boot, radio off | 154.9 KB (P38, before the P40 trims) |
 | Animation fps (`fenix bench 15 nostream`) | 25.5 (P38) |
-| Stream over USB / Wi-Fi (`fenix bench 15`) | 25.0 fps, 43 KB/s / 25.8 fps, 53 KB/s; lowest heap in a Wi-Fi stream 23.9 KB (P40) |
+| Stream over USB / Wi-Fi (`fenix bench 15`) | 25.0 fps, 43 KB/s / 25.8 fps, 53 KB/s; lowest heap in a Wi-Fi stream 23.9 KB (P40). Stream rate since P46: 10 fps over USB, 25 over Wi-Fi (table in the P46 section) |
 | Install of a 32 KB package | 0.48 s over USB, 0.41-0.55 s over Wi-Fi; lowest heap 51.3 KB (P39) |
 | App store | LittleFS, 1984 KB (8 KB used when empty) |
 
@@ -384,3 +384,23 @@ The 64 KB package cap is not reachable in practice: the image (24 KB) and string
 - **Seen:** after long sessions on Home, a faint ghost of the clock stays on the panel (user: "a moderate level of screen burn in right where the clock is").
 - **What it is:** the ILI9341 panel is a TN LCD, not an OLED, so nothing wears out. A picture held for hours leaves a DC bias on the liquid crystal (image retention). It usually fades after some hours with the panel off or showing changing content.
 - **Guard (P21, on by default):** the picture walks 1 px every 60 s over a 5 x 5 square (+-2 px; the flush offsets each push, LovyanGFX clips the edge, the uncovered strip is cleared, local touches are shifted back, the PC stream stays unshifted). After 10 min without a touch the backlight fades out and the panel sleeps (ILI9341 SLPIN: it stops driving the picture; its memory is kept); a tap wakes it and is swallowed, like the dim wake. Settings > Display shows the switch greyed out and locked on; Settings > Debug unlocks it, and turning Debug off locks it on again.
+
+## Wi-Fi link on a powerbank, stream rate (P46, 2026-10-31)
+
+Board on a 4000 mAh USB-C powerbank, PC USB unplugged, Windows hotspot. The PC app found it on `tcp:fenixos.local` and streamed.
+
+- **Stuck link slot (fixed):** after the app quit, port 7350 accepted nothing for 20+ minutes: ping and the web page answered, `/status.json` said `"pc":false`. The board takes one TCP client and reads it in `tcp_link`; the app's close never reached the board, so `recv` waited (TCP keepalive: 2 h) while the session had already ended on the 3 s heartbeat. New connections waited in the backlog (`fenix`: "no HELLO_ACK", then "connection timed out"). Fix: the client socket gets `SO_RCVTIMEO` 3 s. Test: a client that connects and sends nothing is closed after 3 s and `fenix hello` gets in (3.1 s).
+- **Stream rate** (`fenix bench 15 <fps>`: Settings opened and closed every second, the busiest case):
+
+| Link, fps asked | KB/s | Screens/s of pixels | Board fps | Bands dropped |
+|---|---|---|---|---|
+| USB 10 | 42.2 | 3.2 | 25.2 | 146 |
+| USB 15 | 47.2 | 3.6 | 20.4 | 188 |
+| USB 20 | 43.5 | 3.3 | 19.2 | 186 |
+| USB 25 | 45.8 | 4.0 | 19.9 | 302 |
+| Wi-Fi 10 | 44.9 | 3.0 | 26.6 | 83 |
+| Wi-Fi 15 | 45.9 | 3.1 | 23.9 | 103 |
+| Wi-Fi 20 | 48.9 | 3.3 | 21.0 | 94 |
+| Wi-Fi 25 | 64.2 | 4.4 | 21.0 | 164 |
+
+  USB (460800 baud) is full at about 45 KB/s, so it stays at 10. Wi-Fi runs at 25. Lowest heap over the Wi-Fi runs: 27.3 KB. The PC mirror polled every 100 ms (a 10 fps ceiling of its own); now 40 ms.

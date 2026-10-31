@@ -2,7 +2,7 @@
   // Live board screen (PcBoard, artboard 11). Off until the user starts streaming in the board's
   // Stream app (P13–P15); `live` is the engine's `streaming`, which the board keeps in sync. It can
   // be stopped here, and keeps running when the page is left. While live it polls the engine for frames at
-  // up to 10 fps. Clicks on the picture are sent to the board as touches.
+  // up to 25 fps (the board sends 10 over USB, 25 over Wi-Fi, P46). Clicks on the picture are sent to the board as touches.
   import { onDestroy } from "svelte";
   import { mirrorFrame, mirrorSet, mirrorTouch } from "./api";
   import { BASE, enter, scrim } from "./motion";
@@ -39,7 +39,7 @@
     } catch {
       // Board gone: keep polling; the page is replaced by the finding-the-board screen anyway.
     }
-    if (r === run) timer = setTimeout(() => poll(r), Math.max(0, 100 - (performance.now() - t0)));
+    if (r === run) timer = setTimeout(() => poll(r), Math.max(0, 40 - (performance.now() - t0)));
   }
 
   function draw(px: Uint16Array, w: number, h: number) {

@@ -152,7 +152,7 @@ Details and the options offered: `docs/decisions.md`.
 - Versions: stay on IDF 5.5.5, LovyanGFX 1.2.35. Corrected 2026-10-29: update the CH340 driver (3.3.2011.11 crashed Windows; `docs/board-info.md`).
 - Navigation: iOS-style **top nav bar** (`< Home`, centred title).
 - Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, SNTP in Wi-Fi mode since P34; no manual set. `--:--` until the first sync after power-up.
-- Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE16; corrected: no LZ codec was built); ~10 fps in normal use.
+- Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE16; corrected: no LZ codec was built); ~10 fps in normal use (P46: 25 over Wi-Fi).
 - Shut down (C4): **deep sleep, tap to wake** (touch IRQ GPIO36) or RST. Corrected (P19): light sleep, then a restart on the tap.
 - PC app: **Rust + Tauri 2 + Svelte 5**.
 - PC half of host apps (C10): **sidecar process** per app, started only while switched on, local pipe + typed API; trust via registry, pinned versions, checksums.

@@ -127,7 +127,7 @@ Consequences:
 | Public registry content in v0.1 | Ship the fixture / **empty** | **Empty** (`registry/index.json` has no apps): the test fixture is served from a local registry (`FENIX_REGISTRY`), per PLAN §1.2 |
 | After Add app | Leave off / **switch on** | **Switch on**: adding is the intent to use it; the dashboard switch turns it off again |
 | Apps on the board that the PC does not have switched on | Keep / **remove** | **Remove** at reconcile: the PC is the source of truth (PLAN §3.5). Apps put on by `fenix install` during development are removed when the app connects |
-| Mirror fps chip | Board rects per second / **pictures shown** | **New pictures the PC showed per second** (max 10): the stream has no frame marker, and a frame is many rects |
+| Mirror fps chip | Board rects per second / **pictures shown** | **New pictures the PC showed per second** (max 10; 25 since P46): the stream has no frame marker, and a frame is many rects |
 | Clicks on the mirror | View only / **touches** | **Touches** (`TOUCH` messages): a press is held ≥ 100 ms because the board keeps only the latest touch state |
 | Firmware writes | Full image / **only changed regions** | **Only changed regions** (espflash `skip`, MD5 per region): a same-version Reinstall takes ~10 s instead of ~23 s; every written region is verified |
 | Flash baud | 115200 / 921600 / **460800** | **460800**, the speed `board/idf.ps1` uses and proven on the CH340C; a full update takes ~23 s |
@@ -230,3 +230,10 @@ Consequences:
 | Board segmented control, 26 px segments in a 30 px bar (P45) | Grow to 40 px / **keep** | **Keep**: matches the Display artboard; the rows around it are 40 px. Growing it changes every Settings layout; left for the user |
 | `tasks.md` after P41 to P44 (P45) | Keep the long done blocks / **move them verbatim to the history file** | **Move**, as P41 did for P0 to P40; one line each stays in Done |
 | Docs pass 2 depth (P45) | Re-read changed files only / **every current `.md` except history and vendor drops, facts checked against code** | **Every file**: stale facts fixed with Corrected notes (ideas push time and codec, toolchain GPU and PoC gotchas, PLAN pipes and screens, packages font set, registry limits, mockups status, vendor SPI clock); long Corrected chains cut where history adds nothing |
+
+## 2026-10-31: P46, Wi-Fi link on a powerbank
+
+| Question | Options | Choice |
+|---|---|---|
+| A silent TCP peer held the board's one link slot (found when the app quit on a powerbank) | Accept new connections and drop the old (`select`) / TCP keepalive tuned / **3 s receive timeout on the client socket** | **Receive timeout**: the PC pings every 1 s and the session already ends after 3 s silent, so the socket now ends with it; one `setsockopt`, no new task logic. Tested: a silent client is closed and `fenix hello` gets in after 3.1 s |
+| Stream rate (user: "r u sure u cant get higher fps", 10 fixed) | Keep 10 / 25 on both links / **10 over USB, 25 over Wi-Fi** | **Per link** (`fenix bench 15 <fps>`, Settings opened and closed each second): USB is full at ~45 KB/s, so 25 only doubles dropped bands and costs board fps (25.2 to 19.9); Wi-Fi at 25 sends 64 KB/s, 4.4 screens/s against 3.0 (+47%), board fps 26.6 to 21.0 while streaming, lowest heap the same (27.3 KB). The PC mirror polls every 40 ms (was 100) |

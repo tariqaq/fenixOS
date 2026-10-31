@@ -55,7 +55,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P43 Docs audit 2
 - P44 App repo template (`fenixos-app-template.zip`); release v0.1.14
 
-Releases: v0.1.0 (P10) to v0.1.15 (P42, P44, P45); tags on GitHub.
+Releases: v0.1.0 (P10) to v0.1.16 (P42, P44, P45, P46); tags on GitHub.
 
 ## Open (needs the user)
 
@@ -73,10 +73,10 @@ Releases: v0.1.0 (P10) to v0.1.15 (P42, P44, P45); tags on GitHub.
   - [x] 6. Build, test, release if code changed; decisions log; commit. Done: version, tokens, registry, template, licenses, sim config checks ok; cargo test all pass; proto host test 40/40; pkg host test pass; svelte-check 0/0; sim 25/25; v0.1.15 firmware and signed app built, installed (/S), flashed (`fenix hello`: v0.1.15, heap 82.2 KB), tagged
 - [~] P46 Wi-Fi link test on a powerbank (user, 2026-10-31) and stream fps
   - [x] 1. Board on a powerbank, USB unplugged: the PC app found it on `tcp:fenixos.local`, streamed (user tested). Ping, web page, `/status.json` ok
-  - [~] 2. Bug: after the app quit, port 7350 accepted nothing (one connection slot; the board's `tcp_link` waited in `recv` on a peer gone silent; the session ended on the 3 s heartbeat, the socket stayed). Fix: `SO_RCVTIMEO` 3 s on the client socket in `net.cpp`, so a silent peer frees the slot. Spec and board-info notes
-  - [ ] 3. `fenix bench` takes a stream fps (was fixed at 10); measure 10 / 15 / 20 / 25 over USB and Wi-Fi (KB/s, board fps, dropped bands)
-  - [ ] 4. Pick the stream rate from the numbers (`STREAM_FPS` board, `MIRROR_FPS` PC, Mirror text, docs); decisions row
-  - [ ] 5. Build, test, release, flash (needs USB), recheck Wi-Fi on the powerbank (user)
+  - [x] 2. Bug: after the app quit, port 7350 accepted nothing (one connection slot; the board's `tcp_link` waited in `recv` on a peer gone silent; the session ended on the 3 s heartbeat, the socket stayed). Fix: `SO_RCVTIMEO` 3 s on the client socket in `net.cpp`, so a silent peer frees the slot. Spec and board-info notes. Tested: a silent client is closed, `fenix hello` gets in after 3.1 s
+  - [x] 3. `fenix bench` takes a stream fps (was fixed at 10); measured 10 / 15 / 20 / 25 over USB and Wi-Fi (table in `docs/board-info.md` P46): USB full at ~45 KB/s; Wi-Fi 25 fps +47% pictures
+  - [x] 4. Stream rate: 10 over USB, 25 over Wi-Fi (`STREAM_FPS_WIFI` board, `MIRROR_FPS_WIFI` PC); the PC mirror polls every 40 ms (was 100, its own 10 fps ceiling); docs and decisions rows
+  - [~] 5. Build, test, release, flash, recheck Wi-Fi on the powerbank (user). Done: checks ok, cargo test pass, svelte-check 0/0, sim 25/25; v0.1.16 built, installed (/S), flashed (`fenix hello`: v0.1.16), tagged. Left: the user streams over Wi-Fi on the powerbank
 - [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
 
 - [ ] P36 Later

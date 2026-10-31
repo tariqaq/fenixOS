@@ -156,7 +156,7 @@ void on_link(const sys::LinkEvent& e) {
 
 // The stream screen's "Start streaming" and "Stop streaming" buttons.
 void stream_start_local() {
-  stream_set(true, STREAM_FPS);
+  stream_set(true, sys::link_remote_name() ? STREAM_FPS_WIFI : STREAM_FPS);
   sys::link_log(3, "stream started on the board");
 }
 

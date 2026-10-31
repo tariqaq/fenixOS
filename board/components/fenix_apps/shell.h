@@ -21,8 +21,10 @@ void settings_screen(lv_obj_t* scr);
 void settings_tick();  // refreshes Wireless when the radio's state changes
 void stream_screen(lv_obj_t* scr);
 void session_open();
-// Stream rate when started on the board (the PC asks for the same).
+// Stream rate when started on the board (the PC asks for the same). USB's 460800 baud is full at
+// 10 fps in a busy screen; Wi-Fi at 25 shows 47% more pictures (P46, `fenix bench 15 <fps>`).
 constexpr uint8_t STREAM_FPS = 10;
+constexpr uint8_t STREAM_FPS_WIFI = 25;
 void stream_start_local();
 void stream_stop_local();
 uint8_t current_screen();  // fnx::screen value

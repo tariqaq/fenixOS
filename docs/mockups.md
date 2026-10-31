@@ -21,7 +21,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is") after 
 | 3b | SettingsAbout | Board, chip, CPU, memory free, flash, display |
 | 4 | Session | Shut down / Restart pop-up |
 | 5a | StreamOff | Stream app, no PC connected. Connected but not streaming: "Not streaming" with a "Start streaming" button (P14); the board is where the stream is started (P15) |
-| 5b | StreamOn | Stream app, streaming at ~10 fps |
+| 5b | StreamOn | Stream app, streaming at ~10 fps (since P46: 10 over USB, 25 over Wi-Fi) |
 | 6a | HostWaiting | Host app installed, waiting for the PC half |
 | 6b | HostOff | Host app switched off on the PC |
 | 7 | PcConnect | PC: looking for the board (CH340 driver help). Since P11 drawn in 3D: the welcome's board with the cable hovering, the plug-in run on connect, then a fade to the dashboard |

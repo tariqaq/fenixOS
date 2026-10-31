@@ -17,7 +17,9 @@ use crate::logs::{Logs, Source};
 use crate::registry::Manifest;
 
 const TIME_SYNC_EVERY: Duration = Duration::from_secs(3600);
-const MIRROR_FPS: u8 = 10;
+/// Stream rate the PC asks for: the board's own (`STREAM_FPS`, P46).
+const MIRROR_FPS_USB: u8 = 10;
+const MIRROR_FPS_WIFI: u8 = 25;
 /// The board's Wi-Fi name (mDNS), tried while no USB board is plugged in (P34).
 const NET_HOST: &str = "fenixos.local";
 
@@ -287,7 +289,9 @@ impl Engine {
             return;
         }
         if on {
-            self.link.send(Msg::StreamStart { fps: MIRROR_FPS });
+            let wifi = self.state.lock().unwrap().board.as_ref().is_some_and(|b| b.port.starts_with("tcp:"));
+            let fps = if wifi { MIRROR_FPS_WIFI } else { MIRROR_FPS_USB };
+            self.link.send(Msg::StreamStart { fps });
             self.link.send(Msg::StreamSync);
         } else {
             self.link.send(Msg::StreamStop);
