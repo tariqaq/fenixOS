@@ -34,6 +34,10 @@ All colours go through these tokens (CSS custom properties on the PC; a C++ cons
 | `danger` | `#FF453A` | Destructive text (Shut down) | 5.0 on `surface-1` |
 | `danger-fill` | `#C9302C` | Destructive filled button (white text) | white 5.3 |
 
+`accent` text is rated on `bg` and `surface-1` only (3.8 on `surface-2`): text on `surface-2` controls uses `label` (P45).
+
+PC chrome taken from the PC artboards (title bar, hover and press washes, sheet, menu and tooltip shadows, the tile switch tracks, the dim over the stopped mirror) are named variables in `app/src/app.css`, not tokens; no component uses a literal colour.
+
 ### Chart series (P35)
 
 Lines and keys in charts (Task manager), never text. Blue and orange stay apart for red-green colour blindness.
@@ -132,6 +136,6 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 - **Nav bar (board apps):** 32 px tall; `< Home` (caret + label, `accent`) at left, title centred (`title`).
 - **Grouped list:** rows of 40 px (board) / 44 px (PC) inside a `surface-1` group with 12 px radius; leading icon in a 24 px rounded square of a tile colour; value or chevron at right in `label-2`.
 - **Tile (board):** filled with its tile colour, icon at top left (20 px), name at bottom left (`label`). On the PC: the same at 260×140 with an iOS switch at bottom right.
-- **Switch:** iOS-style, 51×31 on the PC; on means `success` track; off means `surface-3`.
+- **Switch:** iOS-style, 51×31 on the PC; on means `success` track; off means `surface-3`. On a PC tile: white at 38 % on, `#48484A` off. Board: 44×26.
 - **Sheet / pop-up (board):** bottom sheet on `surface-1` over the `scrim`, buttons as full-width capsules.
 - **Status:** shown with an icon and words, never with a lone coloured dot.

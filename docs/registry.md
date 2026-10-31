@@ -43,7 +43,7 @@ The PC app lists apps from the registry in this repo. Each app lives in its own 
 | `repo` | `https://github.com/tariqaq/<repo>`: shown as Source |
 | `board` | Required. Board package (`.fxp`): `url`, `sha256` (lowercase hex), `size` in bytes (≤ 64 KB) |
 | `pc` | Optional. The PC half (win-x64 `.exe`): `url`, `sha256`, `size`, `elevated` (true: Windows asks for admin each time it starts) |
-| `permissions` | What the PC half does, from the list below. Shown before Add and on the App settings page |
+| `permissions` | What the PC half does, from the list below, each once. Shown before Add and on the App settings page |
 | `settings` | The app's options, rendered by fenixOS (below). Values go to the PC half |
 
 **Allowed sources.** Download URLs must start with `https://github.com/tariqaq/`. A local registry (below) may also use paths relative to its own folder.
@@ -65,7 +65,7 @@ Two rows are added from the manifest itself: "Runs its own helper program while 
 
 ### Settings
 
-Every entry has `key` (letters, digits, `_` `-`), `type`, `label` and, except `button`, a `default`.
+Every entry has `key` (letters, digits, `_` `-`; ≤ 32, unique), `type`, `label` (≤ 40 chars) and, except `button`, a `default`. Corrected (P45): the key and label limits were missing here (`tools/registry.py` checks them).
 
 | `type` | Extra fields | Value sent to the PC half |
 |---|---|---|

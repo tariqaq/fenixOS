@@ -14,6 +14,7 @@ Agent tooling for fenixOS. Build tools, versions and commands: `docs/toolchain.m
 | Self-check | `node .claude/skills/hallmark/scripts/refcheck.mjs` → clean across 101 reference files |
 | Lint a page | `node .claude/skills/hallmark/scripts/sloplint.mjs <file-or-dir> --render` |
 | Locked system | Hallmark obeys a `DESIGN.md` at the repo root when present (it overrides its themes). fenixOS's Apple-dark system is locked there |
+| PC UI check (P45) | `app/src/app.css` starts with a check stamp (`shape: app screen`, `redesign: polish`) and waivers where DESIGN.md decides. Run `node .claude/skills/hallmark/scripts/sloplint.mjs app/src/app.css --scope app` (0 FAIL); on built CSS (`app/dist/assets/*.css`) gate 20 fails only because minifying drops the stamp comment |
 
 Reviewed before use (the installer warns that skills run with full agent permissions): its scripts only use local Chrome DevTools and, if `TOGETHER_API_KEY` is set, Together AI's image API (`scripts/imagegen.mjs`). That key is not set here.
 
@@ -24,7 +25,7 @@ The global git setting `core.autocrlf=true` made the installer write CRLF files.
 ## Board access
 
 - Board on `COM9`. Flash reads, writes and erases: `fenix read-flash` / `write` / `flash` / `erase` (corrected 2026-10-30: was `esptool` 5.6.0, whose read timeouts take the CH340 driver's crash path; `docs/board-info.md`).
-- **460800 baud failed once on a full 4 MB read** (`Corrupt data, expected 0x1000 bytes but received 0xe49 bytes`, 2026-10-29, right after `erase-flash`). A retry at 230400 worked (190 s). Earlier reads at 460800 worked, and 921600 failed on 2026-10-28. For long reads, retry at 230400 if 460800 fails (esptool; `fenix read-flash` reads at 460800).
+- esptool history (2026-10-28/29): a full 4 MB read failed once at 460800 baud (`Corrupt data`) and at 921600; 230400 worked. `fenix read-flash` reads at 460800.
 
 ## Gotchas found during the build (2026-10-29)
 

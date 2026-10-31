@@ -5,7 +5,7 @@ https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji
 
 Source copies of every artboard: `design/mockups/` (`*.dc.html` + `canvas.json`; they render only inside the canvas). Built from the locked design system in `DESIGN.md` (Apple dark, Inter, Phosphor). Board screens are drawn at 2x (320×240 shown as 640×480). PC screens are 1280×800 with the custom dark title bar.
 
-Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with the round 7 changes below applied. 25 artboards, all in `design/mockups/`. Screens added later without an artboard are noted in their rows.
+Status: approved by the user on 2026-10-29 ("follow it exactly as it is") after seven review rounds (rounds 3 to 7 were small fixes, already in the artboards). 25 artboards, all in `design/mockups/`. Screens added later without an artboard are noted in their rows.
 
 ## Artboards
 
@@ -30,7 +30,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 | 10 | PcAddApp | PC: registry list, search, Add buttons |
 | 11 | PcBoard | PC: live mirror of the board screen, facts, reboot, reinstall firmware. Since P13 the mirror starts off; Start stream turns it on. Since P14 it follows the board. Since P15 it has no Start button: the off state says to start streaming in the board's Stream app; Stop stream shows while live. P27 added a Task manager page after it in the sidebar (artboard 17 since P35) |
 | 12 | PcUpdate | PC: version mismatch dialog and the progress state |
-| 13 | PcSettings | PC: start with Windows, port, updates, about (with "Show welcome again") |
+| 13 | PcSettings | PC: start with Windows, port, updates, about (with "Show welcome again"). Added without artboards: Wireless, Wi-Fi network (P32 to P34) and Weather (P34); one page, groups General, Board, Wireless, Wi-Fi network, Weather, Updates, About |
 | 3c | SettingsHome | Board: Settings › Home screen, Tiles / Dock picker with previews |
 | 14 | PcTray | PC: tray menu (status, Open fenixOS, Quit) |
 | 15 | PcPermissions | PC: what an app's PC part will do, shown before Add |
@@ -46,7 +46,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is"), with 
 
 ## Design round 2 (2026-10-29, unattended run)
 
-Drawn during the overnight run, so the review is pending: the user said to pick the recommended option for any choice. Choices made:
+Drawn during an overnight run (the user said to pick the recommended option) and approved with the rest. Choices made:
 - Home screen picker: two live mini previews, the selected one outlined in `accent` with a check.
 - Tray menu: status header (icon + words), Open fenixOS, Quit fenixOS. Left-click opens the window.
 - Permissions sheet: app tile, name, version and source repo, the declared permissions as rows, a plain note on how fenixOS checks apps, Add app / Cancel.
