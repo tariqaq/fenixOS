@@ -55,7 +55,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P43 Docs audit 2
 - P44 App repo template (`fenixos-app-template.zip`); release v0.1.14
 
-Releases: v0.1.0 (P10) to v0.1.16 (P42, P44, P45, P46); tags on GitHub.
+Releases: v0.1.0 (P10) to v0.1.17 (P42, P44 to P47); tags on GitHub.
 
 ## Open (needs the user)
 
@@ -81,7 +81,7 @@ Releases: v0.1.0 (P10) to v0.1.16 (P42, P44, P45, P46); tags on GitHub.
   - [x] 1. `scene.ts`: pose `wireless` (cable pulls away, the antenna edge turns in, board nearer the centre), three `accent` arcs pulsing out from the ESP32 module's antenna, an antenna glow; reduced motion: no arcs, the glow only. Checked in a Chrome render (full rings crossed the screen: arcs instead)
   - [x] 2. `Connect.svelte`: `wireless` prop (board port `tcp:`), the Wi-Fi run (rings, screen boots, dashboard), copy "Connected over Wi-Fi"; waiting copy says a board on Wi-Fi connects on its own. `App.svelte` passes it
   - [x] 3. Docs: DESIGN.md Motion exceptions, mockups row 7, decisions row
-  - [~] 4. svelte-check, build, release v0.1.17; the user sees it live with the board on the powerbank
+  - [~] 4. svelte-check, build, release v0.1.17. Done: svelte-check 0/0, version check ok; v0.1.17 built, installed (/S), flashed (`fenix hello`: v0.1.17), tagged. Left: the user sees it live with the board on the powerbank
 - [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
 
 - [ ] P36 Later
