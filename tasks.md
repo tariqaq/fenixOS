@@ -77,6 +77,11 @@ Releases: v0.1.0 (P10) to v0.1.16 (P42, P44, P45, P46); tags on GitHub.
   - [x] 3. `fenix bench` takes a stream fps (was fixed at 10); measured 10 / 15 / 20 / 25 over USB and Wi-Fi (table in `docs/board-info.md` P46): USB full at ~45 KB/s; Wi-Fi 25 fps +47% pictures
   - [x] 4. Stream rate: 10 over USB, 25 over Wi-Fi (`STREAM_FPS_WIFI` board, `MIRROR_FPS_WIFI` PC); the PC mirror polls every 40 ms (was 100, its own 10 fps ceiling); docs and decisions rows
   - [~] 5. Build, test, release, flash, recheck Wi-Fi on the powerbank (user). Done: checks ok, cargo test pass, svelte-check 0/0, sim 25/25; v0.1.16 built, installed (/S), flashed (`fenix hello`: v0.1.16), tagged. Left: the user streams over Wi-Fi on the powerbank
+- [~] P47 Connect screen: a Wi-Fi run in 3D (user, 2026-10-31: "add 3d model animations if board was found thru wifi")
+  - [x] 1. `scene.ts`: pose `wireless` (cable pulls away, the antenna edge turns in, board nearer the centre), three `accent` arcs pulsing out from the ESP32 module's antenna, an antenna glow; reduced motion: no arcs, the glow only. Checked in a Chrome render (full rings crossed the screen: arcs instead)
+  - [x] 2. `Connect.svelte`: `wireless` prop (board port `tcp:`), the Wi-Fi run (rings, screen boots, dashboard), copy "Connected over Wi-Fi"; waiting copy says a board on Wi-Fi connects on its own. `App.svelte` passes it
+  - [x] 3. Docs: DESIGN.md Motion exceptions, mockups row 7, decisions row
+  - [~] 4. svelte-check, build, release v0.1.17; the user sees it live with the board on the powerbank
 - [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
 
 - [ ] P36 Later

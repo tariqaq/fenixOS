@@ -19,6 +19,13 @@ const USBC = { x: -40.35, y: 4, z: -PCB_T - 1.6 };
 /** Plug tip x when fully in, and how far out it hovers while waiting. */
 const TIP_IN = -37.2;
 const HOVER = 34;
+/** The ESP32 module's PCB antenna, past the right edge seen from the front (u = -1, v = 26). */
+const ANTENNA = { x: 43.5, y: -1, z: -PCB_T - 0.4 };
+/** Wi-Fi arcs: how many, one pass (ms), how far they grow (mm), and their spread (rad). */
+const RINGS = 3;
+const RING_MS = 1600;
+const RING_R = 22;
+const ARC = 1.8;
 
 // DESIGN.md motion curve: cubic-bezier(0.2, 0.8, 0.2, 1), solved for x.
 function bezier(x1: number, y1: number, x2: number, y2: number) {
@@ -89,6 +96,8 @@ const mat = {
   rubber: new THREE.MeshPhysicalMaterial({ color: 0x232326, roughness: 0.62, clearcoat: 0.15 }),
   cable: new THREE.MeshPhysicalMaterial({ color: 0x1d1d20, roughness: 0.5, clearcoat: 0.2 }),
 };
+/** DESIGN.md `accent`, the same blue as the USB port glow. */
+const ACCENT = 0x0a84ff;
 
 function box(w: number, h: number, d: number, m: THREE.Material, x: number, y: number, z: number) {
   const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
@@ -279,7 +288,7 @@ function cable(): THREE.Group {
   return c;
 }
 
-export type Pose = "intro" | "waiting" | "plugged" | "front";
+export type Pose = "intro" | "waiting" | "plugged" | "wireless" | "front";
 
 /** Render limits. Both windows use the GPU; 60 fps keeps a 165 Hz panel from costing a core. */
 export interface SceneLimits {
@@ -296,6 +305,10 @@ export class BoardScene {
   private board: THREE.Group;
   private cable: THREE.Group;
   private glow: THREE.PointLight;
+  /** Wi-Fi run: arcs that face the camera and grow out from the antenna, and its light. */
+  private waves = new THREE.Group();
+  private aglow: THREE.PointLight;
+  private wavesT = 0;
   private screen = new Screen();
   private tex: THREE.CanvasTexture;
   private raf = 0;
@@ -350,9 +363,27 @@ export class BoardScene {
     this.cable = cable();
     this.cable.position.set(0, USBC.y, USBC.z);
     this.board.add(this.cable);
-    this.glow = new THREE.PointLight(0x0a84ff, 0, 40, 2);
+    this.glow = new THREE.PointLight(ACCENT, 0, 40, 2);
     this.glow.position.set(-46, USBC.y, USBC.z);
     this.board.add(this.glow);
+    // Arcs open away from the board (local +X faces screen right, where the antenna is).
+    const ring = new THREE.RingGeometry(1, 1.035, 48, 1, -ARC / 2, ARC);
+    for (let i = 0; i < RINGS; i++) {
+      const m = new THREE.MeshBasicMaterial({
+        color: ACCENT,
+        transparent: true,
+        opacity: 0,
+        depthWrite: false,
+        toneMapped: false,
+        side: THREE.DoubleSide,
+      });
+      this.waves.add(new THREE.Mesh(ring, m));
+    }
+    this.waves.position.set(ANTENNA.x, ANTENNA.y, ANTENNA.z);
+    this.waves.visible = false;
+    this.aglow = new THREE.PointLight(ACCENT, 0, 50, 2);
+    this.aglow.position.set(ANTENNA.x, ANTENNA.y, ANTENNA.z - 3);
+    this.board.add(this.waves, this.aglow);
     this.scene.add(this.board);
     this.resize();
     this.raf = requestAnimationFrame(this.frame);
@@ -383,7 +414,8 @@ export class BoardScene {
     const mid = this.reduced ? 1 : 1400;
     this.pose = p;
     this.shown.set(1, now, this.reduced ? 1 : 1800);
-    this.pan.set(p === "intro" ? 0 : -22, now, slow);
+    // Over Wi-Fi the board sits nearer the centre, leaving room for the arcs at its right.
+    this.pan.set(p === "intro" ? 0 : p === "wireless" ? -6 : -22, now, slow);
     switch (p) {
       case "intro":
         this.yaw.set(-0.35, now, slow);
@@ -404,6 +436,14 @@ export class BoardScene {
         this.dist.set(190, now, mid);
         this.tip.set(TIP_IN, now, this.reduced ? 1 : 700);
         this.glowT = now + (this.reduced ? 1 : 650);
+        break;
+      case "wireless":
+        // No cable: it pulls away and the antenna edge turns toward the viewer.
+        this.yaw.set(-0.5, now, mid);
+        this.pitch.set(0.16, now, mid);
+        this.dist.set(200, now, mid);
+        this.tip.set(TIP_IN - HOVER - 60, now, this.reduced ? 1 : 900);
+        this.wavesT = now + (this.reduced ? 1 : 500);
         break;
       case "front":
         this.yaw.set(0.16, now, slow);
@@ -437,6 +477,23 @@ export class BoardScene {
     const since = now - this.glowT;
     const plugged = this.pose === "plugged" || this.pose === "front";
     this.glow.intensity = plugged && since > 0 ? 260 * Math.exp(-since / 900) + 25 : 0;
+    // Wi-Fi: arcs leave the antenna one after another and fade as they grow (none with reduced
+    // motion: the antenna light only).
+    const air = now - this.wavesT;
+    const wireless = this.pose === "wireless" && air > 0;
+    this.aglow.intensity = wireless ? 160 * Math.exp(-air / 1200) + 30 : 0;
+    this.waves.visible = wireless && !this.reduced;
+    if (this.waves.visible) {
+      // Face the camera: undo the board's turn.
+      this.waves.quaternion.copy(this.board.quaternion).invert();
+      this.waves.children.forEach((c, i) => {
+        const t = (air / RING_MS - i / RINGS + 1) % 1;
+        const born = air >= (i * RING_MS) / RINGS; // the first pass starts one ring at a time
+        const m = c as THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
+        m.scale.setScalar(4 + RING_R * ease(t));
+        m.material.opacity = born ? 0.85 * (1 - t) ** 1.6 : 0;
+      });
+    }
     const d = this.dist.get(now);
     const pan = this.pan.get(now);
     this.cam.position.set(pan, 0, d);

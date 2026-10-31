@@ -1,7 +1,8 @@
 <script lang="ts">
   // Artboard 7 (PcConnect), in 3D since P11: the welcome's board model waits with the cable
   // hovering beside its USB-C port. When the board connects the plug seats, the model's screen
-  // boots, and `ondone` asks App to fade over to the dashboard. The main window runs with the GPU
+  // boots, and `ondone` asks App to fade over to the dashboard. A board found over Wi-Fi (P47)
+  // gets its own run: the cable pulls away and rings pulse from the antenna. The main window runs with the GPU
   // on since P11: software WebGL took ~8 cores here (docs/decisions.md).
   import { onDestroy, onMount, untrack } from "svelte";
   import type { BoardScene } from "../ootb/scene";
@@ -10,9 +11,11 @@
   let {
     silent,
     connected,
+    wireless,
     appVersion,
     ondone,
-  }: { silent: Silent[]; connected: boolean; appVersion: string; ondone: () => void } = $props();
+  }: { silent: Silent[]; connected: boolean; wireless: boolean; appVersion: string; ondone: () => void } =
+    $props();
 
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let canvas: HTMLCanvasElement;
@@ -66,6 +69,11 @@
     } else if (want === "seated") {
       scene.mode = "off";
       scene.setPose("plugged");
+    } else if (wireless) {
+      // The cable pulls away, rings leave the antenna, the screen boots, then the dashboard.
+      scene.setPose("wireless");
+      later(1100, () => scene && (scene.mode = "boot"));
+      later(2900, ondone);
     } else {
       // Plug seats (700 ms) with the port glow, the screen boots, then the dashboard.
       scene.setPose("plugged");
@@ -80,7 +88,7 @@
   {#key stage}
     <section class="copy" aria-live="polite">
       {#if stage === "connecting"}
-        <h1>Board connected</h1>
+        <h1>{wireless ? "Connected over Wi-Fi" : "Board connected"}</h1>
         <p>Opening fenixOS…</p>
       {:else if stage === "seated"}
         <h1>Board found</h1>
@@ -89,7 +97,10 @@
         <button type="button" class="setup" onclick={() => showWelcome()}>Set up this board</button>
       {:else}
         <h1>Plug in your board</h1>
-        <p>Connect the ESP32 board with a USB cable. fenixOS finds it on its own and connects.</p>
+        <p>
+          Connect the ESP32 board with a USB cable. fenixOS finds it on its own and connects. A board
+          already on your Wi-Fi connects over the network.
+        </p>
         <p class="fine">
           Not showing up? Windows needs the CH340 USB driver, and the cable must carry data.
           <a href="https://www.wch-ic.com/downloads/CH341SER_EXE.html" target="_blank" rel="noreferrer">Get the CH340 driver from WCH</a>

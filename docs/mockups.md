@@ -24,7 +24,7 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is") after 
 | 5b | StreamOn | Stream app, streaming at ~10 fps (since P46: 10 over USB, 25 over Wi-Fi) |
 | 6a | HostWaiting | Host app installed, waiting for the PC half |
 | 6b | HostOff | Host app switched off on the PC |
-| 7 | PcConnect | PC: looking for the board (CH340 driver help). Since P11 drawn in 3D: the welcome's board with the cable hovering, the plug-in run on connect, then a fade to the dashboard |
+| 7 | PcConnect | PC: looking for the board (CH340 driver help). Since P11 drawn in 3D: the welcome's board with the cable hovering, the plug-in run on connect, then a fade to the dashboard. P47: over Wi-Fi the cable pulls away and `accent` arcs pulse out from the antenna instead ("Connected over Wi-Fi") |
 | 8 | PcDashboard | PC: app tiles with on/off switches, "+" (toggle: apps / empty) |
 | 9 | PcAppSettings | PC: one app's settings, back to Apps |
 | 10 | PcAddApp | PC: registry list, search, Add buttons |

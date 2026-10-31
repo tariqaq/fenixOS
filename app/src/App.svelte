@@ -106,7 +106,13 @@
   {/if}
   {#if snap && looking}
     <div class="over" class:leaving>
-      <Connect silent={snap.silent} {connected} appVersion={snap.app_version} ondone={connectDone} />
+      <Connect
+        silent={snap.silent}
+        {connected}
+        wireless={!!snap.board?.port.startsWith("tcp:")}
+        appVersion={snap.app_version}
+        ondone={connectDone}
+      />
     </div>
   {/if}
   {#if logs}
