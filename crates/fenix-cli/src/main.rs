@@ -644,7 +644,15 @@ fn bench(opts: LinkOptions, secs: u64, nostream: bool, fps: u8) -> i32 {
             open = !open;
             next_tap += Duration::from_secs(1);
         }
-        if let Some(Event::Msg(m)) = link.recv_event(Duration::from_millis(20)) {
+        let m = match link.recv_event(Duration::from_millis(20)) {
+            Some(Event::Msg(m)) => Some(m),
+            Some(e @ (Event::Disconnected { .. } | Event::Connected { .. })) => {
+                print_event(&e);
+                None
+            }
+            _ => None,
+        };
+        if let Some(m) = m {
             match &m {
                 Msg::StreamRect(r) => bytes += r.data.len(),
                 Msg::Stats(s) => stats.push(s.clone()),
@@ -659,6 +667,13 @@ fn bench(opts: LinkOptions, secs: u64, nostream: bool, fps: u8) -> i32 {
     }
     link.send(Msg::StreamStop);
     let dt = t0.elapsed().as_secs_f32();
+    // The link must stay up once the stream stops (P48: the board closed it after a Wi-Fi stream).
+    let watch = Instant::now() + Duration::from_secs(4);
+    while Instant::now() < watch {
+        if let Some(e @ (Event::Disconnected { .. } | Event::Connected { .. })) = link.recv_event(Duration::from_millis(100)) {
+            print_event(&e);
+        }
+    }
     let full = (canvas.width as u64 * canvas.height as u64).max(1);
     println!(
         "{secs} s: {rects} rects, {:.1} KB/s, {:.1} screens/s of pixels, {:.1}x RLE ratio",
