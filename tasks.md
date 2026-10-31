@@ -55,7 +55,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P43 Docs audit 2
 - P44 App repo template (`fenixos-app-template.zip`); release v0.1.14
 
-Releases: v0.1.0 (P10) to v0.1.18 (P42, P44 to P47); tags on GitHub.
+Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
@@ -81,10 +81,10 @@ Releases: v0.1.0 (P10) to v0.1.18 (P42, P44 to P47); tags on GitHub.
   - [x] 3. Docs: DESIGN.md Motion exceptions, mockups row 7, decisions row
   - [x] 4. svelte-check, build, release v0.1.17 (user saw it live: "looks nice"). Done: svelte-check 0/0, version check ok; v0.1.17 built, installed (/S), flashed (`fenix hello`: v0.1.17), tagged. Left: the user sees it live with the board on the powerbank
   - [x] 5. v0.1.18 built, installed (/S), flashed (`fenix hello`: v0.1.18). "Show welcome again" (user: it did not play the new run): the welcome uses the Wi-Fi run for a board on `tcp:` (cable stays away, arcs go on over the final front view), copy "A board is on your Wi-Fi"
-- [~] P48 Wi-Fi link drops during a busy stream (user, 2026-10-31: "app lose connection temp after stopping stream then reconnects")
+- [x] P48 Wi-Fi link drops during a busy stream (user, 2026-10-31: "app lose connection temp after stopping stream then reconnects")
   - [x] 1. Reproduced (v0.1.18, board on the powerbank): `fenix bench 8 25` over Wi-Fi with taps, the board reset the connection mid-stream in 3 of 4 runs (os error 10054); stops on a calm screen were clean. `fenix bench` now prints link drops and watches the link 4 s after the stream stops
   - [x] 2. Cause: since P37 one 500 ms stall ended the link (a frame with no ring room, or one `send()` timeout); at 25 fps over Wi-Fi such stalls happen. Fix in `net.cpp`: the frame is dropped instead (a stream band is redrawn later), `tcp_tx` retries a timed-out send and ends the link only on an error or 3 s without progress. Firmware built
-  - [~] 3. Flash (needs USB; the micro-USB cable did not enumerate, 2026-10-31), rerun the busy test over USB and Wi-Fi, release. Docs done: board-info P34 and P48, decisions
+  - [x] 3. Flashed (the CH340 port failed to open with two power sources on the board; it worked after the user restarted the PC and plugged the micro-USB alone), busy test with the stop pressed on the board: USB 4/4 and Wi-Fi 4/4 without a drop, two PC-stopped Wi-Fi benches clean, Wi-Fi 72-88 KB/s. v0.1.19: checks, cargo test, svelte-check 0/0, sim 25/25; built, installed (/S), flashed (`fenix hello`: v0.1.19), the app connects on COM9 without an update dialog; tagged. Docs: board-info P34 and P48, decisions
 - [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
 
 - [ ] P36 Later

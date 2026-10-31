@@ -6,7 +6,7 @@ A small operating system for the ESP32-2432S028R ("Cheap Yellow Display", 2.8" 3
 - **PC app:** Rust + Tauri 2 + Svelte 5. Lives in the tray, finds the board over USB (or Wi-Fi at fenixos.local), installs and switches apps, mirrors the board's screen, shows the board's load live (Task manager: CPU per core, memory, storage, the link, threads), keeps the board's firmware and time in step.
 - **Design:** Apple-style dark theme (`DESIGN.md`), Inter and Phosphor icons.
 
-Status: **v0.1.18.** Plan: `docs/PLAN.md`; progress: `tasks.md`.
+Status: **v0.1.19.** Plan: `docs/PLAN.md`; progress: `tasks.md`.
 
 <p>
   <img src="docs/screens/board/home.png" width="320" alt="Home screen with the time, date and app tiles">
