@@ -1,11 +1,13 @@
 // Wi-Fi services (P34), started by radio.cpp in Wi-Fi mode: the PC link over TCP (one client,
 // the same frames as on USB, no TLS by user choice), the name fenixos.local (mDNS), the time
 // by SNTP and the weather from Open-Meteo over plain HTTP (no key, no TLS).
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "esp_netif_sntp.h"
+#include "esp_timer.h"
 #include "fenix_hal.h"
 #include "fenix_proto.h"
 #include "fenix_sys.h"
@@ -33,17 +35,13 @@ static constexpr size_t TX_RING = 6144;  // one 4 KB stream band and a few small
 static StreamBufferHandle_t s_tx;
 
 // Whole frame or none. Callers hold the link TX lock, so frames never interleave. A frame
-// that finds no room for 500 ms ends the connection: the PC is not reading.
+// that finds no room for 500 ms is dropped (a stream band is redrawn later). Corrected (P48):
+// it ended the connection, and a busy 25 fps Wi-Fi stream stalls that long now and then; a PC
+// that stopped reading is found by the 3 s receive timeout and the heartbeat instead.
 static bool tcp_write(const uint8_t* d, size_t n) {
   if (s_client < 0 || n > TX_RING) return false;
   for (int i = 0; i < 50 && xStreamBufferSpacesAvailable(s_tx) < n; i++) vTaskDelay(pdMS_TO_TICKS(10));
-  if (s_client < 0) return false;
-  if (xStreamBufferSpacesAvailable(s_tx) < n) {
-    xSemaphoreTake(s_sock_lock, portMAX_DELAY);
-    if (s_client >= 0) shutdown(s_client, SHUT_RDWR);  // the reader sees the close and cleans up
-    xSemaphoreGive(s_sock_lock);
-    return false;
-  }
+  if (s_client < 0 || xStreamBufferSpacesAvailable(s_tx) < n) return false;
   xStreamBufferSend(s_tx, d, n, 0);
   return true;
 }
@@ -51,19 +49,26 @@ static bool tcp_write(const uint8_t* d, size_t n) {
 static size_t tcp_tx_free() { return s_client >= 0 ? xStreamBufferSpacesAvailable(s_tx) : 0; }
 
 // Drains the ring into the socket. Bytes left from a closed connection are thrown away.
+// A send that times out (500 ms, Wi-Fi busy) is tried again; only an error or 3 s without
+// progress ends the connection (P48: a single 500 ms stall used to end it).
+static constexpr int64_t TX_STALL_US = 3000000;
 static void tcp_tx_task(void*) {
   static uint8_t buf[1440];  // one TCP segment
   for (;;) {
     size_t n = xStreamBufferReceive(s_tx, buf, sizeof buf, portMAX_DELAY);
     xSemaphoreTake(s_sock_lock, portMAX_DELAY);
     int c = s_client;
-    for (size_t off = 0; c >= 0 && off < n;) {
+    int64_t moved = esp_timer_get_time();
+    for (size_t off = 0; c >= 0 && c == s_client && off < n;) {
       int k = send(c, buf + off, n - off, 0);  // SO_SNDTIMEO: 500 ms
-      if (k <= 0) {
-        shutdown(c, SHUT_RDWR);
+      if (k > 0) {
+        off += k;
+        moved = esp_timer_get_time();
+      } else if (k == 0 || (errno != EAGAIN && errno != EWOULDBLOCK) ||
+                 esp_timer_get_time() - moved > TX_STALL_US) {
+        shutdown(c, SHUT_RDWR);  // the reader sees the close and cleans up
         break;
       }
-      off += k;
     }
     xSemaphoreGive(s_sock_lock);
   }
