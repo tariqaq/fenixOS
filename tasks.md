@@ -93,6 +93,6 @@ Releases: v0.1.0 (P10) to v0.1.18 (P42, P44 to P47); tags on GitHub.
 
 ## Decisions (current; superseded ones in the history file)
 
-- 2026-10-31: **Builds may use all cores** (user: "u can run builds using all available cores and threads"): `FENIX_CORES=16` with `tools/capped.ps1`, one build at a time, until the user says otherwise.
+- 2026-10-31: **Builds use 4 cores at most** (user, while gaming: "only use 4 cores for builds max"): `tools/capped.ps1` default (no `FENIX_CORES`), one build at a time. Supersedes the same day's "all cores" (`FENIX_CORES=16`).
 - 2026-10-30: **Releases are the agent's job** (user: "handle all the versioning changes, release pushes urself"; 2026-10-29: "i permit u at all times"). Flow: bump VERSION, build locally (firmware and app), install the app (`/S`) and flash the board with `fenix flash`, then push the tag; GitHub builds at its own pace.
 - 2026-10-29: **Versions:** ESP-IDF v5.5.5, LovyanGFX 1.2.35; CH340 driver updated to 4.0.2026.2 (3.3.2011.11 blue-screened the PC). See `docs/board-info.md` "Version status".
