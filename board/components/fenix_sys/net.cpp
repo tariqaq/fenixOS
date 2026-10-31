@@ -94,6 +94,11 @@ static void tcp_task(void*) {
     setsockopt(c, SOL_SOCKET, SO_KEEPALIVE, &one, sizeof one);
     timeval tv = {0, 500000};
     setsockopt(c, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof tv);
+    // A peer that goes quiet without closing (its FIN or RST lost) would hold the one slot until
+    // TCP keepalive (2 h), and new connections would wait in the backlog. The PC pings every 1 s,
+    // so 3 s of silence (the heartbeat timeout) ends the connection (P46).
+    timeval rt = {3, 0};
+    setsockopt(c, SOL_SOCKET, SO_RCVTIMEO, &rt, sizeof rt);
     // The new client never gets the old one's unsent bytes: wait for tcp_tx to drop them.
     while (!xStreamBufferIsEmpty(s_tx)) vTaskDelay(pdMS_TO_TICKS(10));
     s_client = c;

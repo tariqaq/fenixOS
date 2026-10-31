@@ -15,7 +15,7 @@
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
-//! fenix bench [secs] [nostream]    link throughput
+//! fenix bench [secs] [nostream|<fps>]  link throughput (stream at 10 fps unless given)
 //! fenix list                       installed apps
 //! fenix install <file.fxp>         push a board package
 //! fenix remove <id>                remove an app
@@ -134,6 +134,7 @@ fn main() {
             opts,
             arg_u64(&args, 1, 10),
             args.iter().any(|a| a == "nostream"),
+            arg_u64(&args, 2, 10).clamp(1, 60) as u8,
         ),
         "shot" => shot(
             opts,
@@ -193,7 +194,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -617,14 +618,14 @@ fn wait_connected(link: &Link, secs: u64) -> bool {
 
 /// Stream benchmark: stream while opening and closing Settings every second
 /// (landscape Tiles home), then report throughput and what the board dropped.
-fn bench(opts: LinkOptions, secs: u64, nostream: bool) -> i32 {
+fn bench(opts: LinkOptions, secs: u64, nostream: bool, fps: u8) -> i32 {
     let link = Link::spawn(opts);
     if !wait_connected(&link, 6) {
         eprintln!("no board");
         return 1;
     }
     if !nostream {
-        link.send(Msg::StreamStart { fps: 10 });
+        link.send(Msg::StreamStart { fps });
         link.send(Msg::StreamSync);
     }
     let mut canvas = StreamCanvas::default();

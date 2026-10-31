@@ -16,7 +16,7 @@ The framing is kept from the FenixDeck PoC (`docs/legacy/protocol.md`), where it
 - Only `fenix-link` resets the board on purpose (reboot request, flashing).
 - Bluetooth (SPP, P33) was removed in P38; its values below stay reserved.
 - Wi-Fi (P34): the same frames over TCP port **7350** (`TCP_PORT`), `TCP_NODELAY`, no TLS (user choice). The board announces `fenixos.local` by mDNS. One client at a time.
-- One session at a time: the board answers a frame from another transport while a session is open with `ERROR` code 4 (busy). The session ends on its heartbeat timeout or when its TCP connection closes.
+- One session at a time: the board answers a frame from another transport while a session is open with `ERROR` code 4 (busy). The session ends on its heartbeat timeout or when its TCP connection closes; the board also closes a TCP connection that sends nothing for 3 s (P46), so a PC that vanished never holds the slot.
 
 ## Framing
 
