@@ -302,7 +302,7 @@ The normal firmware now carries both radios; Settings > Wireless (`Settings.radi
 
 Measured with the board on a Windows Mobile Hotspot (2.4 GHz, -39 dBm), PC on the same hotspot.
 
-- **TCP link:** port 7350, one client, `TCP_NODELAY`, 500 ms send timeout (a stalled frame ends the connection rather than leaving half a frame). Since P37 frames go into a 6 KB send ring that task `tcp_tx` (2.5 KB stack) drains into the socket; a frame that finds no room for 500 ms ends the connection. `fenix --port tcp:fenixos.local ...` works for every link command; a USB session still open answers the TCP HELLO with ERROR busy until it times out (3 s).
+- **TCP link:** port 7350, one client, `TCP_NODELAY`, 500 ms send timeout. Since P37 frames go into a 6 KB send ring that task `tcp_tx` (2.5 KB stack) drains into the socket. Corrected (P48): a frame that finds no room for 500 ms is dropped (whole frame or none; a stream band is redrawn later) and a timed-out `send()` is retried; only a socket error or 3 s without progress ends the connection. Before P48 one 500 ms stall ended it. Since P46 3 s without a byte from the PC ends it too. `fenix --port tcp:fenixos.local ...` works for every link command; a USB session still open answers the TCP HELLO with ERROR busy until it times out (3 s).
 - **Stream over TCP** (`fenix bench 8`, P37): 46 to 54 KB/s, 0 dropped, 0 RX errors; board fps 20 to 22 while streaming (USB 23). Corrected (P37): P34 measured 47.3 KB/s with board fps 14.4, because the UI task blocked in `send()` while `tcp_tx_free` reported a fixed 8 KB. The send ring reports its real room, so the stream skips a band instead of waiting.
 - **Heap under a Wi-Fi stream (P37):** with the ring the UI stopped waiting, and the first stream frame took the heap to 0.5 KB; LVGL's failed malloc then hung the UI in its default `while(1)` assert (core 1 at 100%, no events, stream never stopped). Consumers and caps: each small `send()` held a whole-MSS pbuf (1.5 KB, 16 queued; `TCP_OVERSIZE` now quarter MSS), Wi-Fi dynamic buffers (32 each way, now 10), LVGL's opacity layer (24 KB, now 8 KB), the stream encoder (5.8 KB, only while streaming). Static Wi-Fi RX buffers 10 to 8. An LVGL assert now aborts, so the board restarts instead of freezing (`board/CMakeLists.txt`). Minimum over three 8 s Wi-Fi streams: 10.8 to 16.7 KB (the same bench over USB: 32 KB).
 - **Heap, Wi-Fi joined, TCP server, mDNS, SNTP:** 80 to 90 KB free (108 KB before the services: 8 KB link RX buffer (2 KB since P40), 2.4 KB decoder, task stacks, mDNS). With weather, the web page and the send ring (P37): 63 KB free at idle.
@@ -404,3 +404,11 @@ Board on a 4000 mAh USB-C powerbank, PC USB unplugged, Windows hotspot. The PC a
 | Wi-Fi 25 | 64.2 | 4.4 | 21.0 | 164 |
 
   USB (460800 baud) is full at about 45 KB/s, so it stays at 10. Wi-Fi runs at 25. Lowest heap over the Wi-Fi runs: 27.3 KB. The PC mirror polled every 100 ms (a 10 fps ceiling of its own); now 40 ms.
+
+## Wi-Fi link drops in a busy stream (P48, 2026-10-31)
+
+The user saw the app lose the board for a few seconds around stopping a Wi-Fi stream (v0.1.18, app log "closed by the board").
+
+- **Reproduced:** `fenix bench 8 25` over Wi-Fi with Settings opened and closed by taps: the board reset the connection mid-stream in 3 of 4 runs (os error 10054). A stop on a calm screen was clean (3 of 3). Before P48 `fenix bench` did not print link drops, so the P46 runs may hide some; it now prints them and watches the link for 4 s after the stream stops.
+- **Cause:** P37's rule that one 500 ms stall (a frame with no room in the send ring, or a `send()` timeout in `tcp_tx`) ends the connection. At 25 fps (P46) the ring is full most of the time, and Wi-Fi stalls that long now and then.
+- **Fix:** the frame is dropped instead; `tcp_tx` retries and ends the link only on an error or 3 s without progress. A PC that is gone is still found by the 3 s receive timeout (P46) and the heartbeat.

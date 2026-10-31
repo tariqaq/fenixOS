@@ -31,7 +31,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P18 Release v0.1.1
 - P19 LED green while shut down
 - P20 Release v0.1.2
-- P21 Burn-in protection (one board check left, see Open)
+- P21 Burn-in protection (board check by the user 2026-10-31: works)
 - P22 Release v0.1.3
 - P23 CH340 crash path while flashing
 - P24 Full docs sweep
@@ -59,7 +59,6 @@ Releases: v0.1.0 (P10) to v0.1.18 (P42, P44 to P47); tags on GitHub.
 
 ## Open (needs the user)
 
-- [~] P21 step 5: the user checks pixel shift, screen rest and the protection lock on the board (all built and flashed)
 
 ## Now
 
@@ -70,22 +69,22 @@ Releases: v0.1.0 (P10) to v0.1.18 (P42, P44 to P47); tags on GitHub.
   - [x] 4. Sim hang after `app_portrait`: rerun `sim_shots.py` in a loop to reproduce; find the cause or bound it (timeout in `sim_shots.py`). Done: reproduced (1 in ~30), caught with a temporary DbgHelp watchdog: a label drawing freed package text; fixed (item 2), 150 runs clean; `sim_shots.py` kills a run after 60 s
   - [x] 5. Docs pass 2, complete: read every current `.md` (root, `docs/` except `legacy/` and `vendor/`, `proto/`, `board/`, `app/`, `tools/`, `registry/`, `templates/`), fix stale facts, cut repetition and filler (token optimisation), keep Corrected notes short. Done so far: firmware README, tooling, sidecars (numbers checked in `apps.rs`, `sidecar.rs`), mockups (status, PC Settings row), registry (setting limits), README, ANALYSIS, DESIGN (accent on `surface-2`, chrome variables, switch sizes), proto spec, packages (font set, app lifetime), template docs (zip rebuilt), tasks (P41 to P44 moved to the history file), ideas (push time, link rate, codec, icon weights), toolchain (main window GPU, PoC gotchas, cores line), PLAN (pipes, app lifetime, welcome entry, PC UI testing), vendor README (SPI clock, touch range), board-info current state, decisions rows
   - [x] 6. Build, test, release if code changed; decisions log; commit. Done: version, tokens, registry, template, licenses, sim config checks ok; cargo test all pass; proto host test 40/40; pkg host test pass; svelte-check 0/0; sim 25/25; v0.1.15 firmware and signed app built, installed (/S), flashed (`fenix hello`: v0.1.15, heap 82.2 KB), tagged
-- [~] P46 Wi-Fi link test on a powerbank (user, 2026-10-31) and stream fps
+- [x] P46 Wi-Fi link test on a powerbank (user, 2026-10-31) and stream fps
   - [x] 1. Board on a powerbank, USB unplugged: the PC app found it on `tcp:fenixos.local`, streamed (user tested). Ping, web page, `/status.json` ok
   - [x] 2. Bug: after the app quit, port 7350 accepted nothing (one connection slot; the board's `tcp_link` waited in `recv` on a peer gone silent; the session ended on the 3 s heartbeat, the socket stayed). Fix: `SO_RCVTIMEO` 3 s on the client socket in `net.cpp`, so a silent peer frees the slot. Spec and board-info notes. Tested: a silent client is closed, `fenix hello` gets in after 3.1 s
   - [x] 3. `fenix bench` takes a stream fps (was fixed at 10); measured 10 / 15 / 20 / 25 over USB and Wi-Fi (table in `docs/board-info.md` P46): USB full at ~45 KB/s; Wi-Fi 25 fps +47% pictures
   - [x] 4. Stream rate: 10 over USB, 25 over Wi-Fi (`STREAM_FPS_WIFI` board, `MIRROR_FPS_WIFI` PC); the PC mirror polls every 40 ms (was 100, its own 10 fps ceiling); docs and decisions rows
-  - [~] 5. Build, test, release, flash, recheck Wi-Fi on the powerbank (user). Done: checks ok, cargo test pass, svelte-check 0/0, sim 25/25; v0.1.16 built, installed (/S), flashed (`fenix hello`: v0.1.16), tagged. Left: the user streams over Wi-Fi on the powerbank
-- [~] P47 Connect screen: a Wi-Fi run in 3D (user, 2026-10-31: "add 3d model animations if board was found thru wifi")
+  - [x] 5. Build, test, release, flash, recheck Wi-Fi on the powerbank (user: "stream over wifi is fine"). Done: checks ok, cargo test pass, svelte-check 0/0, sim 25/25; v0.1.16 built, installed (/S), flashed (`fenix hello`: v0.1.16), tagged. Left: the user streams over Wi-Fi on the powerbank
+- [x] P47 Connect screen: a Wi-Fi run in 3D (user, 2026-10-31: "add 3d model animations if board was found thru wifi")
   - [x] 1. `scene.ts`: pose `wireless` (cable pulls away, the antenna edge turns in, board nearer the centre), three `accent` arcs pulsing out from the ESP32 module's antenna, an antenna glow; reduced motion: no arcs, the glow only. Checked in a Chrome render (full rings crossed the screen: arcs instead)
   - [x] 2. `Connect.svelte`: `wireless` prop (board port `tcp:`), the Wi-Fi run (rings, screen boots, dashboard), copy "Connected over Wi-Fi"; waiting copy says a board on Wi-Fi connects on its own. `App.svelte` passes it
   - [x] 3. Docs: DESIGN.md Motion exceptions, mockups row 7, decisions row
-  - [~] 4. svelte-check, build, release v0.1.17. Done: svelte-check 0/0, version check ok; v0.1.17 built, installed (/S), flashed (`fenix hello`: v0.1.17), tagged. Left: the user sees it live with the board on the powerbank
+  - [x] 4. svelte-check, build, release v0.1.17 (user saw it live: "looks nice"). Done: svelte-check 0/0, version check ok; v0.1.17 built, installed (/S), flashed (`fenix hello`: v0.1.17), tagged. Left: the user sees it live with the board on the powerbank
   - [x] 5. v0.1.18 built, installed (/S), flashed (`fenix hello`: v0.1.18). "Show welcome again" (user: it did not play the new run): the welcome uses the Wi-Fi run for a board on `tcp:` (cable stays away, arcs go on over the final front view), copy "A board is on your Wi-Fi"
 - [~] P48 Wi-Fi link drops during a busy stream (user, 2026-10-31: "app lose connection temp after stopping stream then reconnects")
   - [x] 1. Reproduced (v0.1.18, board on the powerbank): `fenix bench 8 25` over Wi-Fi with taps, the board reset the connection mid-stream in 3 of 4 runs (os error 10054); stops on a calm screen were clean. `fenix bench` now prints link drops and watches the link 4 s after the stream stops
   - [x] 2. Cause: since P37 one 500 ms stall ended the link (a frame with no ring room, or one `send()` timeout); at 25 fps over Wi-Fi such stalls happen. Fix in `net.cpp`: the frame is dropped instead (a stream band is redrawn later), `tcp_tx` retries a timed-out send and ends the link only on an error or 3 s without progress. Firmware built
-  - [ ] 3. Flash (needs USB), rerun the busy test on the powerbank, release; docs (board-info P34 and P48, decisions)
+  - [~] 3. Flash (needs USB; the micro-USB cable did not enumerate, 2026-10-31), rerun the busy test over USB and Wi-Fi, release. Docs done: board-info P34 and P48, decisions
 - [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
 
 - [ ] P36 Later
