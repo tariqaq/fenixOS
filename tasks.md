@@ -44,9 +44,9 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P31 Flash, RAM and CPU trims, no radios yet; release v0.1.7
 - P32 Radio manager
 - P33 Bluetooth
-- P34 Wi-Fi: PC link, internet, phone web page (one check left, see Open)
+- P34 Wi-Fi: PC link, internet, phone web page (Wi-Fi fallback checked in P46: board on a powerbank, the app found it on `tcp:fenixos.local`, 16:30 and 17:15 in the app log)
 - P35 Design-language fixes
-- P37 Known limits, open checks, docs pass (one check left, see Open)
+- P37 Known limits, open checks, docs pass
 - P38 Remove Bluetooth, BLE included
 - P39 App packages from flash in pieces, not whole in RAM
 - P40 Link buffer trims, measured
@@ -60,7 +60,6 @@ Releases: v0.1.0 (P10) to v0.1.18 (P42, P44 to P47); tags on GitHub.
 ## Open (needs the user)
 
 - [~] P21 step 5: the user checks pixel shift, screen rest and the protection lock on the board (all built and flashed)
-- [~] P34 step 5 / P37 step 6: the PC app's Wi-Fi fallback with the board's USB unplugged (needs a second power source; the fixed `tcp:fenixos.local` port is tested)
 
 ## Now
 
