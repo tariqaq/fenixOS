@@ -67,7 +67,7 @@ Example (an illustration only; not part of v0.1): a stream-deck app is switched 
 
 ### 5.1 Goals
 
-- Rust, with a Tauri UI in Svelte (user's first thought; to be confirmed).
+- Rust, with a Tauri UI in Svelte (confirmed, section 11).
 - Extremely light, efficient and clean, since it often runs in the background from the tray icon.
 - Can offer an elevated (UAC) option where a feature needs it.
 
@@ -107,7 +107,7 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
 
 - **C1. The board cannot keep time across power loss.** The 40 MHz crystal keeps time only while powered, at about ±1–2 s per day (typical ±10–20 ppm). There is no RTC battery and no 32 kHz crystal. Unplug or power loss means the time is gone; a soft reboot or deep sleep keeps it. A time source is needed: sync from the PC on connect (no Wi-Fi needed), SNTP over Wi-Fi (since P34), or set it by hand in Settings (not built).
 - **C2. Raw 10 fps screen streaming does not fit over USB serial.**
-  - A full frame is 240 × 320 × 2 = 153,600 B. At 460800 baud (~46 KB/s) that is ~0.3 fps. Even at the CH340C's 2 Mbps peak (~200 KB/s, untested here) it is ~1.3 fps.
+  - A full frame is 240 × 320 × 2 = 153,600 B. At the link's 921600 baud (~92 KB/s, spike S3) that is ~0.6 fps.
   - Ways to get ~10 fps:
     - Send only changed regions (the UI library's flush rectangles), compressed. A flat dark UI compresses very well.
     - Or have the PC rebuild the screen from UI state.
@@ -118,7 +118,7 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
   - A small script VM: Berry starts at ~4–10 KB RAM and is used on the ESP32 by Tasmota. Lua and wasm3 are heavier, MicroPython heavier still.
   - Native ELF loading: Espressif's `elf_loader` component. The code runs from scarce internal RAM, so it is the most complex option.
 - **C4. "Shut down" can't cut power.** The board has no power switch, and USB keeps it powered. Shut down = backlight off + deep sleep (corrected, P19: light sleep, see `docs/board-info.md`), woken by a touch (touch IRQ on GPIO36 can wake from deep sleep) or by the RST button. Reboot = software restart.
-- **C5. No vsync.** The LCD's TE pin is not wired, so tearing can only be minimized: partial redraws by DMA and capped fps. A full-screen push takes ~22 ms (about 45 fps max). Full-screen effects such as cross-fades redraw the whole screen, so they run slower than small animations.
+- **C5. No vsync.** The LCD's TE pin is not wired, so tearing can only be minimized: partial redraws by DMA and capped fps. A full-screen push takes ~31 ms at the 40 MHz SPI clock (about 30 fps; corrected 2026-10-30, was ~22 ms, `docs/board-info.md`). Full-screen effects such as cross-fades redraw the whole screen, so they run slower than small animations.
 - **C6. Apple's fonts and SF Symbols can't be used.** Apple's license limits SF fonts to Apple platforms. It does not allow embedding them in a non-Apple app or firmware, nor even mock-ups of software for non-Apple systems. Use **Inter** (Google Fonts, OFL, designed in a similar spirit to SF Pro) or a similar open font. Icons need an open set too (for example Lucide, Phosphor, Material Symbols Rounded).
 - **C7. Private repo vs. central registry** (resolved: the repo is now public). This repo was private, so the PC app cannot read the registry from it without a GitHub token. Options: a token in the PC app, a separate public registry repo, or making this repo public.
 - **C8. Flash budget.** 4 MB total. The current plan has room for the firmware plus about 1.9 MB of app storage (LittleFS). Firmware updates through the PC app (by serial bootloader) need no OTA partitions. On-board OTA slots would take ~1.5 MB more.
@@ -152,14 +152,14 @@ Details and the options offered: `docs/decisions.md`.
 - Versions: stay on IDF 5.5.5, LovyanGFX 1.2.35. Corrected 2026-10-29: update the CH340 driver (3.3.2011.11 crashed Windows; `docs/board-info.md`).
 - Navigation: iOS-style **top nav bar** (`< Home`, centred title).
 - Time (C1): **PC sync on connect** + hourly, **kept in RTC memory across soft reboot / deep sleep**, SNTP in Wi-Fi mode since P34; no manual set. `--:--` until the first sync after power-up.
-- Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE/LZ); ~10 fps in normal use.
+- Stream (C2): **changed regions, compressed** (LVGL flush rects, RLE16; corrected: no LZ codec was built); ~10 fps in normal use.
 - Shut down (C4): **deep sleep, tap to wake** (touch IRQ GPIO36) or RST. Corrected (P19): light sleep, then a restart on the tap.
 - PC app: **Rust + Tauri 2 + Svelte 5**.
 - PC half of host apps (C10): **sidecar process** per app, started only while switched on, local pipe + typed API; trust via registry, pinned versions, checksums.
 - Registry (C7): **this repo is public**; the PC app reads the registry with no auth. Vendor files, flash images and the packing slip were scrubbed from history first.
 - Firmware updates (C8): **the PC app flashes the board over serial** (`espflash`), firmware bundled with each PC app release. No OTA slots.
 
-- Fonts (C6): **Inter** everywhere. Icons: **Phosphor** (fill on tiles, regular in bars and rows).
+- Fonts (C6): **Inter** everywhere. Icons: **Phosphor**, fill weight, bold for chevrons, plus and close (corrected: was "regular in bars and rows"; `DESIGN.md` Icons).
 - Motion: **iOS-like, tuned** (ease-out/spring 200–350 ms; full-screen steps held to ~30 fps).
 - PC window: **custom dark title bar** with Windows min/max/close.
 - Repo layout: `VERSION`, `board/`, `app/`, `crates/`, `proto/`, `registry/`, `design/`, `docs/`, `pics/`, `tools/`.
