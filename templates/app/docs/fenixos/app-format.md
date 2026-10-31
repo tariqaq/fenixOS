@@ -68,7 +68,9 @@ The 20 built-in glyphs: `gear-six`, `power`, `screencast`, `arrow-clockwise`, `p
 
 ## Bindings and events
 
-- `"bind": "cpu"` connects the element to binding `cpu`. The PC half sets it: a label shows text or an integer, a switch takes a bool, a slider or bar an integer.
+- `"bind": "cpu"` connects the element to binding `cpu`. The PC half sets it: a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer.
+- The board queues at most 16 values at a time and drops the rest; a dropped value shows only when it is sent again. Do not send more than 16 values in a burst (for example on `opened`) until fenixOS fixes this.
+- A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `"event": "mute"` makes the element report: a button sends `tap` (and `long` on a long press), a switch sends `change` with 0/1, a slider sends `change` with its value on release. The board updates its own copy of a bound control the user changed.
 - The board keeps no values while the app is closed. When the app opens, the PC half gets `opened` and must send its current values.
 - A label's `text` is what shows until the first value arrives: use a placeholder such as `"--"`.

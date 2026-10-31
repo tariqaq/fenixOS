@@ -2,7 +2,7 @@
 
 Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
 
-**Current state (2026-11-01): fenixOS v0.1.15** (flashed with `fenix flash`).
+**Current state (2026-11-01): fenixOS v0.1.19** (flashed with `fenix flash`, P48). Corrected: said v0.1.15.
 
 Current numbers (v0.1.12 unless marked; the sections below are a dated log, so older numbers in them are history):
 

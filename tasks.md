@@ -59,6 +59,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
+- Morpheus requests (`docs/requests/morpheus.md`), before P50 starts: (1) `view` only, or a bindable `show` on every element too? (2) a `secret` setting type (masked, DPAPI)? (3) one release or two (P50 + P51)? Then the user's go.
 
 ## Now
 
@@ -87,11 +88,26 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 3. Flashed (the CH340 port failed to open with two power sources on the board; it worked after the user restarted the PC and plugged the micro-USB alone), busy test with the stop pressed on the board: USB 4/4 and Wi-Fi 4/4 without a drop, two PC-stopped Wi-Fi benches clean, Wi-Fi 72-88 KB/s. v0.1.19: checks, cargo test, svelte-check 0/0, sim 25/25; built, installed (/S), flashed (`fenix hello`: v0.1.19), the app connects on COM9 without an update dialog; tagged. Docs: board-info P34 and P48, decisions
 - [x] P49 Template zip check (user, 2026-11-01: "is the zip file uptodate and ready"): zip matched its source; SDK, compiler and protocol unchanged since the v0.1.13 pin, so the pin stays. Added the `accent`-on-`surface_2` rule to the template's `design.md`; `tools/build.ps1` now finds cargo's target folder (`cargo metadata`), it failed with `CARGO_TARGET_DIR` set. Tested from a fresh unzip: `fenix-pkg` installed from tag v0.1.13, `build.ps1` made `app.fxp` (1468 B) and `app.exe`, `app.py check` and `local` ok
 - [x] Overnight decisions log: `docs/decisions.md`, section "2026-11-01: overnight run" (each choice made for the user and the options not taken), kept up to date through P41 to P44. v0.1.14 (P44 sidebar fix) built, installed, flashed and tagged
+- [x] Morpheus requests discussed (user, 2026-11-01): doc moved to `docs/requests/morpheus.md` with the answer; RAM sized for Wi-Fi on, no stream (decisions); stale docs fixed (board-info current state v0.1.19, PLAN image ref, packages bool on a label, the 16-value bind queue). Standby for the open questions above
+- [ ] P50 App runtime for Morpheus, release v0.1.20 (not started; plan, waiting for the user)
+  - [ ] 1. Reproduce the `opened` burst: 50 `BIND_SET` right after `APP_OPENED`, count what the board applies. Fix: PC keeps the latest value per binding and paces the burst; board queue with compact entries (text in a small ring), deeper than 16
+  - [ ] 2. `view` element (kind 9): int `bind` picks the one child shown (`LV_OBJ_FLAG_HIDDEN` on the rest); compiler, both readers, host tests, sim screen
+  - [ ] 3. Bindable button text (string) and icon glyph (int index on `icon` and icon buttons); 14 glyphs added to the fill icon fonts (`play`, `pause`, `skip-forward`, `skip-back`, `speaker-high`, `speaker-x`, `microphone`, `microphone-slash`, `headphones`, `game-controller`, `music-notes`, `video`, `phone`, `sparkle`); flash measured
+  - [ ] 4. Image binding: `image` element with `bind` and declared `w` × `h`, one per app, RGB565; `BIND_IMAGE` 0x32 chunked (spec, both codecs, vectors); buffer counted in the RAM estimate; pipe message `set_image`, SDK `set_image` (resize, convert) and `set_icon`
+  - [ ] 5. Measure on the board: Morpheus-sized layout with 120×120 art, Wi-Fi on (PC over Wi-Fi and over USB) and radio off; lowest heap with `fenix bench` (no stream). Set the RAM estimate cap (~56 KB) and the art cap (96 or 120) from it
+  - [ ] 6. `screen` permission: `tools/registry.py`, `templates/app/tools/app.py`, `app/src/lib/api.ts`, `docs/registry.md`, template `registry.md`
+  - [ ] 7. Docs (packages, spec, sidecars, registry, template copies), template pin to v0.1.20, zip; tests; release; answer in `docs/requests/morpheus.md`
+- [ ] P51 Text and labels, release v0.1.21 (not started)
+  - [ ] 1. Latin-1 Supplement (0xA0–0xFF) in the text fonts (`tools/gen_fonts.py`); flash measured
+  - [ ] 2. SDK helper: transliterate to the board's glyph set, `?` for unknown
+  - [ ] 3. Label `overflow` (`wrap`, `clip`, `ellipsis`, `scroll`) and `max_lines`
+  - [ ] 4. `secret` setting type if the user says yes
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [x] Phone Web Bluetooth page: dropped, P38 removed Bluetooth (needs BLE on the board)
   - [ ] OTA over Wi-Fi after the SD card (user; 2026-10-31: not before the SD card, even if P38 makes two slots fit the 4 MB flash). A/B slots need ~2 x 1.6 MB; the 4 MB flash fits that only with the apps partition (1.94 MB) moved to the SD card
+  - [ ] With the SD card (user, 2026-11-01): CJK fonts and text beyond Latin-1, app screens built only when shown (Morpheus requests)
   - Not planned: both radios at once (P29: ~40 KB free), LCD SPI at 80 MHz (garbles the panel, P10), fps caps for RAM (no gain), A2DP and HID (user)
 
 ## Decisions (current; superseded ones in the history file)
