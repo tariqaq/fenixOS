@@ -41,14 +41,14 @@ A folder with:
 
 Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes default to their content size), `grow` (share of the parent's free space along its flow; only applies when the parent has a set `h` for a column or `w` for a row, so a row that turns into a column in portrait keeps its children's natural height), `bind` (a binding name), `event` (an event name), `hidden`, and `portrait` (an object with any of these props, used when the board is in portrait).
 
-- **Fonts:** `body` (15), `body_semibold`, `label` (13), `label_medium`, `label_semibold`, `caption` (12), `caption_medium`, `title` (17), `title_l` (22), `clock_56`, `clock_64`. Default `body`. Inter only, digits and Basic Latin; see `tools/gen_fonts.py` for the character set.
+- **Fonts:** `body` (15), `body_semibold`, `label` (13), `label_medium`, `label_semibold`, `caption` (12), `caption_medium`, `title` (17), `title_l` (22), `clock_56`, `clock_64`. Default `body`. Inter only: printable ASCII plus `° · × – — ’ • … ‹ ›` (`tools/gen_fonts.py`); the clock fonts hold digits, `:` `-` and space. Corrected (P45): was "digits and Basic Latin".
 - **Colours:** a token name from `design/tokens.json` (`label`, `label_2`, `accent`, `success`, `warning`, `danger`, `surface_1` … `tile_*`) or `"#RRGGBB"`.
 - **Icons:** the board's built-in set (`gear-six`, `power`, `screencast`, `arrow-clockwise`, `plugs-connected`, `plugs`, `sun`, `moon`, `timer`, `device-rotate`, `hand-tap`, `hard-drives`, `desktop-tower`, `info`, `squares-four`, `warning`, `puzzle-piece`, `check-circle`, `x-circle`, `monitor`). Other artwork goes in as `image`.
 
 ### Bindings and events
 
 - `bind: "cpu"` connects the element to binding `cpu`. The PC half sets it (`BIND_SET`, `proto/spec.md`): a label shows text or an integer, a switch takes a bool, a slider or bar an integer.
-- `event: "mute"` makes the element report: a button sends a tap, a switch or slider sends its new value (sliders on release). The board sends `EVENT` with the element's index; the PC maps the index back to the name through the package.
+- `event: "mute"` makes the element report: a button sends a tap (and a long press), a switch or slider sends its new value (sliders on release). The board sends `EVENT` with the element's index; the PC maps the index back to the name through the package.
 - The board keeps no values while an app is closed. When an app opens the board sends `APP_OPENED`, and the PC half sends its current values.
 
 ## Limits
@@ -71,8 +71,8 @@ The board never holds a whole package. `fpkg::Package::parse` reads from a `File
 
 - **Install check** (`store_end`): parses the temp file in place; RAM is the arena only. Hash is computed as chunks arrive.
 - **Home tiles** (`apps_reload`): parse, then read the two tile icons by offset.
-- **Open app:** keeps the arena while open; reads only the assets an `image` element shows. App labels point into the arena (`lv_label_set_text_static`), so their text is not copied again.
-- Measured on a 32 KB package (24.2 KB image, 7 KB text), Wi-Fi mode: lowest heap during install 30.7 to 51.3 KB; free with the app open 32.9 to 40.0 KB.
+- **Open app:** keeps the arena while open; reads only the assets an `image` element shows. App labels point into the arena (`lv_label_set_text_static`), so their text is not copied again; the arena therefore lives until the app screen is deleted, after its slide out (P45).
+- Heap before and after P39: `docs/board-info.md` "App packages read in pieces".
 
 ## Binary format 1
 
@@ -140,7 +140,7 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 
 - **Tiles:** Home shows the system apps, then installed apps sorted by id: tile colour, the 20 px icon (Tiles) or 26 px icon (Dock), tinted white. A new tile fades and scales in (0.8 → 1, 250 ms); a removed one fades and scales out. Landscape tiles and the Dock scroll sideways when they do not fit; the portrait grid shows two rows and scrolls.
 - **Open:** tapping a tile reads the package from flash (strings, element props and the images its elements show; tile icons stay in flash), fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
-- **Close:** back, or any other screen change, frees what was read and the objects and sends `APP_CLOSED`. `BOARD_STATE` reports screen 5 and the app id while it is open.
+- **Close:** back, or any other screen change, sends `APP_CLOSED`; what was read is freed when the app screen is deleted (its slide out still draws it). `BOARD_STATE` reports screen 5 and the app id while it is open.
 - **States:** no PC link: 6a "Waiting for host PC". `HOST_STATE` off for this app: 6b "Turned off on host PC". Otherwise the layout.
 - **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. Values for other apps, or with no app open, are dropped.
 - **Events:** buttons send tap (1) and long press (2); switches send change (3) with 0/1; sliders send change (3) with the value on release. The board updates its cache for a bound control the user changed.

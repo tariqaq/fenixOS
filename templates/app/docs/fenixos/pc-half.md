@@ -59,7 +59,7 @@ fn push(app: &App) {
 }
 ```
 
-Send only what changed when values are large or frequent: every `set` crosses the USB link (921,600 baud, shared with the screen stream).
+Send only what changed when values are large or frequent: every `set` crosses the board link (USB at 921,600 baud, or Wi-Fi), shared with the screen stream.
 
 ## Other languages
 
