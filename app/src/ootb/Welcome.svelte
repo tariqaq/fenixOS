@@ -32,6 +32,9 @@
   const later = (ms: number, f: () => void) => timers.push(window.setTimeout(f, reduced ? Math.min(ms, 600) : ms));
 
   const present = (s: State | null) => !!s && (s.status === "connected" || s.silent.length > 0);
+  // A board linked over Wi-Fi gets the Connect screen's Wi-Fi run, not the cable (P47).
+  const wireless = $derived(!!snap?.board?.port.startsWith("tcp:"));
+  const linked = () => scene?.setPose(wireless ? "wireless" : "plugged");
   const u = $derived(snap?.update ?? null);
   const percent = $derived(u ? u.percent : 0);
 
@@ -85,7 +88,7 @@
   }
 
   function plugged() {
-    scene?.setPose("plugged");
+    linked();
     step = "checking";
     later(900, firmwareCheck);
   }
@@ -176,7 +179,7 @@
       <p>A small operating system for your ESP32 display board.</p>
     {:else if step === "looking"}
       <h1>Looking for your board</h1>
-      <p>A board is plugged in. Connecting to it…</p>
+      <p>{wireless ? "A board is on your Wi-Fi." : "A board is plugged in."} Connecting to it…</p>
     {:else if step === "plug"}
       <h1>Plug in your board</h1>
       <p>Windows needs the CH340 USB driver for this board. Use a USB-A to USB-C or micro-USB cable that carries data.</p>
@@ -209,7 +212,7 @@
       <h1>That did not work</h1>
       <p>{error || "The board did not answer."} Keep the board plugged in and try again.</p>
       <div class="buttons">
-        <button type="button" class="primary" onclick={() => { error = ""; scene?.setPose("plugged"); step = "checking"; later(600, firmwareCheck); }}>Try again</button>
+        <button type="button" class="primary" onclick={() => { error = ""; linked(); step = "checking"; later(600, firmwareCheck); }}>Try again</button>
         <button type="button" class="secondary" onclick={skip}>Not now</button>
       </div>
     {:else if step === "done"}

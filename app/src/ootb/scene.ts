@@ -309,6 +309,8 @@ export class BoardScene {
   private waves = new THREE.Group();
   private aglow: THREE.PointLight;
   private wavesT = 0;
+  /** Linked over Wi-Fi: set by the `wireless` pose; `front` then keeps the cable away. */
+  private air = false;
   private screen = new Screen();
   private tex: THREE.CanvasTexture;
   private raf = 0;
@@ -413,6 +415,7 @@ export class BoardScene {
     const slow = this.reduced ? 1 : 2200;
     const mid = this.reduced ? 1 : 1400;
     this.pose = p;
+    if (p !== "front") this.air = p === "wireless";
     this.shown.set(1, now, this.reduced ? 1 : 1800);
     // Over Wi-Fi the board sits nearer the centre, leaving room for the arcs at its right.
     this.pan.set(p === "intro" ? 0 : p === "wireless" ? -6 : -22, now, slow);
@@ -449,7 +452,7 @@ export class BoardScene {
         this.yaw.set(0.16, now, slow);
         this.pitch.set(0.08, now, slow);
         this.dist.set(178, now, slow);
-        this.tip.set(TIP_IN, now, 1);
+        if (!this.air) this.tip.set(TIP_IN, now, 1);
         break;
     }
   }
@@ -475,12 +478,12 @@ export class BoardScene {
     this.cable.visible = tip > TIP_IN - HOVER - 59;
     // The port glows as the plug seats, then settles to a faint light.
     const since = now - this.glowT;
-    const plugged = this.pose === "plugged" || this.pose === "front";
+    const plugged = this.pose === "plugged" || (this.pose === "front" && !this.air);
     this.glow.intensity = plugged && since > 0 ? 260 * Math.exp(-since / 900) + 25 : 0;
     // Wi-Fi: arcs leave the antenna one after another and fade as they grow (none with reduced
     // motion: the antenna light only).
     const air = now - this.wavesT;
-    const wireless = this.pose === "wireless" && air > 0;
+    const wireless = this.air && (this.pose === "wireless" || this.pose === "front") && air > 0;
     this.aglow.intensity = wireless ? 160 * Math.exp(-air / 1200) + 30 : 0;
     this.waves.visible = wireless && !this.reduced;
     if (this.waves.visible) {
