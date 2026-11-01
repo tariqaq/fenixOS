@@ -1,0 +1,5 @@
+# SD spike: reports on the UART0 console at 115200 (the link is not used).
+# partitions.csv is a copy of fenixOS's, so NVS and the apps partition are left alone.
+CONFIG_ESP_CONSOLE_NONE=n
+CONFIG_ESP_CONSOLE_UART_DEFAULT=y
+CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200

@@ -245,6 +245,23 @@ With the PC app running and CH340 driver 4.0.2026.2, unplugging the board ends t
 - **Draw (estimates, not measured here):** ~115 mA at 5 V with the backlight full, about 40 % less dimmed (secondary spec pages); Wi-Fi adds ~80–120 mA on average with TX peaks near 240 mA (ESP32 datasheet), BLE ~30–50 mA. At the cell, with a ~85 % boost, multiply the 5 V current by ~1.6: UI only ~185 mA, BLE ~240 mA, Wi-Fi ~350 mA. Shut down (light sleep since P19) plus regulator and boost quiescent current is a few mA, so a hard power switch is worth having. Measure with the real firmware before choosing.
 - **SD card:** ESP-IDF v5.5.5's FatFs has exFAT compiled out (`FF_FS_EXFAT 0` in `components/fatfs/src/ffconf.h`, no Kconfig option), so cards must be FAT32 (FAT12/16 also work). FAT32 itself is not limited to 32 GB: larger SDXC cards work once reformatted to FAT32 (Windows' own format tool refuses FAT32 above 32 GB; use another formatter). Files are limited to 4 GB.
 
+## SD card check (spike `board/spikes/sd`, 2026-11-02)
+
+The user put a microSD card in the slot. The spike mounts it over SPI3 on the VSPI pins (CS 5, MOSI 23, CLK 18, MISO 19), never formats, reads the card registers and sector 0, and times reads and a 1 MB temp file (written, read back, verified, deleted). fenixOS v0.1.19 was flashed back afterwards (`fenix hello`: v0.1.19, heap 81.7 KB, settings kept: the spike uses a copy of fenixOS's partition table).
+
+| What | Value |
+|---|---|
+| Card | SDHC, 7,680 MB (CSD v2, 15,728,640 sectors of 512 B), SPI mode (1 bit). CID product name `asdfg`: a no-name card, so treat its speed and wear as unknown |
+| Layout | MBR, one partition type `0x0C` (FAT32 LBA) from sector 32, FAT32, 512 B sectors, 32 KB clusters, empty (7,678 MB free, 0 root entries) |
+| Mount | ~75 ms |
+| 20 MHz | raw 32 KB reads 1,754 KB/s, 4 KB random reads 1,468 KB/s (2.7 ms each); file write 1,504 KB/s, file read 809 KB/s |
+| 40 MHz | works: raw 32 KB reads 2,745 KB/s, 4 KB random reads 2,122 KB/s (1.9 ms each); file write 2,188 KB/s, file read 986 KB/s |
+
+- File reads are slower than raw ones because the spike reads through `fread` (newlib's small stdio buffer); reading with FatFs `f_read` straight into a large buffer should come near the raw rate. Not measured.
+- **FAT32, not exFAT.** exFAT is compiled out of IDF v5.5.5's FatFs (`FF_FS_EXFAT 0`, checked again in `ffconf.h`); turning it on means patching the IDF copy, plus long-file-name buffers and more flash. It would not be faster here: the 1-bit SPI bus (~2.7 MB/s) is the limit, not the file system. exFAT only matters for files over 4 GB, which fenixOS does not need. A card that comes as exFAT (most over 32 GB) has to be reformatted to FAT32.
+- **Long file names are off** in the IDF defaults (`CONFIG_FATFS_LFN_NONE`, 8.3 names only). fenixOS file names such as `io.github.tariqaq.morpheus.fxp` need `CONFIG_FATFS_LFN_HEAP` when the SD card comes into fenixOS.
+- **SPI bus clash:** the touch controller runs on SPI3 with its own pins (`fenix_lgfx.hpp`), and the SD slot's pins are also wired for SPI3 (VSPI). The ESP32 has only SPI2 (LCD) and SPI3 for this, so fenixOS cannot keep both on hardware SPI as they are. Options for later: touch on software SPI (the XPT2046 is slow anyway), or the SD card on SPI2 through the GPIO matrix next to the LCD (shared bus, caps it below 40 MHz). Not tried.
+
 ## Task manager numbers (P27, 2026-10-30)
 
 From `fenix sysinfo` (two SYSINFO answers 1 s apart), v0.1.4 firmware with run-time stats on, Home shown, PC app closed:
