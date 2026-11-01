@@ -21,7 +21,7 @@ Current numbers (v0.1.12 unless marked; the sections below are a dated log, so o
 
 Since P23, every flash read, write and erase goes through `fenix` (`flash`, `write`, `read-flash`, `erase`), not esptool: esptool's read timeouts take the CH340 driver's crash path (below). The esptool commands further down are a record of what was run before that.
 
-**Backups are local only** (`firmware/` is in `.gitignore`): the repo is public, and both images contain vendor code (the stock LVGL demo; the FenixDeck dump still holds 172 blocks of it). Keep `firmware/` safe outside git (for example, a private cloud folder). The SHA-256 values below identify the files.
+**Backups are local only** (`firmware/` is in `.gitignore`): the repo is public, and both images contain vendor code (the stock LVGL demo; the FenixDeck dump still holds 172 blocks of it). Keep `firmware/` safe outside git, on local storage only (a USB stick, say). Corrected: suggested a private cloud folder; the user does not use OneDrive or any cloud folder. The SHA-256 values below identify the files.
 
 ## Connection
 
