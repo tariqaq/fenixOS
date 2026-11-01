@@ -59,8 +59,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
-- SD, apps and OTA plan (`docs/plan-sd-ota.md`, P51 to P54): the user's go for P51. Chosen for the user, change any: (1) reconcile still removes apps this PC does not know (one PC owns the board); (2) a new firmware is marked good after Home plus 30 s, no PC needed (SD updates work without one); (3) own ECDSA check unless IDF's option proves simpler (P52 step 1); (4) sounds off by default and only once a speaker is fitted; (5) `max_files` 4
-- Morpheus requests (`docs/requests/morpheus.md`), before P50-M starts: (1) `view` only, or a bindable `show` on every element too? (2) a `secret` setting type (masked, DPAPI)? (3) one release or two (P50-M + P51-M)? Then the user's go.
+- Touch on software SPI (v0.1.20): the user taps around the real panel to confirm it
+- Back up `%USERPROFILE%\.fenixos\fw-signing.pem` once P52 makes it (the user)
 
 ## Now
 
@@ -102,42 +102,56 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 4. Board Settings › Storage: SD card group; simulator stub and golden
   - [x] 5. PC: engine state, Board page row, Task manager meter, `fenix sd`
   - [~] 6. Docs (spec, board-info, PLAN, README, decisions, Morpheus refs), tests (checks ok, cargo 0 failed, proto host 41/41, svelte-check 0/0, sim 25/25), v0.1.20 built, installed (/S), flashed (`fenix hello`: v0.1.20; `fenix sd`: ready, 7671 MB free, 40 MHz), tagged. Left: the user taps the panel to check touch on software SPI
-- [ ] P51 Apps on the SD card, new on/off model, v0.1.21 (design: `docs/plan-sd-ota.md`; waits for the user's go)
-  - [ ] 1. Board store with two back ends: SD (`/sd/fenixos/apps/<id>.fxp|.sha|.tmp`, leftovers cleaned at mount) and LittleFS; SD first, flash only with no card and ≤ 256 KB; one app in one place. Compact `AppMeta` (id 64, version 16, sha, where, state). Package cap 8 MB on SD, 256 KB on flash (was 64 KB). Host tests
+- [ ] P51 Apps on the SD card, on/off, sync, v0.1.21 (design: `docs/plan-sd-ota.md`; overnight run, no go needed between phases)
+  - [ ] 1. Board store with two back ends: SD (`/sd/fenixos/apps/<id>.fxp|.sha|.tmp`, leftovers cleaned at mount) and LittleFS; SD first, flash only with no card and ≤ 128 KB; one app in one place. No fixed cap on the card (free space, 4 GB per file); 128 KB per package on flash (was 64 KB everywhere). Compact `AppMeta` (id 48, version 16, sha, where, state). Host tests
   - [ ] 2. `MAX_APPS` 32; `APP_INDEX_REQ`/`APP_INDEX` 0x2B/0x2C (paged), `APP_TURN_ON` 0x2D, `APP_RESULT` code 7; Rust and C++ codecs, vectors appended, spec. `APP_LIST` kept (first 10) for the update path
-  - [ ] 3. PC `apps.rs`: Add installs both halves (board install queued on or off); switch off stops the sidecar and sends `HOST_STATE` off, no remove; Remove removes both halves; reconcile removes only apps this PC does not know, sends `HOST_STATE` for all; `AppTurnOn` switches on and logs it; reads the index pages. Cargo tests for each case
-  - [ ] 4. Board UI: Turn on button on "Turned off on host PC"; greyed tiles and "Insert the SD card" for a missing card (opening probes); Home pages of tiles (only the shown page built). Mock-up first (`docs/mockups.md`), then code, sim screens and goldens
-  - [ ] 5. PC UI: where each app lives ("SD card", "flash", "card missing"), progress for installs over 256 KB
-  - [ ] 6. On the board: installs with and without the card, card pulled with an app open, Turn on from the board, a 2 MB install timed over USB and Wi-Fi, heap with 30 apps (budget: ≤ 2 KB more than v0.1.20)
+  - [ ] 3. PC `apps.rs`: Add installs both halves; switch off stops the sidecar and sends `HOST_STATE` off, no remove; Remove removes both halves; `reconcile()` becomes a sync diff (board-only: PC half from the registry by id and version, else keep board-only or remove; PC-only: board half; version skew: update the older side) applied only on the user's Sync click; `AppTurnOn` switches on and logs it; index pages read. Cargo tests per case
+  - [ ] 4. Board UI: faded tile for an app off on the PC (tap opens "Turned off on host PC" + Turn on); faded tile with an SD badge for a missing card (tap: "Insert the SD card", probes); "Not on this PC" state; Home pages (swipe, page dots, only the shown page built), designed under DESIGN.md. Sim screens and goldens, copies in `docs/screens/board/`
+  - [ ] 5. PC UI: "Sync with board" card on Apps (checkbox per difference, one Sync button); where each app lives ("SD card", "flash", "card missing"); progress for board installs over 128 KB, time warning over ~2 min
+  - [ ] 6. On the board: installs with and without the card, card pulled with an app open, Turn on from the board, sync both ways, a 2 MB install timed over USB and Wi-Fi, heap with 32 apps (budget ≤ 2 KB more than v0.1.20)
   - [ ] 7. Docs (packages, spec, sidecars, README, mockups, board-info, decisions), all tests, release v0.1.21
 - [ ] P52 OTA, two slots, signed firmware, v0.1.22 (design: `docs/plan-sd-ota.md`)
-  - [ ] 1. Check IDF v5.5.5's signed update option (`CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT`, ESP32 rev 3.1 schemes) against an own ECDSA P-256 check; record the choice (default: own check, no bootloader or eFuse change)
-  - [ ] 2. `partitions.csv` (nvs 0x9000, otadata 0xF000, phy_init 0x11000, ota_0 0x20000 and ota_1 0x1A0000 at 1.5 MB, apps 0x320000 896 KB), `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`; `bundle_firmware.py` and `fenix flash` write `ota_data_initial`. Check the USB update path flashes bootloader and table, NVS kept, flash store starts empty and the PC reinstalls
-  - [ ] 3. `.fwp` format, `tools/sign_fw.py` (key in `%USERPROFILE%\.fenixos\fw-signing.pem` and the `FENIX_FW_SIGNING_KEY` secret, never in git), public key in the firmware, release workflow signs and publishes the `.fwp`, the PC app bundles it
+  - [ ] 1. Compare IDF v5.5.5's signed update option (`CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT`, its ESP32 rev 3.1 scheme) with an own ECDSA P-256 check; record the choice (default: own check, no bootloader or eFuse change)
+  - [ ] 2. `partitions.csv`: nvs 0x9000 24 KB, otadata 0xF000, phy_init 0x11000, coredump 0x12000 56 KB, ota_0 0x20000 and ota_1 0x1F0000 at 0x1D0000 each, apps 0x3C0000 256 KB; `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`; `bundle_firmware.py` and `fenix flash` write `ota_data_initial`. Check the USB update path writes bootloader and table, NVS kept, the Sync card offers flash apps back
+  - [ ] 3. Signing key into `%USERPROFILE%\.fenixos\fw-signing.pem` (never in git), `gh secret set FENIX_FW_SIGNING_KEY`; `.fwp` format, `tools/sign_fw.py`, public key in the firmware, release workflow signs and publishes the `.fwp`, the PC app bundles it. Remind the user to back up the `.pem`
   - [ ] 4. Board `ota.cpp`: stage on SD (resumable), verify sha and signature, copy to the spare slot (4 KB buffer); no card: write the slot directly; mark valid after Home plus 30 s; rollback report. `FW_BEGIN`..`FW_RESULT` 0x50 to 0x54 (codecs, vectors, spec). Host test for the check
-  - [ ] 5. Settings › About: version, "Update to vX" from an SD package, "Go back to vY" (last two `.fwp` kept), progress screen. PC `update.rs`: OTA over the current link for firmware ≥ 0.1.22, USB flash otherwise, "Plug in USB once" for an old board on Wi-Fi. `fenix ota <file.fwp>`
-  - [ ] 6. On the board: migration over USB, OTA over USB, Wi-Fi and SD package, cable pulled mid-transfer (resume), forced crash in the new image (rollback), downgrade refused outside the menu, heap at the peak (budget ≤ 12 KB while updating)
+  - [ ] 5. Settings › About: version, "Update to vX" from an SD package (checked at boot too), "Go back to vY" (last two `.fwp` kept), progress screen. PC `update.rs`: OTA over the current link for firmware ≥ 0.1.22, USB flash otherwise, "Plug in USB once" for an old board on Wi-Fi. `fenix ota <file.fwp>`
+  - [ ] 6. On the board: migration over USB, OTA over USB, Wi-Fi and SD package, cable pulled mid-transfer (resume), forced crash in the new image (rollback), downgrade refused outside the menu, heap at the peak (≤ 12 KB while updating)
   - [ ] 7. Docs (spec, board-info partition table and timings, toolchain key handling, README, decisions), all tests, release v0.1.22 (flashed over USB: the migration)
-- [ ] P53 SD extras, v0.1.23: logs to `/sd/fenixos/logs` (10 boots kept), core dump in the 56 KB flash gap copied to SD (if it fits), `FILE_*` 0x60 to 0x64 (read and delete under `/sd/fenixos`), screenshots to SD (BMP from the LCD in bands), last bound values per app shown while no PC is linked. Each with heap measured, docs, tests, release
-- [ ] P54 Fonts from the card and UI sounds, v0.1.24: LVGL Tiny TTF from `/sd/fenixos/fonts` (flash, glyph cache RAM and speed measured first; `sim_config.py`), `font: "cjk"` for apps; sounds only once a speaker is on the header (the board has none), off by default
-- [ ] P50-M App runtime for Morpheus (was P50, not started; after P51 to P54)
+- [ ] P53 SD extras, v0.1.23 (design: `docs/plan-sd-ota.md`)
+  - [ ] 1. `FILE_*` 0x60 to 0x67: list, read, delete under `/sd/fenixos`; chunked resumable write to `fonts/`, `data/`, `wallpaper/` only; codecs, vectors, spec; `fenix files ls|get|put|rm`
+  - [ ] 2. Logs to `/sd/fenixos/logs/<boot>.txt` (512 B buffer, 10 kept, 256 KB each); core dump to the 56 KB partition (measure a dump; drop if it does not fit), copied to `/sd/fenixos/crash/` at boot; PC log sheet and `fenix logs --board` read them
+  - [ ] 3. Screenshots from the PC only: Board page button and `fenix shot --sd` save `/sd/fenixos/shots/<time>.bmp` (LCD read in 16-row bands); PC lists and downloads
+  - [ ] 4. Last bound values per app in `/sd/fenixos/state/<id>.bin` (on close, every 60 s open); with no PC the app opens on them, dimmed, "PC not connected"
+  - [ ] 5. Settings backup `/sd/fenixos/backup/settings.bin` on every change (Wi-Fi password included, plaintext); restore offered at boot when settings are empty
+  - [ ] 6. Status page served from `/sd/fenixos/web/` when present (built-in page as fallback)
+  - [ ] 7. Home wallpaper from `/sd/fenixos/wallpaper/` drawn in rows, set from the PC; measure redraw time and burn-in shift first, drop it if Home slows
+  - [ ] 8. Per-app data folder `/sd/fenixos/data/<id>/` through the SDK (`put_file`, `get_file`), removed with the app; template and SDK docs
+  - [ ] 9. Heap per feature, docs, all tests, release v0.1.23
+- [ ] P54 Fonts from the card, v0.1.24 (design: `docs/plan-sd-ota.md`; UI sounds dropped, user)
+  - [ ] 1. Check Tiny TTF (`stb_truetype`) with Noto Sans CJK's CFF OTF; else a TrueType-outline CJK font (OFL). Measure flash, glyph cache RAM, draw time of a 20-character title; split per script if too slow
+  - [ ] 2. `LV_USE_TINY_TTF`, `LV_TINY_TTF_FILE_SUPPORT`, LVGL file system driver on `/sd`; `tools/sim_config.py`; labels fall back to the CJK font for missing characters; no card or no font: as now
+  - [ ] 3. PC app downloads the font (pinned URL and sha256) and installs it with `FILE_WRITE`; Settings › Storage shows it; licence in `tools/licenses.py` output
+  - [ ] 4. Sim screen with CJK text, docs (packages fonts, board-info, README, Morpheus answer row 5), all tests, release v0.1.24
+- [ ] P50-M App runtime for Morpheus, v0.1.25 (after P54 in the same run; user answers 2026-11-02: `view` and `show`, `secret`, two releases)
   - [ ] 1. Reproduce the `opened` burst: 50 `BIND_SET` right after `APP_OPENED`, count what the board applies. Fix: PC keeps the latest value per binding and paces the burst; board queue with compact entries (text in a small ring), deeper than 16
-  - [ ] 2. `view` element (kind 9): int `bind` picks the one child shown (`LV_OBJ_FLAG_HIDDEN` on the rest); compiler, both readers, host tests, sim screen
+  - [ ] 2. `view` element (kind 9): int `bind` picks the one child shown (`LV_OBJ_FLAG_HIDDEN` on the rest); bindable `show` (bool) on every element; compiler, both readers, host tests, sim screen
   - [ ] 3. Bindable button text (string) and icon glyph (int index on `icon` and icon buttons); 14 glyphs added to the fill icon fonts (`play`, `pause`, `skip-forward`, `skip-back`, `speaker-high`, `speaker-x`, `microphone`, `microphone-slash`, `headphones`, `game-controller`, `music-notes`, `video`, `phone`, `sparkle`); flash measured
   - [ ] 4. Image binding: `image` element with `bind` and declared `w` × `h`, one per app, RGB565; `BIND_IMAGE` 0x32 chunked (spec, both codecs, vectors); buffer counted in the RAM estimate; pipe message `set_image`, SDK `set_image` (resize, convert) and `set_icon`
   - [ ] 5. Measure on the board: Morpheus-sized layout with 120×120 art, Wi-Fi on (PC over Wi-Fi and over USB) and radio off; lowest heap with `fenix bench` (no stream). Set the RAM estimate cap (~56 KB) and the art cap (96 or 120) from it
   - [ ] 6. `screen` permission: `tools/registry.py`, `templates/app/tools/app.py`, `app/src/lib/api.ts`, `docs/registry.md`, template `registry.md`
-  - [ ] 7. Docs (packages, spec, sidecars, registry, template copies), template pin to v0.1.20, zip; tests; release; answer in `docs/requests/morpheus.md`
-- [ ] P51-M Text and labels for Morpheus (was P51, not started)
+  - [ ] 7. Docs (packages, spec, sidecars, registry, template copies), template pin to v0.1.25, zip; tests; release v0.1.25; answer in `docs/requests/morpheus.md`
+- [ ] P51-M Text and labels for Morpheus, v0.1.26 (after P50-M)
   - [ ] 1. Latin-1 Supplement (0xA0–0xFF) in the text fonts (`tools/gen_fonts.py`); flash measured
   - [ ] 2. SDK helper: transliterate to the board's glyph set, `?` for unknown
   - [ ] 3. Label `overflow` (`wrap`, `clip`, `ellipsis`, `scroll`) and `max_lines`
-  - [ ] 4. `secret` setting type if the user says yes
+  - [ ] 4. `secret` setting type (user: yes): masked in App settings, DPAPI user scope in `config.json`, never logged, plain value to the sidecar; registry and template checks
+  - [ ] 5. Docs (packages, registry, template copies, Morpheus answer), tests, release v0.1.26
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [x] Phone Web Bluetooth page: dropped, P38 removed Bluetooth (needs BLE on the board)
-  - [x] OTA over Wi-Fi after the SD card: planned as P52 (two 1.5 MB slots, 896 KB flash app store)
+  - [x] OTA over Wi-Fi after the SD card: planned as P52 (two 1.81 MB slots, 256 KB flash app store)
   - [ ] With the SD card (user, 2026-11-01): CJK fonts and text beyond Latin-1 (fonts from SD planned in P54), app screens built only when shown (Morpheus requests)
   - Not planned: both radios at once (P29: ~40 KB free), LCD SPI at 80 MHz (garbles the panel, P10), fps caps for RAM (no gain), A2DP and HID (user)
 

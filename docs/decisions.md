@@ -258,19 +258,46 @@ Consequences:
 | Long file names | Off (8.3) / **on, buffers on the heap** | **On** (user: "a no brainer"): app ids name files |
 | SPI clash (LCD, touch and SD on three pin sets, two SPI controllers) | Switch SPI3's pins between touch and SD / **touch on software SPI** | **Software SPI for touch**: 346 µs per read, only while pressed (~2 % of core 1), the SD card keeps hardware SPI at 40 MHz; tested together without effect on either |
 
-## 2026-11-02: SD, apps, OTA (user picks; plan in `tasks.md` P50 to P55)
+## 2026-11-02: SD, apps, OTA (user picks; plan in `docs/plan-sd-ota.md`, `tasks.md` P51 to P54)
+
+Corrected: several rows below were changed by the user the same evening (flash layout, package caps, tiles, sounds, unknown apps); the changes are in the next section, and the rows say so.
 
 The user's request: an app added in the PC app installs both halves, the board half on the SD card; switching an app off on the PC stops it on both sides but keeps it on the board; OTA updates from an SD package, USB or Wi-Fi with two slots; RAM kept low throughout; ideas for the 8 GB card.
 
 | Question | Options | Choice |
 |---|---|---|
-| Flash layout | Keep one 2 MB slot + 1.94 MB app store / **two 1.5 MB OTA slots + 896 KB app store** / two 1.9 MB slots, no flash app store | **Two 1.5 MB slots + 896 KB LittleFS** (nvs 0x9000 24 KB, otadata 0xF000 8 KB, phy_init 0x11000 4 KB, ota_0 0x20000, ota_1 0x1A0000, apps 0x320000): the image is 1,155,568 B (v0.1.20), so a 1.5 MB slot (1,572,864 B) leaves ~407 KB to grow; the flash store stays as the fallback with no card. Moving to it needs one serial flash (new partition table and bootloader) |
+| Flash layout | Keep one 2 MB slot + 1.94 MB app store / **two 1.5 MB OTA slots + 896 KB app store** / two 1.9 MB slots, no flash app store | Changed (evening): **two 1.81 MB slots + 256 KB LittleFS**, next section. Was: **Two 1.5 MB slots + 896 KB LittleFS** (nvs 0x9000 24 KB, otadata 0xF000 8 KB, phy_init 0x11000 4 KB, ota_0 0x20000, ota_1 0x1A0000, apps 0x320000): the image is 1,155,568 B (v0.1.20), so a 1.5 MB slot (1,572,864 B) leaves ~407 KB to grow; the flash store stays as the fallback with no card. Moving to it needs one serial flash (new partition table and bootloader) |
 | OTA trust | Hash only / **signed firmware** | **Signed (ECDSA P-256)**: the release signs the image; the board checks the signature before it switches slots. The private key is kept like the updater key, never in git |
-| App switched off on the PC | Remove it from the board (today) / **keep it, stop both halves** | **Keep it.** The tile stays; opening it shows "Turned off on your PC" with a **Turn on** button that asks the PC, which switches the app on without a click on the PC |
+| App switched off on the PC | Remove it from the board (today) / **keep it, stop both halves** | **Keep it.** Changed (evening): the tile is faded; opening it shows the message and button. Was: the tile stays; opening it shows "Turned off on your PC" with a **Turn on** button that asks the PC, which switches the app on without a click on the PC |
 | Where the board half goes | Flash / **SD card, flash when there is no card** | **SD card first**, global default apps too |
-| No card | Refuse installs / **fall back to flash** | **Flash fallback** (smaller cap). Tiles of apps on a missing card are greyed: "Insert the SD card" |
+| No card | Refuse installs / **fall back to flash** | **Flash fallback** (128 KB per package, evening). Tiles of apps on a missing card are faded with an SD badge (evening): "Insert the SD card" |
 | OTA path | Write the spare slot while receiving / **stage on the card, then install** | **Stage on SD** (PC to card, resumable), check the signature, then write the spare slot. With no card, write the slot directly (USB or Wi-Fi) |
-| Package size cap | 1 MB / **8 MB on SD, 256 KB on flash** | **8 MB on SD** (user: "can be way higher than 1 mb surely"): install time (~42 KB/s over USB, ~3 min for 8 MB) and RAM per screen are the real limits, not the card. 256 KB on the flash fallback |
-| What else the card brings | (all picked) | Logs and crash records on SD; keep the previous firmware (roll back from Settings); bigger packages; ~30 apps (paged APP_LIST); last values while the PC is off; fonts from SD (LVGL Tiny TTF, `LV_TINY_TTF_FILE_SUPPORT`); screenshots to SD; UI sounds (speaker on IO26) |
+| Package size cap | 1 MB / **8 MB on SD, 256 KB on flash** | Changed (evening): **no fixed cap on SD, 128 KB on flash**. Was: **8 MB on SD** (user: "can be way higher than 1 mb surely"): install time (~42 KB/s over USB, ~3 min for 8 MB) and RAM per screen are the real limits, not the card. 256 KB on the flash fallback |
+| What else the card brings | (all picked) | Logs and crash records on SD; keep the previous firmware (roll back from Settings); bigger packages; ~30 apps (paged APP_LIST); last values while the PC is off; fonts from SD (LVGL Tiny TTF, `LV_TINY_TTF_FILE_SUPPORT`); screenshots to SD; UI sounds (speaker on IO26). Changed (evening): sounds dropped; settings backup, status page from the card, Home wallpaper, per-app data folder and a rescue firmware copy added |
 | Order | Plan only / **build the SD base now, plan the rest** | **SD base now** (P50, v0.1.20), the rest planned, then standby |
 | SD mount RAM | `max_files` 2 / **4** | **4** (P50): each costs 552 B; fonts from SD will hold a file open while an install, a log or a screenshot opens others |
+
+## 2026-11-02 (evening): plan changes before the overnight run
+
+The user reviewed the plan, asked for these changes and set the whole plan (P51 to P54, then P50-M and P51-M) as one overnight run ("imma jus do /goal the entire plan and go to sleep").
+
+| Question | Options | Choice |
+|---|---|---|
+| Flash layout | Two 1.5 MB slots + 896 KB app store / **two slots + 256 KB app store** | **ota_0 0x20000 and ota_1 0x1F0000 at 0x1D0000 (1.81 MB) each, apps 0x3C0000 256 KB**, coredump in the 56 KB gap at 0x12000 (user: "keep the on flash app space to be just 256kb and give the rest for OTA"). The 256 KB stays even if the card stays in for good (user: "keep the 256kb on flash space for incase") |
+| Package cap on flash | 256 KB / **128 KB** | **128 KB** (user: "ill tell later on why") |
+| Package cap on the card | 8 MB / 32 MB / 64 MB / **none fixed** | **None fixed**: free space and FAT32's 4 GB per file; the PC shows progress and warns when an install takes over ~2 min. A package today is 2 to 100 KB (layout, ≤ 8 KB text, ≤ 24 KB per image) |
+| Tile of an app off on the PC | Message on the tile / **faded tile, message on open** | **Faded tile**; opening it shows "Turned off on host PC" and Turn on (user) |
+| Tile of an app on a missing card | Same fade / **fade + SD badge** / hidden | **Fade + SD badge** |
+| Apps on one side only | Remove unknown board apps (today) / keep, faded / **a sync system** | **Sync** (user's own idea): board-only apps get their PC half, PC-only apps get their board half, version skew updates the older side. Shown as a "Sync with board" card with a checkbox each; **one click** applies them, nothing changes silently except Add and Remove |
+| Board app whose PC half is not in the registry | **Registry, else keep board-only or remove** / store PC halves on the card | **Registry, else keep or remove** (no programs taken off the board) |
+| Screenshot trigger | BOOT button / long press on the clock / **from the PC only** | **PC only**: Board page button and `fenix shot --sd` |
+| OTA signing key | **Agent makes it and sets the Actions secret with gh** / agent makes it, user sets the secret | **Agent does both**; `%USERPROFILE%\.fenixos\fw-signing.pem`, never in git; the user backs it up |
+| Wi-Fi password in the settings backup | **Yes, plaintext** / no | **Yes, plaintext** (matches the earlier no-encryption choice; anyone with the card can read it) |
+| Fonts from the card | **Chinese, Japanese, Korean** / plus more scripts / Japanese only | **CJK**: one Noto Sans CJK font (OFL) installed by the PC app; split per script if one font is too slow |
+| UI sounds | Plan them / **drop** | **Dropped** (user: "i hav no idea of adding speaker for now") |
+| More SD ideas | (all) | **All in P53**: settings backup, status page from the card, Home wallpaper (measured first), per-app data folder, rescue firmware copy (the kept `.fwp`) |
+| Home with 32 apps | Wait for a mock-up review / **agent designs it** | **Agent designs it** under DESIGN.md (swipe pages, page dots); sim screenshots in `docs/screens/board/` for the user |
+| Morpheus in the run | **Yes** / stop after P54 | **Yes**: P50-M (v0.1.25) and P51-M (v0.1.26) after P54 |
+| Morpheus: `view` or `show` | **Both** / view only | **Both**: `view` for screens, a bindable bool `show` on every element |
+| Morpheus: `secret` setting | **Yes** / no | **Yes**: masked, DPAPI user scope, never logged |
+| Morpheus: releases | **Two** / one | **Two** |

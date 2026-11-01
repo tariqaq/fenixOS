@@ -101,13 +101,13 @@ Until requests 1 and 2 ship, Morpheus can only be one generic card whose text, b
 
 ## fenixOS answer (2026-11-01)
 
-Discussed with the user; nothing is built yet. Plan: `tasks.md` P50-M and P51-M (were P50 and P51 for v0.1.20 and v0.1.21; corrected 2026-11-02: they now come after the SD card and OTA phases, so their releases are later). Choices: `docs/decisions.md`, "2026-11-01: Morpheus requests".
+Discussed with the user; nothing is built yet. Plan: `tasks.md` P50-M (v0.1.25) and P51-M (v0.1.26), two releases (corrected 2026-11-02: were P50 and P51 for v0.1.20 and v0.1.21; they now come after the SD card and OTA phases). Choices: `docs/decisions.md`, "2026-11-01: Morpheus requests".
 
 **RAM budget.** Sized for an app open with Wi-Fi on and the PC linked (over Wi-Fi or USB), no screen stream: about 82 KB free at boot in that mode, about 155 KB with the radio off (`docs/board-info.md`). Streaming while an app runs is not a target (user). Anything that fits the Wi-Fi case fits USB-only.
 
 | # | Request | Answer | Release |
 |---|---|---|---|
-| 1 | Runtime screen switching | Yes: a `view` element (new kind 9), int `bind` = index of the one child shown (open: whether a bindable `show` comes too) | P50-M |
+| 1 | Runtime screen switching | Yes: a `view` element (new kind 9), int `bind` = index of the one child shown, plus a bindable bool `show` on every element (user, 2026-11-02) | P50-M |
 | 2 | Image binding | Yes: a new chunked message `BIND_IMAGE` (0x32, optional, no proto bump), one per app, RGB565, 96×96 to 120×120, buffer counted in the RAM estimate | P50-M |
 | 3 | Bindable button text and icon, 14 new glyphs | Yes: string `bind` on a button sets its text; int `bind` on an `icon` (or icon button) picks the glyph; all 14 glyphs exist in Phosphor fill | P50-M |
 | 4 | `screen` permission | Yes: "See your screen and the window in front" (covers the foreground window too) | P50-M |
@@ -125,7 +125,7 @@ Details:
 
 Questions:
 
-1. **Settings storage:** values are plain JSON in `%APPDATA%\fenixOS\config.json`, not encrypted. They are not written to logs (`apps.rs`), and there is no export. The App settings page shows `text` values unmasked. A `secret` type (masked, DPAPI user scope) is open, for the user to decide.
+1. **Settings storage:** values are plain JSON in `%APPDATA%\fenixOS\config.json`, not encrypted. They are not written to logs (`apps.rs`), and there is no export. The App settings page shows `text` values unmasked. A `secret` type (masked, DPAPI user scope, never logged) is planned in P51-M (user, 2026-11-02: yes).
 2. **Elevated helper:** stop is the `stop` message plus the closed pipe; `TerminateProcess` fails on an elevated process, so a helper that hangs without reading its pipe keeps running. If fenixOS dies, the pipe breaks and `fenix-sdk` exits. Every crash restart (1 s, 5 s, 15 s) goes through UAC again, and a declined prompt ends the retries. Better: no elevation. ETW frame timing (PresentMon) works for members of the Performance Log Users group; add the user once (sign out after), no prompt per start.
 3. **Permissions:** `media`, `keys`, `system-stats`, `network`, `screen` fits. `keys` covers the simulated Discord keybinds. Screen capture and ETW next to games with kernel anti-cheat: unverified, say so in Morpheus's README.
 
