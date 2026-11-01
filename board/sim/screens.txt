@@ -2,7 +2,8 @@
 # Run: python tools/sim_shots.py  (builds the simulator and build/sample.fxp, then compares).
 # Verbs: tap x y | swipe x1 y1 x2 y2 | wait ms | shot name | install file | remove id
 #        set id name=value... | host id on|off|gone|starting | card in|out | stream on fps | stream off
-#        connect | disconnect
+#        connect | disconnect | ota offer <update|-> <back|-> | ota failed_version <v|->
+#        ota idle|receiving|checking|writing|restarting|failed [pct] [version]
 # Taps wait 1 s and swipes 1.2 s of virtual time afterwards, so animations have finished.
 # The simulator starts connected to a pretend PC, with an empty store and default settings.
 wait 3000                                 # boot screen sweep
@@ -103,3 +104,19 @@ shot app_card_missing
 card in                                   # the card comes back: the app opens
 tap 30 16
 remove io.github.tariqaq.sample
+# Firmware update (P52): a package on the card's root, a rolled-back try and a kept older one;
+# then the progress screen an update from the PC opens, and a refused package.
+ota failed_version 0.1.98
+ota offer 0.1.99 0.1.20
+tap 58 190
+swipe 314 220 314 40
+shot settings_update                      # About says "Update"
+tap 160 152
+shot about_update
+ota writing 42 0.1.99
+shot update_progress
+ota failed 0 0.1.99
+shot update_failed
+ota idle
+tap 30 16
+tap 30 16

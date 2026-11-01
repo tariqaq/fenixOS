@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
+use fenix_link::ota::{OtaSend, OtaStage};
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
 use fenix_proto::Msg;
 use serde::Serialize;
@@ -22,6 +23,17 @@ const MIRROR_FPS_USB: u8 = 10;
 const MIRROR_FPS_WIFI: u8 = 25;
 /// The board's Wi-Fi name (mDNS), tried while no USB board is plugged in (P34).
 const NET_HOST: &str = "fenixos.local";
+/// The first firmware that takes updates over the link (P52); older boards need USB once.
+const OTA_SINCE: (u32, u32, u32) = (0, 1, 22);
+
+fn ver(s: &str) -> (u32, u32, u32) {
+    let mut p = s.split('.').map(|x| x.parse().unwrap_or(0));
+    (
+        p.next().unwrap_or(0),
+        p.next().unwrap_or(0),
+        p.next().unwrap_or(0),
+    )
+}
 
 /// Live copy of the board screen for the Board page (artboard 11).
 pub struct Mirror {
@@ -110,7 +122,9 @@ pub struct SysinfoView {
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Update {
-    /// `erasing` (first install only), `writing`, `restarting`, `done` or `failed`.
+    /// `erasing` (first install only), `writing` (USB flash, or sending over the link),
+    /// `installing` (the board checks and copies an update it got over the link, P52),
+    /// `restarting`, `done` or `failed`.
     pub stage: String,
     pub percent: u8,
     pub error: String,
@@ -130,6 +144,8 @@ pub struct Engine {
     wifi: Arc<Mutex<WifiScanView>>,
     fw_dir: Option<std::path::PathBuf>,
     update_started: Mutex<Option<Instant>>,
+    /// An update over the link (P52): the sender, polled by the engine thread.
+    ota: Mutex<Option<OtaSend>>,
 }
 
 impl Engine {
@@ -178,6 +194,7 @@ impl Engine {
             wifi: Arc::new(Mutex::new(WifiScanView::default())),
             fw_dir,
             update_started: Mutex::new(None),
+            ota: Mutex::new(None),
         });
         engine.log(
             &app,
@@ -417,10 +434,12 @@ impl Engine {
         r
     }
 
-    /// Flash the bundled firmware to the board (update dialog, Reinstall firmware; `erase` for the
-    /// first install). Runs on its own thread; progress arrives in `State::update`.
+    /// Update the board to the bundled firmware (update dialog, Reinstall firmware; `erase` for the
+    /// first install). A connected board on 0.1.22 or later gets the signed package over the
+    /// current link, USB or Wi-Fi (P52); otherwise the image is flashed over USB on its own thread.
+    /// Progress arrives in `State::update`.
     pub fn start_update(self: &Arc<Self>, app: &AppHandle, erase: bool) -> Result<(), String> {
-        let port = {
+        let (board_fw, on_wifi) = {
             let s = self.state.lock().unwrap();
             if s.update
                 .as_ref()
@@ -428,13 +447,39 @@ impl Engine {
             {
                 return Err("an update is already running".into());
             }
-            drop(s);
-            self.target_port()?
+            let b = s.board.as_ref();
+            (
+                b.map(|b| b.firmware.clone()),
+                b.is_some_and(|b| b.port.starts_with("tcp:")),
+            )
         };
         let dir = self
             .fw_dir
             .clone()
             .ok_or("this app has no bundled firmware")?;
+        let ota_ok = board_fw.as_deref().is_some_and(|v| ver(v) >= OTA_SINCE);
+        // The board refuses an older firmware over the link: going back needs USB.
+        let older = match (board_fw.as_deref(), self.snapshot().bundled_firmware) {
+            (Some(b), Some(ours)) => ver(&ours) < ver(b),
+            _ => false,
+        };
+        if older && on_wifi {
+            return Err("connect the board by USB to install an older firmware".into());
+        }
+        if !erase && ota_ok && !older {
+            if let Some(path) = fenix_flash::bundled_fwp(&dir) {
+                return self.start_ota(app, &path);
+            }
+        }
+        if on_wifi {
+            return Err(if ota_ok {
+                "this app has no signed firmware package; connect the board by USB to update it"
+            } else {
+                "plug the board in by USB once to update it; later updates also work over Wi-Fi"
+            }
+            .into());
+        }
+        let port = self.target_port()?;
         let img = crate::flash::load(&dir)?;
         self.set_update(app, if erase { "erasing" } else { "writing" }, 0, "");
         *self.update_started.lock().unwrap() = Some(Instant::now());
@@ -482,6 +527,75 @@ impl Engine {
             })
             .map_err(|e| e.to_string())?;
         Ok(())
+    }
+
+    /// Send the signed package over the current link (P52). The engine thread moves the chunks.
+    fn start_ota(&self, app: &AppHandle, path: &std::path::Path) -> Result<(), String> {
+        let data = std::fs::read(path).map_err(|e| format!("{}: {e}", path.display()))?;
+        let send = OtaSend::new(fenix_link::ota::parse_fwp(&data)?);
+        self.log(
+            app,
+            Source::Pc,
+            false,
+            format!(
+                "Updating the board to fenixOS v{} over the link",
+                send.version()
+            ),
+        );
+        self.link.send(send.begin());
+        *self.ota.lock().unwrap() = Some(send);
+        *self.update_started.lock().unwrap() = Some(Instant::now());
+        self.set_update(app, "writing", 0, "");
+        Ok(())
+    }
+
+    /// Engine thread: move an update over the link along. True while one runs.
+    fn ota_tick(&self, app: &AppHandle) -> bool {
+        let mut g = self.ota.lock().unwrap();
+        let Some(s) = g.as_mut() else {
+            return false;
+        };
+        let before = (s.stage(), s.percent());
+        match s.poll() {
+            Ok(msgs) => {
+                for m in msgs {
+                    self.link.send(m);
+                }
+                let now = (s.stage(), s.percent());
+                drop(g);
+                if now != before {
+                    if now.0 == OtaStage::Installing {
+                        self.set_update(app, "installing", 100, "");
+                    } else {
+                        self.set_update(app, "writing", now.1, "");
+                    }
+                }
+                true
+            }
+            Err(e) => {
+                *g = None;
+                drop(g);
+                self.ota_failed(app, &e);
+                false
+            }
+        }
+    }
+
+    fn ota_failed(&self, app: &AppHandle, e: &str) {
+        self.log(
+            app,
+            Source::Pc,
+            true,
+            format!("Firmware update failed: {e}"),
+        );
+        let pct = self
+            .state
+            .lock()
+            .unwrap()
+            .update
+            .as_ref()
+            .map_or(0, |u| u.percent);
+        self.set_update(app, "failed", pct, e);
     }
 
     fn emit_state(&self, app: &AppHandle) {
@@ -538,8 +652,10 @@ impl Engine {
             while let Ok(c) = inbox.try_recv() {
                 changed |= self.apps.lock().unwrap().command(c);
             }
-            // Poll fast only while an install streams chunks; otherwise stay mostly asleep.
-            let wait = if self.apps.lock().unwrap().busy() {
+            // Poll fast only while an install or an update streams chunks; otherwise stay mostly
+            // asleep.
+            let ota = self.ota_tick(&app);
+            let wait = if ota || self.apps.lock().unwrap().busy() {
                 5
             } else {
                 100
@@ -696,6 +812,11 @@ impl Engine {
                 true
             }
             Event::Disconnected { reason } => {
+                // An update over the link stops with the link. The board keeps what it staged on
+                // its card, so Try again goes on from there.
+                if self.ota.lock().unwrap().take().is_some() {
+                    self.ota_failed(app, "the link to the board dropped");
+                }
                 self.apps.lock().unwrap().board_disconnected();
                 self.wifi.lock().unwrap().scanning = false;
                 self.state.lock().unwrap().streaming = false;
@@ -736,6 +857,34 @@ impl Engine {
                 s.silent.retain(|x| x.port != port);
                 s.silent.push(Silent { port, detail });
                 true
+            }
+            Event::Msg(Msg::FwAck { next_offset }) => {
+                if let Some(s) = self.ota.lock().unwrap().as_mut() {
+                    s.on_ack(next_offset);
+                }
+                false
+            }
+            Event::Msg(Msg::FwResult { code, text }) => {
+                if self.ota.lock().unwrap().take().is_none() {
+                    return false;
+                }
+                let why = if text.is_empty() {
+                    fenix_link::ota::result_text(code).to_string()
+                } else {
+                    text
+                };
+                if code == fenix_proto::fw::OK {
+                    self.log(
+                        app,
+                        Source::Pc,
+                        false,
+                        "Firmware installed; waiting for the board to restart",
+                    );
+                    self.set_update(app, "restarting", 100, "");
+                } else {
+                    self.ota_failed(app, &why);
+                }
+                false
             }
             Event::Msg(Msg::Stats(st)) => {
                 let mut s = self.state.lock().unwrap();

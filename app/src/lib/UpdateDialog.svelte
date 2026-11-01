@@ -42,16 +42,22 @@
 
 <div class="scrim" in:scrim out:scrim={{ duration: FAST }}>
   <div class="dialog" role="dialog" in:sheet out:sheet={{ duration: FAST }} aria-modal="true" aria-labelledby="upd-title">
-    {#if u && (u.stage === "erasing" || u.stage === "writing" || u.stage === "restarting")}
+    {#if u && (u.stage === "erasing" || u.stage === "writing" || u.stage === "installing" || u.stage === "restarting")}
       <Icon name="cpu" size={44} color="var(--accent)" />
       <h2 id="upd-title">Updating the board</h2>
-      <p>Keep the board plugged in. It restarts on its own when done.</p>
+      <p>Keep the board powered. It restarts on its own when done.</p>
       <div class="bar" role="progressbar" aria-label="Firmware update" aria-valuemin="0" aria-valuemax="100" aria-valuenow={u.percent}>
         <div style="transform: scaleX({u.percent / 100})"></div>
       </div>
       <p class="status">
         <span>
-          {u.stage === "erasing" ? "Erasing the board…" : u.stage === "writing" ? "Writing firmware…" : "Restarting the board…"}
+          {u.stage === "erasing"
+            ? "Erasing the board…"
+            : u.stage === "writing"
+              ? "Writing firmware…"
+              : u.stage === "installing"
+                ? "Installing on the board…"
+                : "Restarting the board…"}
         </span>
         <span class="num">{u.percent}%</span>
       </p>
@@ -63,7 +69,7 @@
     {:else if u && u.stage === "failed"}
       <Icon name="warning" size={44} color="var(--warning)" />
       <h2 id="upd-title">The update did not finish</h2>
-      <p>{u.error}. Keep the board plugged in and try again; the board can always be written again.</p>
+      <p>{u.error}. Keep the board powered and try again; the board can always be written again over USB.</p>
       <div class="buttons">
         <button type="button" class="primary" onclick={start}>Try again</button>
         <button type="button" class="secondary" onclick={close}>Close</button>

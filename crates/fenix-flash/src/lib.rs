@@ -21,6 +21,9 @@ const FLASH_BAUD: u32 = 460_800;
 struct Meta {
     version: String,
     files: Vec<Part>,
+    /// The signed package for updates over the link (P52), when the bundle was signed.
+    #[serde(default)]
+    fwp: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -49,6 +52,14 @@ pub fn bundled_version(dir: &Path) -> Option<String> {
     let meta: Meta =
         serde_json::from_slice(&std::fs::read(dir.join("firmware.json")).ok()?).ok()?;
     Some(meta.version)
+}
+
+/// The bundled signed package (`fenixOS_<v>.fwp`, P52), when `bundle_firmware.py` had the key.
+pub fn bundled_fwp(dir: &Path) -> Option<PathBuf> {
+    let meta: Meta =
+        serde_json::from_slice(&std::fs::read(dir.join("firmware.json")).ok()?).ok()?;
+    let p = dir.join(meta.fwp?);
+    p.exists().then_some(p)
 }
 
 /// Load the image and check every file against `firmware.json`.

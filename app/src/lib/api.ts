@@ -148,7 +148,7 @@ export interface State {
   /** Apps › Sync with board (P51). */
   sync: SyncItem[];
   bundled_firmware: string | null;
-  update: { stage: "erasing" | "writing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
+  update: { stage: "erasing" | "writing" | "installing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
   /** The board streams its screen; started or stopped here or on the board (P14). */
   streaming: boolean;
 }

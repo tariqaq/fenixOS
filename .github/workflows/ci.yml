@@ -17,6 +17,8 @@ jobs:
       - run: python tools/gen_tokens.py --check
       - run: python tools/registry.py --check
       - run: python tools/app_template.py --check
+      # Signed firmware packages (P52): good, bad signature, bad hash, wrong key, relabelled.
+      - run: pip install cryptography==50.0.2 && python tools/sign_fw.py --self-test
 
   board:
     runs-on: ubuntu-latest

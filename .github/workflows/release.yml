@@ -1,8 +1,9 @@
 name: release
 
-# A tag v<VERSION> builds the firmware, bundles it into the PC app, and publishes the signed
-# installer with the updater's latest.json as a GitHub release. Run by hand (workflow_dispatch)
-# it builds the same things and keeps them as workflow artifacts, without a release.
+# A tag v<VERSION> builds the firmware, bundles it (with the signed .fwp, P52) into the PC app,
+# and publishes the signed installer with the updater's latest.json, plus the .fwp, as a GitHub
+# release. Run by hand (workflow_dispatch) it builds the same things and keeps them as workflow
+# artifacts, without a release.
 on:
   push:
     tags: ["v*"]
@@ -61,7 +62,12 @@ jobs:
         with:
           name: firmware
           path: board/build
-      - run: python tools/bundle_firmware.py
+      # The signed package for updates over the link (P52, docs/ota.md). A tag build must sign;
+      # a hand-started run without the secret bundles without it (USB updates only).
+      - run: pip install cryptography==50.0.2
+      - run: python tools/bundle_firmware.py ${{ startsWith(github.ref, 'refs/tags/') && '--require-key' || '' }}
+        env:
+          FENIX_FW_SIGNING_KEY: ${{ secrets.FENIX_FW_SIGNING_KEY }}
       - uses: dtolnay/rust-toolchain@stable
       # A cache saved by a tag run is readable only by that tag, so releases restore the cache that
       # ci.yml's rust job saves on main (shared key "app", with this same release build in it) and
@@ -101,3 +107,10 @@ jobs:
           # A hand-started run without the signing secret still checks the whole pipeline:
           # it skips the updater signature (a tag build always signs).
           args: ${{ (!startsWith(github.ref, 'refs/tags/') && secrets.TAURI_SIGNING_PRIVATE_KEY == '') && '--config {"bundle":{"createUpdaterArtifacts":false}}' || '' }}
+      # The same package as a release file, for the board's SD card (About › Update, P52).
+      - name: publish the firmware package
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" app/src-tauri/resources/firmware/fenixOS_*.fwp --clobber
