@@ -76,13 +76,21 @@ static void launch_cb(lv_event_t* e) {
 }
 
 // Shown installed apps: their index entry and icons, at fixed addresses (images point at the
-// descriptors). The previous page's set is kept one build longer: the old screen can still draw
-// while the new one replaces it.
+// descriptors). A rebuilt Home is made before the old one is deleted, so the old page's set
+// (`s_prev`) lives until the old launcher goes; leaving Home frees both (P51: only the shown
+// page's icons stay in RAM, ~1.1 KB an app).
 struct Shown {
   sys::AppMeta m;
   AppIcons ic;
 };
 static std::vector<std::unique_ptr<Shown>> s_shown, s_prev;
+
+// A launcher was deleted: the old one after a rebuild (its icons are in s_prev), or the current
+// one when Home itself goes (forget() has cleared s_launch by then: the clock is deleted first).
+static void launcher_gone(lv_event_t* e) {
+  s_prev.clear();
+  if (!s_launch) s_shown.clear();
+}
 
 static void app_cb(lv_event_t* e) {
   if (swiped()) return;
@@ -171,10 +179,11 @@ static lv_obj_t* dock_item(lv_obj_t* parent, const TileSpec& s) {
   return it;
 }
 
-// Tile install / remove (DESIGN.md): fade + scale 0.8 <-> 1.
+// Tile install / remove (DESIGN.md): fade only. A scale made LVGL draw the tile through a
+// transform layer, a full-size ARGB buffer: an install on Home took the heap low point from
+// 47 KB to 16 KB (P51, docs/board-info.md).
 static void tile_anim_exec(void* o, int32_t v) {
   lv_obj_set_style_opa((lv_obj_t*)o, v * 255 / 256, 0);
-  lv_obj_set_style_transform_scale((lv_obj_t*)o, 205 + v * 51 / 256, 0);
 }
 static char s_fade_id[sizeof(sys::AppMeta::id)];  // tile fading in on the page being built
 
@@ -183,8 +192,6 @@ static void ghost_done(lv_anim_t* a) {
   lv_obj_delete_async((lv_obj_t*)a->var);
 }
 static void tile_anim(lv_obj_t* o, bool in) {
-  lv_obj_set_style_transform_pivot_x(o, LV_PCT(50), 0);
-  lv_obj_set_style_transform_pivot_y(o, LV_PCT(50), 0);
   lv_anim_t a;
   lv_anim_init(&a);
   lv_anim_set_var(&a, o);
@@ -267,7 +274,10 @@ static void launcher(lv_obj_t* parent, Mode mode) {
   const Shown* g = nullptr;
   if (gid)
     for (auto& p : s_prev)
-      if (p && strcmp(p->m.id, gid) == 0) g = p.get();
+      if (p && strcmp(p->m.id, gid) == 0) {
+        s_shown.push_back(std::move(p));  // its tile still draws while it fades
+        g = s_shown.back().get();
+      }
   if (g && (int)specs.size() < per)
     specs.push_back({g->m.name, nullptr, mode == DOCK ? &g->ic.large : &g->ic.small, g->m.color, nullptr, nullptr,
                      false, false});
@@ -289,6 +299,7 @@ static void relaunch(void*) {
   if (!s_launch) return;
   lv_obj_clean(s_launch);
   launcher(s_launch, s_mode);
+  s_prev.clear();  // the old page's objects went with lv_obj_clean
 }
 
 // Swipe left or right anywhere on Home turns the page; the launcher is rebuilt after the event.
@@ -387,6 +398,7 @@ void home_screen(lv_obj_t* scr) {
   if (!centred) lv_obj_set_width(s_dots, LV_PCT(100));
   lv_obj_set_flex_align(s_dots, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   launcher(s_launch, s_mode);
+  lv_obj_add_event_cb(s_launch, launcher_gone, LV_EVENT_DELETE, nullptr);
   lv_obj_add_event_cb(scr, swipe_cb, LV_EVENT_GESTURE, nullptr);
   home_tick();
 }

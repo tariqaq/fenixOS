@@ -291,6 +291,16 @@ fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MH
 
 The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
 
+## Apps on the SD card (P51, 2026-11-03)
+
+Measured on COM9, USB link, dev build, FAT32 card in.
+
+- **Heap at boot:** 69.3 KB free with no apps, 63.0 KB with 32 (the 120 B index entries, `sd.idx`, the Home tiles of one page).
+- **32 apps:** 32 sample installs land on the card (`fenix list` shows "SD card"); an update of one of the 32 works with the index full.
+- **Paged Home:** the first paging build cost 7.6 KB more than one page, because the previous page's icons were kept after the old screen was gone. Freed when the launcher is deleted (`launcher_gone`) and after each relaunch: ~3.7 KB on a 3-app page.
+- **Install with Home on top:** heap low point 16 to 18 KB while the new tile animated, 40.8 KB for the same install with Settings on top. Cause: the tile's scale 0.8 → 1 drew it through an LVGL transform layer (a full ARGB buffer of the tile). With fade only the low point stays at 47 KB (Corrected: DESIGN.md asked for fade + scale).
+- **Package size:** samples install in 0.17 s. A package over 128 KB cannot be made today (content limits bound one near 33 KB), so the 120 s "slow install" log and the percent were not tried on the board.
+
 ## Task manager numbers (P27, 2026-10-30)
 
 From `fenix sysinfo` (two SYSINFO answers 1 s apart), v0.1.4 firmware with run-time stats on, Home shown, PC app closed:
