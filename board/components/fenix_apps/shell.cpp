@@ -134,6 +134,10 @@ void on_link(const sys::LinkEvent& e) {
     case sys::LinkEv::SD_CHANGED:
       settings_on_sd();
       break;
+    case sys::LinkEv::OTA:  // an update from the PC started, or one failed: show its progress
+      if (nav_top() == update_screen) nav_rebuild();
+      else if (sys::ota_status().phase != sys::OTA_IDLE) nav_push(update_screen);
+      break;
     case sys::LinkEv::STREAM_START:
       stream_set(true, e.value);
       break;

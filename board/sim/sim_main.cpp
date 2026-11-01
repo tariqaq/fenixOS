@@ -154,6 +154,19 @@ static int run_script(const std::string& path, const std::string& out) {
     } else if (v == "card" && w.size() == 2 && (w[1] == "in" || w[1] == "out")) {
       sim::set_card(w[1] == "in");
       run_for(600);
+    } else if (v == "ota" && w.size() == 4 && w[1] == "offer") {
+      sim::ota_offer(w[2], w[3]);
+      run_for(300);
+    } else if (v == "ota" && w.size() == 3 && w[1] == "failed_version") {
+      sim::ota_failed(w[2]);
+    } else if (v == "ota" && w.size() >= 2 && w.size() <= 4) {
+      static const char* const PH[] = {"idle", "receiving", "checking", "writing", "restarting", "failed"};
+      int ph = -1;
+      for (int i = 0; i < 6; i++)
+        if (w[1] == PH[i]) ph = i;
+      if (ph < 0) return fail(where, "unknown ota phase: " + line);
+      sim::ota_phase((uint8_t)ph, w.size() >= 3 ? (uint8_t)num(2) : 0, w.size() == 4 ? w[3] : "");
+      run_for(600);
     } else {
       return fail(where, "unknown or malformed line: " + line);
     }

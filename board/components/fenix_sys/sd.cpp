@@ -100,6 +100,7 @@ static void mount() {
   set(fnx::sd_state::READY, (uint32_t)((uint64_t)(fs->n_fatent - 2) * cl / 1024), (uint32_t)(free_cl * cl / 1024),
       (uint16_t)s_card->real_freq_khz);
   store_sd_changed(true);
+  ota_scan_sd();  // a firmware package on the card (P52)
 }
 
 static void probe_task(void*) {
@@ -107,6 +108,7 @@ static void probe_task(void*) {
     unmount();
     set(fnx::sd_state::NONE);
     store_sd_changed(false);
+    ota_scan_sd();
   }
   if (!s_card) mount();
   s_busy = false;

@@ -4,6 +4,9 @@ CONFIG_ESPTOOLPY_FLASHMODE_QIO=y
 CONFIG_ESPTOOLPY_FLASHFREQ_80M=y
 CONFIG_PARTITION_TABLE_CUSTOM=y
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
+# Updates over the air (P52): a new image boots on trial; fenixOS keeps it once Home has shown
+# for 30 s, a reset before that boots the old slot again (docs/ota.md).
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_240=y
 CONFIG_FREERTOS_HZ=1000
 # -Os: 33% smaller image at the same slide fps (P30/P31: the slide is SPI-bound).

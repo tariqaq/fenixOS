@@ -21,6 +21,7 @@ extern "C" void app_main(void) {
 
   fx::hal::led_init();
   fx::sys::clock_init();
+  fx::sys::ota_boot();
   fx::sys::store_mount();
   fx::sys::link_start();
   fx::sys::radio_start();

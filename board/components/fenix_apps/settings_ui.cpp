@@ -312,7 +312,13 @@ static void storage_screen(lv_obj_t* scr) {
   }
 }
 
-void settings_on_sd() { refresh_if_top(storage_screen); }
+static void about_screen(lv_obj_t* scr);
+// The card changed, or a firmware package was found on it (P52).
+void settings_on_sd() {
+  refresh_if_top(storage_screen);
+  refresh_if_top(about_screen);
+  refresh_if_top(settings_screen);
+}
 
 // ---- Host PC ----
 
@@ -519,7 +525,94 @@ void settings_tick() {
   refresh_if_top(wireless_screen);
 }
 
+// ---- Firmware update (P52): progress, also opened by an update from the PC ----
+
+static lv_timer_t* s_up_timer;
+static lv_obj_t *s_up_bar, *s_up_text;
+static uint8_t s_up_phase;
+
+static const char* phase_text(uint8_t p) {
+  switch (p) {
+    case sys::OTA_RECEIVING: return "Receiving from the PC";
+    case sys::OTA_CHECKING: return "Checking the package";
+    case sys::OTA_WRITING: return "Installing";
+    default: return "Restarting";
+  }
+}
+
+static void up_refresh(lv_timer_t*) {
+  sys::OtaStatus st = sys::ota_status();
+  if (st.phase != s_up_phase) {
+    if (st.phase == sys::OTA_IDLE) nav_pop();
+    else nav_rebuild();
+    return;
+  }
+  if (!s_up_bar) return;
+  lv_bar_set_value(s_up_bar, st.pct, LV_ANIM_ON);
+  lv_label_set_text_fmt(s_up_text, "%s, %d%%", phase_text(st.phase), st.pct);
+}
+
+static void up_gone(lv_event_t*) {
+  if (s_up_timer) lv_timer_delete(s_up_timer);
+  s_up_timer = nullptr;
+  s_up_bar = s_up_text = nullptr;
+}
+
+static void up_done_cb(lv_event_t*) {
+  sys::ota_dismiss();
+  nav_pop();
+}
+
+void update_screen(lv_obj_t* scr) {
+  sys::OtaStatus st = sys::ota_status();
+  s_up_phase = st.phase;
+  s_up_bar = s_up_text = nullptr;
+  lv_obj_add_event_cb(scr, up_gone, LV_EVENT_DELETE, nullptr);
+  if (!s_up_timer) s_up_timer = lv_timer_create(up_refresh, 200, nullptr);
+  bool failed = st.phase == sys::OTA_FAILED;
+  lv_obj_t* body = column(scr, 6);
+  lv_obj_set_size(body, LV_PCT(100), LV_PCT(100));
+  lv_obj_set_flex_align(body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_hor(body, 32, 0);
+  text(body, failed ? FX_ICON_WARNING : FX_ICON_DOWNLOAD_SIMPLE, &fx_icon_fill_40,
+       failed ? FX_COLOR_WARNING : FX_COLOR_ACCENT);
+  lv_obj_t* t = text(body, failed ? "Update failed" : "Updating fenixOS", &fx_font_title, FX_COLOR_LABEL);
+  lv_obj_set_style_margin_top(t, 4, 0);
+  char v[80];
+  snprintf(v, sizeof v, "v%s to v%s", esp_app_get_description()->version, st.version);
+  text(body, v, &fx_font_label, FX_COLOR_LABEL_2);
+  if (failed) {
+    lv_obj_t* why = text(body, st.text, &fx_font_label, FX_COLOR_LABEL_2);
+    lv_obj_set_width(why, LV_PCT(100));
+    lv_obj_set_style_text_align(why, LV_TEXT_ALIGN_CENTER, 0);
+    lv_obj_t* b = capsule(body, nullptr, nullptr, "Done", FX_COLOR_SURFACE_3, 36, up_done_cb, nullptr);
+    lv_obj_set_style_margin_top(b, 10, 0);
+    return;
+  }
+  lv_obj_t* bar = lv_bar_create(body);
+  lv_obj_remove_style_all(bar);
+  lv_bar_set_range(bar, 0, 100);
+  lv_bar_set_value(bar, st.pct, LV_ANIM_OFF);
+  lv_obj_set_size(bar, LV_PCT(100), 6);
+  lv_obj_set_style_margin_top(bar, 12, 0);
+  lv_obj_set_style_bg_color(bar, col(FX_COLOR_SURFACE_3), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_radius(bar, LV_RADIUS_CIRCLE, LV_PART_MAIN);
+  lv_obj_set_style_bg_color(bar, col(FX_COLOR_ACCENT), LV_PART_INDICATOR);
+  lv_obj_set_style_bg_opa(bar, LV_OPA_COVER, LV_PART_INDICATOR);
+  lv_obj_set_style_radius(bar, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+  lv_obj_set_style_anim_duration(bar, FX_MOTION_FAST_MS, 0);
+  s_up_bar = bar;
+  s_up_text = text(body, "", &fx_font_label, FX_COLOR_LABEL_2);
+  lv_label_set_text_fmt(s_up_text, "%s, %d%%", phase_text(st.phase), st.pct);
+  text(body, "Keep the board powered.", &fx_font_caption, FX_COLOR_LABEL_2);
+}
+
 // ---- About ----
+
+static void install_offer_cb(lv_event_t* e) {
+  if (sys::ota_install_offer(lv_event_get_user_data(e) != nullptr)) nav_push(update_screen);
+}
 
 static void about_screen(lv_obj_t* scr) {
   navbar(scr, "Settings", "About");
@@ -529,6 +622,23 @@ static void about_screen(lv_obj_t* scr) {
   snprintf(v, sizeof v, "v%s", esp_app_get_description()->version);
   info_row(g, "fenixOS", v);
   separator(g, 10);
+  // Updates (P52): a package on the SD card, a kept older one, a rolled-back try.
+  sys::OtaOffer o = sys::ota_offer();
+  if (const char* bad = sys::ota_failed_version()) {
+    snprintf(v, sizeof v, "v%s failed", bad);
+    info_row(g, "Last update", v);
+    separator(g, 10);
+  }
+  if (o.update[0]) {
+    snprintf(v, sizeof v, "Update to v%s", o.update);
+    list_row(g, nullptr, 0, v, "SD card", true, install_offer_cb, nullptr);
+    separator(g, 10);
+  }
+  if (o.back[0]) {
+    snprintf(v, sizeof v, "Go back to v%s", o.back);
+    list_row(g, nullptr, 0, v, "", true, install_offer_cb, (void*)1);
+    separator(g, 10);
+  }
   info_row(g, "Board", "ESP32-2432S028R");
   separator(g, 10);
   esp_chip_info_t ci;
@@ -587,7 +697,8 @@ void settings_screen(lv_obj_t* scr) {
   list_row(g, FX_ICON_WIFI_HIGH, FX_COLOR_TILE_BLUE, "Wireless", radio, true, push_cb, (void*)wireless_screen);
   g = group(c);
   char v[40];
-  snprintf(v, sizeof v, "v%s", esp_app_get_description()->version);
+  if (sys::ota_offer().update[0]) strlcpy(v, "Update", sizeof v);  // a package on the card (P52)
+  else snprintf(v, sizeof v, "v%s", esp_app_get_description()->version);
   list_row(g, FX_ICON_INFO, FX_COLOR_TILE_GRAY, "About", v, true, push_cb, (void*)about_screen);
   g = group(c);
   switch_row(g, FX_ICON_WARNING, FX_COLOR_TILE_ORANGE, "Debug", st.debug, true, debug_cb, nullptr);

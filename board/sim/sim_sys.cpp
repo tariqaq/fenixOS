@@ -259,6 +259,33 @@ void sd_probe() {}
 void sd_report() {}
 void link_post(LinkEv, int32_t, const char*) {}
 
+// Firmware updates (P52): what a script sets.
+static OtaStatus s_ota;
+static OtaOffer s_offer;
+static std::string s_ota_failed;
+void ota_boot() {}
+void ota_home_shown() {}
+void ota_report() {}
+const char* ota_failed_version() { return s_ota_failed.empty() ? nullptr : s_ota_failed.c_str(); }
+OtaStatus ota_status() { return s_ota; }
+void ota_dismiss() { s_ota = OtaStatus{}; }
+OtaOffer ota_offer() { return s_offer; }
+void ota_scan_sd() {}
+bool ota_install_offer(bool back) {
+  if (back ? !s_offer.back[0] : !s_offer.update[0]) return false;
+  s_ota = OtaStatus{};
+  s_ota.phase = OTA_CHECKING;
+  strlcpy(s_ota.version, back ? s_offer.back : s_offer.update, sizeof s_ota.version);
+  return true;
+}
+int ota_vercmp(const char* a, const char* b) { return strcmp(a, b); }
+uint8_t ota_begin(const fnx::FwBegin&, uint32_t*) { return fnx::fw::BUSY; }
+uint32_t ota_chunk(uint32_t, const uint8_t*, size_t) { return 0; }
+uint8_t ota_end() { return fnx::fw::BUSY; }
+void ota_abort() {}
+bool ota_receiving() { return false; }
+bool ota_busy() { return false; }
+
 // Radios (P32): no stacks; a switch takes effect at once instead of after a restart.
 static RadioInfo s_radio{};
 void radio_start() {}
@@ -287,3 +314,25 @@ bool weather(Weather* out) {
 const char* weather_text(uint8_t) { return ""; }
 
 }  // namespace fx::sys
+
+namespace sim {
+void ota_offer(const std::string& update, const std::string& back) {
+  sys::OtaOffer& o = sys::s_offer;
+  o = sys::OtaOffer{};
+  if (update != "-") {
+    strlcpy(o.update, update.c_str(), sizeof o.update);
+    snprintf(o.update_file, sizeof o.update_file, "fenixOS_%s.fwp", update.c_str());
+  }
+  if (back != "-") strlcpy(o.back, back.c_str(), sizeof o.back);
+  post(sys::LinkEv::SD_CHANGED);
+}
+void ota_failed(const std::string& version) { sys::s_ota_failed = version == "-" ? "" : version; }
+void ota_phase(uint8_t phase, uint8_t pct, const std::string& version) {
+  sys::OtaStatus& s = sys::s_ota;
+  s.phase = phase;
+  s.pct = pct;
+  if (!version.empty()) strlcpy(s.version, version.c_str(), sizeof s.version);
+  strlcpy(s.text, phase == sys::OTA_FAILED ? "The package is not signed by fenixOS" : "", sizeof s.text);
+  post(sys::LinkEv::OTA);
+}
+}  // namespace sim

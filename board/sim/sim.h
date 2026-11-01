@@ -31,6 +31,11 @@ void store_dir(const std::string& dir);
 void post(sys::LinkEv type, int32_t value = 0, const char* text = "");
 void set_connected(bool on);
 void set_card(bool in);  // the pretend SD card, which holds the store's apps (P51)
+// Firmware update state (P52): `ota offer <update|-> <back|->`, `ota failed <version|->`,
+// `ota <receiving|checking|writing|restarting|failed|idle> [pct]`.
+void ota_offer(const std::string& update, const std::string& back);
+void ota_failed(const std::string& version);
+void ota_phase(uint8_t phase, uint8_t pct, const std::string& version);
 // `name=value` pairs for app `id`'s binds, resolved through its package; false if unknown.
 bool set_binds(const std::string& id, const std::vector<std::string>& pairs, std::string* err);
 bool install(const std::string& fxp, std::string* id, std::string* err);

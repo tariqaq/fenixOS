@@ -1,5 +1,10 @@
 # Name,   Type, SubType,  Offset,   Size
+# Two app slots for updates over the air (P52, docs/ota.md); fills the 4 MB exactly.
+# App slots start on 64 KB boundaries. NVS stays where it was, so settings survive the move.
 nvs,      data, nvs,      0x9000,   0x6000
-phy_init, data, phy,      0xf000,   0x1000
-factory,  app,  factory,  0x10000,  0x200000
-apps,     data, littlefs, 0x210000, 0x1F0000
+otadata,  data, ota,      0xf000,   0x2000
+phy_init, data, phy,      0x11000,  0x1000
+coredump, data, coredump, 0x12000,  0xE000
+ota_0,    app,  ota_0,    0x20000,  0x1D0000
+ota_1,    app,  ota_1,    0x1F0000, 0x1D0000
+apps,     data, littlefs, 0x3C0000, 0x40000

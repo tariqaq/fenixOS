@@ -340,6 +340,7 @@ static void clock_show(const char* hhmm, uint32_t color) {
 }
 
 void home_screen(lv_obj_t* scr) {
+  sys::ota_home_shown();  // a new firmware on trial is kept 30 s after Home shows (P52)
   s_shown_min = -2;  // a rebuilt Home has fresh labels: redraw them on the first tick
   s_shown_conn = -1;
   s_shown_radio = -1;

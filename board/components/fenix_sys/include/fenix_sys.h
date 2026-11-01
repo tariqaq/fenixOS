@@ -94,6 +94,7 @@ enum class LinkEv : uint8_t {
   HOST_STATE,  // value = fnx::host state, text = app id
   APPS_CHANGED,  // text = app id installed or removed; empty: several (the SD card came or went)
   SD_CHANGED,    // the microSD card came, went or changed (sd_info)
+  OTA,           // a firmware update started or failed (ota_status)
 };
 struct LinkEvent {
   LinkEv type;
@@ -159,6 +160,37 @@ void sd_probe();   // checks a mounted card is still there, or mounts one; async
 SdInfo sd_info();
 void sd_report();  // SD_STATE to the PC; without a ready card it also probes again
 void sd_update_free();  // after a write to the card: new free space, SD_STATE on a change
+
+// ---- Firmware updates (P52, ota.cpp; docs/ota.md) ----
+enum OtaPhase : uint8_t { OTA_IDLE, OTA_RECEIVING, OTA_CHECKING, OTA_WRITING, OTA_RESTARTING, OTA_FAILED };
+struct OtaStatus {
+  uint8_t phase;  // OtaPhase
+  uint8_t pct;
+  char version[32];
+  char text[64];  // what it does, or why it failed
+};
+struct OtaOffer {
+  char update[32];        // a newer package on the card's root, or ""
+  char update_file[64];   // its file name
+  char back[32];          // the newest kept older package ("Go back"), or ""
+};
+void ota_boot();        // before store_mount: layout change, trial and rollback state
+void ota_home_shown();  // UI: Home is up; a new image on trial is kept 30 s later
+void ota_report();      // link: says once per boot that an update was rolled back
+const char* ota_failed_version();  // the version that was rolled back, or nullptr
+OtaStatus ota_status();
+void ota_dismiss();     // UI: back to idle after a failure was shown
+OtaOffer ota_offer();
+void ota_scan_sd();     // sd task after a mount (and after an install): fills ota_offer
+bool ota_install_offer(bool back);  // UI: install the card's update, or go back; runs in a task
+int ota_vercmp(const char* a, const char* b);
+// Link task. Codes are fnx::fw; ota_end returns 0xFF when the check runs (FW_RESULT follows).
+uint8_t ota_begin(const fnx::FwBegin& b, uint32_t* next);
+uint32_t ota_chunk(uint32_t offset, const uint8_t* data, size_t n);  // next expected offset; 0 on failure
+uint8_t ota_end();
+void ota_abort();
+bool ota_receiving();
+bool ota_busy();
 
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address

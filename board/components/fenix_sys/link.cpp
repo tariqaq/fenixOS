@@ -236,6 +236,16 @@ static void send_error(uint8_t code, const char* text) {
 
 static int64_t s_last_rx;
 static int64_t s_install_rx;  // last install message, for the stall timeout
+static int64_t s_fw_rx;       // last firmware message (P52)
+
+static void send_fw_result(uint8_t code) {
+  static const char* const TEXT[] = {"", "no space", "bad hash", "bad signature", "busy", "storage error", "older"};
+  const char* t = code < 7 ? TEXT[code] : "";
+  send_with(fnx::ty::FW_RESULT, [&](fnx::Writer& w) {
+    w.u8(code);
+    w.bytes(t, strlen(t));
+  });
+}
 
 static void send_app_result(uint8_t op, uint8_t code, const char* id, const char* text) {
   send_with(fnx::ty::APP_RESULT, [&](fnx::Writer& w) {
@@ -266,6 +276,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
         post(LinkEv::CONNECTED);
         send_board_state(board_info());
         report_oom();
+        ota_report();
       }
       radio_report();  // every HELLO: a new PC session may start before the old one timed out
       sd_report();
@@ -407,6 +418,33 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, id);
       return;
     }
+    case fnx::ty::FW_BEGIN: {
+      fnx::FwBegin b{};
+      if (!fnx::read_fw_begin(r, b)) return send_error(fnx::err::BAD_BODY, "fw_begin");
+      uint32_t next = 0;
+      uint8_t code = ota_busy() ? fnx::fw::BUSY : ota_begin(b, &next);
+      s_fw_rx = esp_timer_get_time();
+      if (code != fnx::fw::OK) return send_fw_result(code);
+      send_with(fnx::ty::FW_ACK, [&](fnx::Writer& w) { w.u32(next); });
+      return;
+    }
+    case fnx::ty::FW_CHUNK: {
+      uint32_t off = r.u32();
+      size_t len = 0;
+      const uint8_t* d = r.rest(&len);
+      if (!r.ok()) return send_error(fnx::err::BAD_BODY, "fw_chunk");
+      if (!ota_receiving()) return send_fw_result(fnx::fw::BUSY);
+      uint32_t next = ota_chunk(off, d, len);
+      s_fw_rx = esp_timer_get_time();
+      if (!ota_receiving()) return send_fw_result(fnx::fw::STORAGE);
+      send_with(fnx::ty::FW_ACK, [&](fnx::Writer& w) { w.u32(next); });
+      return;
+    }
+    case fnx::ty::FW_END: {
+      uint8_t code = ota_end();
+      if (code != 0xFF) send_fw_result(code);
+      return;
+    }
     case fnx::ty::STREAM_START: {
       uint8_t fps = r.u8();
       post(LinkEv::STREAM_START, fps ? fps : 10);
@@ -446,6 +484,7 @@ static void end_session() {
   s_connected = false;
   s_remote = 0;
   store_abort();
+  ota_abort();
   post(LinkEv::DISCONNECTED);
 }
 
@@ -477,6 +516,7 @@ static void link_task(void*) {
     int64_t now = esp_timer_get_time();
     if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) end_session();
     if (store_installing(nullptr) && now - s_install_rx > INSTALL_TIMEOUT_US) store_abort();
+    if (ota_receiving() && now - s_fw_rx > INSTALL_TIMEOUT_US) ota_abort();
     if (now >= next_stats) {
       next_stats = now + STATS_PERIOD_US;
       if (s_connected) send_stats();
