@@ -148,7 +148,7 @@ Signature host test (good, bad signature, bad hash, wrong key), updates over USB
 
 ## P50-M and P51-M: Morpheus (v0.1.25, v0.1.26)
 
-As in `tasks.md`, with the user's answers (2026-11-02): **both** a `view` element and a bindable `show` (bool) on every element; a **`secret`** setting type (masked in the PC app, DPAPI user scope, never logged; the sidecar gets the plain value); **two releases**. The answer in `docs/requests/morpheus.md` is updated when each ships.
+Only the fenixOS features in `docs/requests/morpheus.md`; the Morpheus app itself lives in its own repo and is not built here (user, 2026-11-02). As in `tasks.md`, with the user's answers (2026-11-02): **both** a `view` element and a bindable `show` (bool) on every element; a **`secret`** setting type (masked in the PC app, DPAPI user scope, never logged; the sidecar gets the plain value); **two releases**. The answer in `docs/requests/morpheus.md` is updated when each ships.
 
 ## Order and releases
 

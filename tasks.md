@@ -59,7 +59,6 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
-- Touch on software SPI (v0.1.20): the user taps around the real panel to confirm it
 - Back up `%USERPROFILE%\.fenixos\fw-signing.pem` once P52 makes it (the user)
 
 ## Now
@@ -95,13 +94,13 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 2. Flashed the spike (`fenix flash`), read UART0, flashed fenixOS v0.1.19 back (`fenix hello`: v0.1.19, settings kept)
   - [x] 3. Results in `docs/board-info.md` "SD card check": 8 GB SDHC, FAT32, 40 MHz works (2.7 MB/s raw reads); FAT32 over exFAT
 - [x] SD card run 2 (user, 2026-11-02: "reformat ... enable long file names ... find a fix" for the bus clash): spike formats only a card not in the SD Association layout (done once: partition and data area on 4 MB boundaries, 32 KB clusters), 40 MHz, LFN on, 4 KB stdio buffer, touch on bit-banged SPI while the card streams on the other core (346 µs per touch read, no effect on SD). fenixOS v0.1.19 flashed back. Results: `docs/board-info.md` "Run 2"
-- [~] P50 SD card base, release v0.1.20 (user, 2026-11-02: "implement it"; picks in `docs/decisions.md` "2026-11-02: SD, apps, OTA")
+- [x] P50 SD card base, release v0.1.20 (user, 2026-11-02: "implement it"; picks in `docs/decisions.md` "2026-11-02: SD, apps, OTA")
   - [x] 1. Touch on software SPI: `fenix_hal/include/fenix_touch.hpp` (XPT2046 bit-banged, LovyanGFX's frame and median filter), `fenix_lgfx.hpp` uses it; SPI3 left to the SD card
   - [x] 2. `fenix_sys/sd.cpp`: SPI3 at 40 MHz, FAT32 at `/sd`, long names on the heap, 512 B sectors, `max_files` 4; one-shot mount task; probe again from Settings › Storage and on HELLO; a card that stops answering is marked gone. Found: SPI DMA AUTO fails next to the LCD (falls back to channel 2); the local `sdkconfig` kept 8.3 names and 4 KB sectors (mount cost 28 KB, now 9.6 KB). Image 1,155,568 B (+38 KB); heap with Wi-Fi and card 70.6 KB (v0.1.19: 79.9)
   - [x] 3. `SD_STATE` 0x1C (B→P, optional): Rust and C++ codecs, vector appended, spec row
   - [x] 4. Board Settings › Storage: SD card group; simulator stub and golden
   - [x] 5. PC: engine state, Board page row, Task manager meter, `fenix sd`
-  - [~] 6. Docs (spec, board-info, PLAN, README, decisions, Morpheus refs), tests (checks ok, cargo 0 failed, proto host 41/41, svelte-check 0/0, sim 25/25), v0.1.20 built, installed (/S), flashed (`fenix hello`: v0.1.20; `fenix sd`: ready, 7671 MB free, 40 MHz), tagged. Left: the user taps the panel to check touch on software SPI
+  - [x] 6. Docs (spec, board-info, PLAN, README, decisions, Morpheus refs), tests (checks ok, cargo 0 failed, proto host 41/41, svelte-check 0/0, sim 25/25), v0.1.20 built, installed (/S), flashed (`fenix hello`: v0.1.20; `fenix sd`: ready, 7671 MB free, 40 MHz), tagged. Touch on software SPI checked on the panel by the user ("it works")
 - [ ] P51 Apps on the SD card, on/off, sync, v0.1.21 (design: `docs/plan-sd-ota.md`; overnight run, no go needed between phases)
   - [ ] 1. Board store with two back ends: SD (`/sd/fenixos/apps/<id>.fxp|.sha|.tmp`, leftovers cleaned at mount) and LittleFS; SD first, flash only with no card and ≤ 128 KB; one app in one place. No fixed cap on the card (free space, 4 GB per file); 128 KB per package on flash (was 64 KB everywhere). Compact `AppMeta` (id 48, version 16, sha, where, state). Host tests
   - [ ] 2. `MAX_APPS` 32; `APP_INDEX_REQ`/`APP_INDEX` 0x2B/0x2C (paged), `APP_TURN_ON` 0x2D, `APP_RESULT` code 7; Rust and C++ codecs, vectors appended, spec. `APP_LIST` kept (first 10) for the update path
@@ -133,7 +132,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [ ] 2. `LV_USE_TINY_TTF`, `LV_TINY_TTF_FILE_SUPPORT`, LVGL file system driver on `/sd`; `tools/sim_config.py`; labels fall back to the CJK font for missing characters; no card or no font: as now
   - [ ] 3. PC app downloads the font (pinned URL and sha256) and installs it with `FILE_WRITE`; Settings › Storage shows it; licence in `tools/licenses.py` output
   - [ ] 4. Sim screen with CJK text, docs (packages fonts, board-info, README, Morpheus answer row 5), all tests, release v0.1.24
-- [ ] P50-M App runtime for Morpheus, v0.1.25 (after P54 in the same run; user answers 2026-11-02: `view` and `show`, `secret`, two releases)
+- [ ] P50-M App runtime for Morpheus, v0.1.25 (after P54 in the same run; user answers 2026-11-02: `view` and `show`, `secret`, two releases). Only the fenixOS features Morpheus asked for; the Morpheus app itself is not built here (user)
   - [ ] 1. Reproduce the `opened` burst: 50 `BIND_SET` right after `APP_OPENED`, count what the board applies. Fix: PC keeps the latest value per binding and paces the burst; board queue with compact entries (text in a small ring), deeper than 16
   - [ ] 2. `view` element (kind 9): int `bind` picks the one child shown (`LV_OBJ_FLAG_HIDDEN` on the rest); bindable `show` (bool) on every element; compiler, both readers, host tests, sim screen
   - [ ] 3. Bindable button text (string) and icon glyph (int index on `icon` and icon buttons); 14 glyphs added to the fill icon fonts (`play`, `pause`, `skip-forward`, `skip-back`, `speaker-high`, `speaker-x`, `microphone`, `microphone-slash`, `headphones`, `game-controller`, `music-notes`, `video`, `phone`, `sparkle`); flash measured
