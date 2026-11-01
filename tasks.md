@@ -59,6 +59,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
+- Nothing open (2026-11-02, before the overnight run)
 
 ## Now
 
