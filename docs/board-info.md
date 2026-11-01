@@ -8,13 +8,14 @@ Current numbers (v0.1.12 unless marked; the sections below are a dated log, so o
 
 | What | Value |
 |---|---|
-| Firmware image | 1,155,568 B in the 2 MB factory slot (45% free, v0.1.20; SD card base, P50); 1,117,296 B at v0.1.15; IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
+| Firmware image | 1,177,600 B in a 1,900,544 B OTA slot (38% free, P52 dev build; two slots since P52, `docs/ota.md`); 1,155,568 B in the old 2 MB factory slot at v0.1.20; 1,117,296 B at v0.1.15; IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
 | Heap at boot, Wi-Fi joined | 70.6 KB free of 281 KB with the SD card mounted (v0.1.20, 50 s up; the mount takes 9.6 KB, P50); 79.9 KB at v0.1.19 without the card code; 81.8 KB at P40 |
 | Heap at boot, radio off | 154.9 KB (P38, before the P40 trims) |
 | Animation fps (`fenix bench 15 nostream`) | 25.5 (P38) |
 | Stream over USB / Wi-Fi (`fenix bench 15`) | 25.0 fps, 43 KB/s / 25.8 fps, 53 KB/s; lowest heap in a Wi-Fi stream 23.9 KB (P40). Stream rate since P46: 10 fps over USB, 25 over Wi-Fi (table in the P46 section) |
 | Install of a 32 KB package | 0.48 s over USB, 0.41-0.55 s over Wi-Fi; lowest heap 51.3 KB (P39) |
-| App store | LittleFS, 1984 KB (8 KB used when empty) |
+| App store | SD card first (P51); flash: LittleFS, 256 KB (8 KB used when empty) since P52. Corrected: was 1984 KB until v0.1.21 |
+| Firmware update (P52) | 1.15 MB image: USB 15.2 s sent + 9.0 s install, Wi-Fi 7.7 s + 9.0 s; 8 to 11 KB of heap while installing (`docs/ota.md`) |
 | SD card | 8 GB SDHC, FAT32 (SD Association layout), SPI3 at 40 MHz, 2.7 MB/s reads (P50) |
 
  Corrected: the board was fully erased on 2026-10-29 (`esptool erase-flash`, a 4 MB read-back all `0xFF`) before fenixOS went on it. Both earlier images are backed up and can be restored (below).
@@ -290,6 +291,17 @@ fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MH
 ### SD clock
 
 The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
+
+## Two OTA slots and updates (P52, 2026-11-03)
+
+Full write-up, layout and numbers: `docs/ota.md`.
+
+- **Migration:** the new partition table went on over USB (`fenix flash board/build`). `flasher_args.json` already names `ota_data_initial.bin` at 0xF000, so nothing in the flasher changed. NVS (Wi-Fi, settings) stayed. The apps partition was erased once at the first boot on the new layout. The boot heap was 68.4 KB free (min 63.2).
+- **What broke on the way:**
+  - A new `FW_BEGIN` after the PC reconnected got `BUSY` while the cut transfer was still open (now it replaces it).
+  - `esp_ota_begin` returns `ESP_ERR_OTA_ROLLBACK_INVALID_STATE` while the running image is on trial (the first 30 s after an update). The running image is now kept when an update starts.
+  - A rolled-back try pushed the older kept package out. Prune now keeps three.
+- **Rollback is quick:** an image that aborts at boot is back on the old slot in about 3 s. The boot reason after that is a panic (reset reason 4).
 
 ## Apps on the SD card (P51, 2026-11-03)
 

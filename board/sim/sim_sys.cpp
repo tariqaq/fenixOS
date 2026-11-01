@@ -144,7 +144,7 @@ void store_usage(uint32_t* used_kb, uint32_t* total_kb) {
     for (const auto& f : fs::directory_iterator(sim::s_store, ec))
       if (f.path().extension() == ".fxp") used += f.file_size();
   *used_kb = (uint32_t)(used / 1024);
-  *total_kb = 1984;
+  *total_kb = 256;  // the flash store since P52
 }
 // The index, read from the folder on each call (a few files). Apps count as on the SD card;
 // `card out` in a script marks them missing (P51).

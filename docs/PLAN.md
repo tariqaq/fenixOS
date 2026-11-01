@@ -47,7 +47,7 @@ PC app (fenixOS v0.1.0, Windows):
 
 ### 1.2 Not in v0.1
 
-SD card (came in P50, v0.1.20), Wi-Fi and NTP (both came in P34), Bluetooth (tried in P33, removed in P38), LDR auto-brightness, sounds, developer overlay, factory reset, manual time set, on-board OTA, other time zones, macOS or Linux PC app, enforced sandboxing of sidecars (C10: trust comes from the registry), Authenticode code signing, any real extra app (extra apps live in their own repos; this repo only has a test fixture app).
+SD card (came in P50, v0.1.20), Wi-Fi and NTP (both came in P34), Bluetooth (tried in P33, removed in P38), LDR auto-brightness, sounds, developer overlay, factory reset, manual time set, other time zones, macOS or Linux PC app, enforced sandboxing of sidecars (C10: trust comes from the registry), Authenticode code signing, any real extra app (extra apps live in their own repos; this repo only has a test fixture app).
 
 ## 2. Repo layout
 
@@ -172,7 +172,7 @@ docs/, pics/
   - One host app is open at a time.
   - Its LVGL objects are built from the package when it opens and freed when it closes. Corrected (P45): the package itself is freed when the app screen is deleted, after its slide out (labels point into it).
   - Bindings update objects; touches on interactive elements send `EVENT`.
-- **Store:** LittleFS on the `apps` partition (~1.9 MB), `/apps/<id>.fxp` plus `/apps/<id>.sha` (corrected 2026-10-29: no separate index). An install writes to a temp file, checks sha256 and renames it, so a broken install never leaves a half app.
+- **Store:** LittleFS on the `apps` partition (~1.9 MB), `/apps/<id>.fxp` plus `/apps/<id>.sha` (corrected 2026-10-29: no separate index). Corrected (P51/P52): apps go to the SD card first; the flash store is 256 KB, 128 KB per package (`docs/packages.md` "Where apps live"). An install writes to a temp file, checks sha256 and renames it, so a broken install never leaves a half app.
 - **Host states:**
   - PC half running: the app works.
   - No PC link: "Waiting for host PC" (artboard 6a).
@@ -287,7 +287,7 @@ Gate: free heap ≥ 60 KB with Home shown and ≥ 40 KB with a host app open and
 
 ### 4.2 Board flash (4 MB)
 
-`nvs` 24 KB, `phy_init` 4 KB, `factory` 2 MB (image target ≤ 1.5 MB: LVGL + fonts + icons), `apps` LittleFS ~1.9 MB. There are no OTA slots (C8).
+`nvs` 24 KB, `phy_init` 4 KB, `factory` 2 MB (image target ≤ 1.5 MB: LVGL + fonts + icons), `apps` LittleFS ~1.9 MB. There are no OTA slots (C8). Corrected (P52, v0.1.22): two 1.81 MB OTA slots, otadata, a 56 KB coredump gap and a 256 KB `apps` store; signed updates over USB, Wi-Fi or from the SD card (`docs/ota.md`).
 
 ### 4.3 Board feel
 

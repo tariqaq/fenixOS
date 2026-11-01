@@ -121,7 +121,7 @@ These come from the hardware facts in `docs/POC-WRITEUP.md` and from research. T
 - **C5. No vsync.** The LCD's TE pin is not wired, so tearing can only be minimized: partial redraws by DMA and capped fps. A full-screen push takes ~31 ms at the 40 MHz SPI clock (about 30 fps; corrected 2026-10-30, was ~22 ms, `docs/board-info.md`). Full-screen effects such as cross-fades redraw the whole screen, so they run slower than small animations.
 - **C6. Apple's fonts and SF Symbols can't be used.** Apple's license limits SF fonts to Apple platforms. It does not allow embedding them in a non-Apple app or firmware, nor even mock-ups of software for non-Apple systems. Use **Inter** (Google Fonts, OFL, designed in a similar spirit to SF Pro) or a similar open font. Icons need an open set too (for example Lucide, Phosphor, Material Symbols Rounded).
 - **C7. Private repo vs. central registry** (resolved: the repo is now public). This repo was private, so the PC app cannot read the registry from it without a GitHub token. Options: a token in the PC app, a separate public registry repo, or making this repo public.
-- **C8. Flash budget.** 4 MB total. The current plan has room for the firmware plus about 1.9 MB of app storage (LittleFS). Firmware updates through the PC app (by serial bootloader) need no OTA partitions. On-board OTA slots would take ~1.5 MB more.
+- **C8. Flash budget.** 4 MB total. The current plan has room for the firmware plus about 1.9 MB of app storage (LittleFS). Firmware updates through the PC app (by serial bootloader) need no OTA partitions. On-board OTA slots would take ~1.5 MB more. Corrected (P52): two OTA slots came in v0.1.22 once apps moved to the SD card; the flash store is 256 KB (`docs/ota.md`).
 - **C9. RAM budget.** ~260 KB of heap before our own buffers, no PSRAM. The UI library choice (LVGL 9 vs a custom renderer), render buffers, an app runtime and Wi-Fi all share it (measured: `docs/board-info.md` "Current numbers").
 - **C10. Installing apps from GitHub runs code on the PC.** Each app's PC half needs a runtime (WASM plugin, separate process, or script) and a trust model: pinned versions, checksums, and only the user's own repos.
 
@@ -157,7 +157,7 @@ Details and the options offered: `docs/decisions.md`.
 - PC app: **Rust + Tauri 2 + Svelte 5**.
 - PC half of host apps (C10): **sidecar process** per app, started only while switched on, local pipe + typed API; trust via registry, pinned versions, checksums.
 - Registry (C7): **this repo is public**; the PC app reads the registry with no auth. Vendor files, flash images and the packing slip were scrubbed from history first.
-- Firmware updates (C8): **the PC app flashes the board over serial** (`espflash`), firmware bundled with each PC app release. No OTA slots.
+- Firmware updates (C8): **the PC app flashes the board over serial** (`espflash`), firmware bundled with each PC app release. No OTA slots. Corrected (P52): signed OTA over the link or from the SD card since v0.1.22; serial flashing stays for first installs.
 
 - Fonts (C6): **Inter** everywhere. Icons: **Phosphor**, fill weight, bold for chevrons, plus and close (corrected: was "regular in bars and rows"; `DESIGN.md` Icons).
 - Motion: **iOS-like, tuned** (ease-out/spring 200–350 ms; full-screen steps held to ~30 fps).

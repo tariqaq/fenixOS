@@ -1,6 +1,6 @@
 # Plan: apps on the SD card, sync, OTA, SD extras, fonts, then Morpheus (P51 to P54, P50-M, P51-M)
 
-Status: **planned**, not built (2026-11-02). Ahead of the code on purpose (AGENTS.md rule 7). The checklists are in `tasks.md`; the user's picks are in `docs/decisions.md` "2026-11-02: SD, apps, OTA" and "2026-11-02 (evening): plan changes before the overnight run". The SD base (P50, v0.1.20) is done: card at `/sd`, `SD_STATE`, Storage rows.
+Status: P51 done (v0.1.21); P52 built and tested on the board (`docs/ota.md`, v0.1.22); P53 on: **planned**, not built (2026-11-03). Ahead of the code on purpose (AGENTS.md rule 7). The checklists are in `tasks.md`; the user's picks are in `docs/decisions.md` "2026-11-02: SD, apps, OTA" and "2026-11-02 (evening): plan changes before the overnight run". The SD base (P50, v0.1.20) is done: card at `/sd`, `SD_STATE`, Storage rows.
 
 **Overnight run (user: "/goal the entire plan"):** the phases run one after another without waiting for a go: P51, P52, P53, P54, P50-M, P51-M. Each ends with docs, all tests, a release, a flash over USB and a tag. A choice the plan does not settle is made by the agent and logged in `docs/decisions.md` (section "2026-11-03: overnight run") with the options not taken. A step that cannot be done (needs the user's hands or eyes, or keeps failing) is marked blocked in `tasks.md` with notes, and the run goes on with the next step that does not depend on it.
 

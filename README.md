@@ -20,7 +20,7 @@ Status: **v0.1.20.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress
 2. The board's USB chip is a CH340. Windows usually installs its driver by itself; if the board does not show up as a COM port, install WCH's CH341SER driver. Use a current CH341SER. Both the 2011 driver and the current one (4.0.2026.2) can crash Windows when a program reads the port with a timeout. fenixOS reads without one since v0.1.1, and flashes the board without one since v0.1.4. Do not use fenixOS v0.1.0 on Windows, and avoid other serial tools (terminals, monitors, esptool) on this board.
 3. Start fenixOS. On the first run a welcome window asks you to plug in the board. A board without fenixOS gets it installed after one confirm (this erases what was on it); a board on an older fenixOS is offered the update. Then the dashboard opens.
 
-fenixOS lives in the tray and starts with Windows if you leave that on (Settings). It keeps the board's clock and firmware in step, and updates itself from the GitHub releases (Settings > Updates).
+fenixOS lives in the tray and starts with Windows if you leave that on (Settings). It keeps the board's clock and firmware in step, and updates itself from the GitHub releases (Settings > Updates). From v0.1.22 the board takes firmware updates over USB or Wi-Fi without the bootloader, and from its SD card: copy a release's `fenixOS_<version>.fwp` to the card's root and use Settings › About on the board. Packages are signed; the board refuses anything else. A board on an older firmware needs one update over USB first.
 
 ## What fenixOS does on your PC
 
