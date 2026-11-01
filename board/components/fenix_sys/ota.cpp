@@ -45,6 +45,12 @@ static OtaOffer s_offer;
 static char s_failed[32];  // a rolled-back version, or ""
 static bool s_pending;     // this image boots on trial until marked good
 
+// An update started while this image is on trial keeps it (it ran well enough to take one):
+// esp_ota_begin refuses while the running image waits (ESP_ERR_OTA_ROLLBACK_INVALID_STATE).
+static void keep_on_trial() {
+  if (s_pending && esp_ota_mark_app_valid_cancel_rollback() == ESP_OK) s_pending = false;
+}
+
 static void status(uint8_t phase, uint8_t pct, const char* text = nullptr, const char* version = nullptr) {
   taskENTER_CRITICAL(&s_mux);
   bool started = s_st.phase == OTA_IDLE && phase != OTA_IDLE;
@@ -185,6 +191,15 @@ static void fw_path(char* out, size_t cap, const char* version, const char* ext)
 
 static bool card_ready() { return sd_info().state == fnx::sd_state::READY; }
 
+// The version a kept package file names ("0.1.22.fwp"), or false for anything else.
+static bool fwp_name(const char* name, char* v, size_t cap) {
+  size_t n = strlen(name);
+  if (n < 5 || n - 4 >= cap || strcasecmp(name + n - 4, ".fwp")) return false;
+  memcpy(v, name, n - 4);
+  v[n - 4] = 0;
+  return true;
+}
+
 // Scans the card: a newer package on its root ("fenixOS_<v>.fwp") and the newest kept older one.
 // sd task (after a mount) and the ota task (after an install). Reads only the headers.
 void ota_scan_sd() {
@@ -209,12 +224,9 @@ void ota_scan_sd() {
       closedir(d);
     }
     if (DIR* d = opendir(FW_DIR)) {
+      char v[32];
       while (struct dirent* e = readdir(d)) {
-        size_t n = strlen(e->d_name);
-        if (n < 5 || n - 4 >= sizeof o.back || strcasecmp(e->d_name + n - 4, ".fwp")) continue;
-        char v[32];
-        memcpy(v, e->d_name, n - 4);
-        v[n - 4] = 0;
+        if (!fwp_name(e->d_name, v, sizeof v)) continue;
         if (ota_vercmp(v, run) < 0 && (!o.back[0] || ota_vercmp(v, o.back) > 0)) strlcpy(o.back, v, sizeof o.back);
       }
       closedir(d);
@@ -227,17 +239,22 @@ void ota_scan_sd() {
   if (changed) link_post(LinkEv::SD_CHANGED);  // About and Settings show the offer
 }
 
-// After an install: keep the new package and the running one's (Go back), delete the rest.
+// After an install: keep the new package, the running one's and the newest older one (Go back,
+// also after the new one rolled back), delete the rest and any leftover .part.
 static void prune(const char* keep) {
+  const char* run = running_version();
+  char older[32] = {}, v[32];
+  if (DIR* d = opendir(FW_DIR)) {
+    while (struct dirent* e = readdir(d))
+      if (fwp_name(e->d_name, v, sizeof v) && ota_vercmp(v, run) < 0 && (!older[0] || ota_vercmp(v, older) > 0))
+        strlcpy(older, v, sizeof older);
+    closedir(d);
+  }
   DIR* d = opendir(FW_DIR);
   if (!d) return;
   char path[300];
   while (struct dirent* e = readdir(d)) {
-    size_t n = strlen(e->d_name);
-    if (n < 5) continue;
-    char v[32] = {};
-    if (n - 4 < sizeof v) memcpy(v, e->d_name, n - 4);
-    if (!strcasecmp(e->d_name + n - 4, ".fwp") && (!strcmp(v, keep) || !strcmp(v, running_version()))) continue;
+    if (fwp_name(e->d_name, v, sizeof v) && (!strcmp(v, keep) || !strcmp(v, run) || !strcmp(v, older))) continue;
     snprintf(path, sizeof path, "%s/%.250s", FW_DIR, e->d_name);
     unlink(path);
   }
@@ -304,6 +321,7 @@ static uint8_t install_file(const char* path, bool allow_older) {
   // Pass 2: copy into the spare slot.
   status(OTA_WRITING, 0, "Installing");
   esp_ota_handle_t oh;
+  keep_on_trial();
   if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &oh) != ESP_OK) {
     fclose(f);
     return fnx::fw::STORAGE;
@@ -367,14 +385,19 @@ static void ota_task(void*) {
   char version[32] = {};
   switch (s_job) {
     case JOB_STAGED: {
-      // The .part on the card is whole: name it .fwp (kept for Go back), then install it.
+      // The .part on the card is whole: install it, then keep it as .fwp (Go back). A refused one
+      // is deleted, and a kept good package of the same version stays.
       char fwp[300];
       fw_path(fwp, sizeof fwp, s_rx.h.version, "fwp");
       strlcpy(version, s_rx.h.version, sizeof version);
-      unlink(fwp);
-      code = rename(s_job_arg, fwp) == 0 ? install_file(fwp, false) : fnx::fw::STORAGE;
-      if (code == fnx::fw::OK) prune(version);
-      if (code == fnx::fw::BAD_HASH || code == fnx::fw::BAD_SIGNATURE) unlink(fwp);  // never offer it
+      code = install_file(s_job_arg, false);
+      if (code == fnx::fw::OK) {
+        unlink(fwp);
+        rename(s_job_arg, fwp);
+        prune(version);
+      } else if (code == fnx::fw::BAD_HASH || code == fnx::fw::BAD_SIGNATURE) {
+        unlink(s_job_arg);
+      }
       break;
     }
     case JOB_DIRECT: {
@@ -407,6 +430,7 @@ static void ota_task(void*) {
       const char* use = rename(src, fwp) == 0 ? fwp : src;
       code = install_file(use, false);
       if (code == fnx::fw::OK) prune(version);
+      else if (code == fnx::fw::BAD_HASH || code == fnx::fw::BAD_SIGNATURE) unlink(use);  // never offer it again
       break;
     }
     case JOB_BACK: {
@@ -451,8 +475,21 @@ bool ota_install_offer(bool back) {
 
 bool ota_busy() { return s_rx.on || s_working; }
 
+// Close an unfinished receive. A part staged on the card stays there for a resume.
+static void rx_close() {
+  Rx& x = s_rx;
+  if (x.f) fclose(x.f);
+  if (!x.to_sd) {
+    esp_ota_abort(x.oh);
+    mbedtls_sha256_free(&x.sc);
+  }
+  x = Rx{};
+}
+
 uint8_t ota_begin(const fnx::FwBegin& b, uint32_t* next) {
   *next = 0;
+  // A new FW_BEGIN replaces a cut transfer: the PC reconnected before the 10 s stall timeout.
+  if (s_rx.on && !s_working) rx_close();
   if (ota_busy() || store_installing(nullptr)) return fnx::fw::BUSY;
   if (ota_vercmp(b.version, running_version()) < 0) return fnx::fw::OLDER;
   if (strlen(b.version) >= sizeof s_rx.h.version || !b.size) return fnx::fw::BAD_HASH;
@@ -497,6 +534,7 @@ uint8_t ota_begin(const fnx::FwBegin& b, uint32_t* next) {
     }
     if (!x.f) return fnx::fw::STORAGE;
   } else {
+    keep_on_trial();
     if (esp_ota_begin(part, OTA_WITH_SEQUENTIAL_WRITES, &x.oh) != ESP_OK) return fnx::fw::STORAGE;
     mbedtls_sha256_init(&x.sc);
     mbedtls_sha256_starts(&x.sc, 0);
@@ -555,12 +593,7 @@ uint8_t ota_end() {
 void ota_abort() {
   Rx& x = s_rx;
   if (!x.on || s_working) return;
-  if (x.f) fclose(x.f);
-  if (!x.to_sd) {
-    esp_ota_abort(x.oh);
-    mbedtls_sha256_free(&x.sc);
-  }
-  x = Rx{};
+  rx_close();
   status(OTA_FAILED, 0, "The update stopped. It goes on when the PC sends it again.");
 }
 

@@ -6,6 +6,8 @@
 //! Usage: `let link = Link::spawn(LinkOptions::default());` then `link.send(msg)` and
 //! read `link.events()`.
 
+pub mod ota;
+
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -14,7 +16,9 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use fenix_proto::{err, FrameDecoder, HelloAck, Msg, BAUD, PROTO_VERSION, TCP_PORT, USB_PID, USB_VID};
+use fenix_proto::{
+    err, FrameDecoder, HelloAck, Msg, BAUD, PROTO_VERSION, TCP_PORT, USB_PID, USB_VID,
+};
 use serialport::{SerialPort, SerialPortType};
 
 #[derive(Debug, Clone)]
@@ -160,7 +164,10 @@ impl Read for Tcp {
     fn read(&mut self, b: &mut [u8]) -> std::io::Result<usize> {
         use std::io::{Error, ErrorKind};
         match self.0.read(b) {
-            Ok(0) if !b.is_empty() => Err(Error::new(ErrorKind::ConnectionAborted, "closed by the board")),
+            Ok(0) if !b.is_empty() => Err(Error::new(
+                ErrorKind::ConnectionAborted,
+                "closed by the board",
+            )),
             Err(e) if e.kind() == ErrorKind::WouldBlock => Err(Error::new(ErrorKind::TimedOut, e)),
             r => r,
         }
@@ -189,7 +196,11 @@ const UNRESPONSIVE_TRIES: u32 = 2;
 fn open_tcp(spec: &str) -> std::io::Result<Tcp> {
     use std::io::{Error, ErrorKind};
     let host = spec.trim_start_matches("tcp:");
-    let target = if host.contains(':') { host.to_string() } else { format!("{host}:{TCP_PORT}") };
+    let target = if host.contains(':') {
+        host.to_string()
+    } else {
+        format!("{host}:{TCP_PORT}")
+    };
     let addr = target
         .to_socket_addrs()?
         .find(|a| a.is_ipv4())
@@ -203,9 +214,13 @@ fn open_tcp(spec: &str) -> std::io::Result<Tcp> {
 
 fn open_conn(name: &str, baud: u32) -> Result<Box<dyn Conn>, String> {
     if name.starts_with("tcp:") {
-        return open_tcp(name).map(|t| Box::new(t) as Box<dyn Conn>).map_err(|e| e.to_string());
+        return open_tcp(name)
+            .map(|t| Box::new(t) as Box<dyn Conn>)
+            .map_err(|e| e.to_string());
     }
-    open_port(name, baud).map(|p| Box::new(p) as Box<dyn Conn>).map_err(|e| e.to_string())
+    open_port(name, baud)
+        .map(|p| Box::new(p) as Box<dyn Conn>)
+        .map_err(|e| e.to_string())
 }
 
 /// Sleep between reads that found nothing: short while bytes are flowing (stream, install),
@@ -372,7 +387,11 @@ fn manager(opts: LinkOptions, rx_out: Receiver<Msg>, ev: Sender<Event>, ctl: Ctl
         };
         let candidates: Vec<String> = candidates
             .into_iter()
-            .filter(|p| fails.get(p).is_none_or(|(n, at)| *n < UNRESPONSIVE_TRIES || now >= *at))
+            .filter(|p| {
+                fails
+                    .get(p)
+                    .is_none_or(|(n, at)| *n < UNRESPONSIVE_TRIES || now >= *at)
+            })
             .collect();
         let mut connected = false;
         for name in candidates {

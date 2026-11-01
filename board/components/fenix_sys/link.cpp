@@ -422,7 +422,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       fnx::FwBegin b{};
       if (!fnx::read_fw_begin(r, b)) return send_error(fnx::err::BAD_BODY, "fw_begin");
       uint32_t next = 0;
-      uint8_t code = ota_busy() ? fnx::fw::BUSY : ota_begin(b, &next);
+      uint8_t code = ota_begin(b, &next);  // BUSY while installing; replaces a cut transfer
       s_fw_rx = esp_timer_get_time();
       if (code != fnx::fw::OK) return send_fw_result(code);
       send_with(fnx::ty::FW_ACK, [&](fnx::Writer& w) { w.u32(next); });

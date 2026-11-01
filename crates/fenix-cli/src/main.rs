@@ -20,6 +20,8 @@
 //! fenix list                       installed apps (paged index since 0.1.21: where each lives)
 //! fenix install <file.fxp>         push a board package
 //! fenix remove <id>                remove an app
+//! fenix ota <file.fwp>             update the firmware over the link (USB or Wi-Fi; firmware 0.1.22
+//!                                  and later): a signed package from tools/sign_fw.py
 //! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
 //! fenix host <id> on|off|gone|starting   tell the board the state of an app's PC half
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
@@ -38,7 +40,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
 use fenix_proto::{
-    app, app_state, app_where, host, radio, scan_status, BindValue, Msg, RadioState, Stats, Sysinfo,
+    app, app_state, app_where, fw, host, radio, scan_status, BindValue, Msg, RadioState, Stats,
+    Sysinfo,
 };
 use sha2::{Digest, Sha256};
 
@@ -150,6 +153,10 @@ fn main() {
             Some(f) => install(opts, Path::new(f)),
             None => usage(),
         },
+        "ota" => match args.get(1) {
+            Some(f) => ota(opts, Path::new(f)),
+            None => usage(),
+        },
         "remove" => match args.get(1) {
             Some(id) => remove(opts, id),
             None => usage(),
@@ -207,7 +214,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -943,6 +950,87 @@ fn install(opts: LinkOptions, file: &Path) -> i32 {
     }
     eprintln!("timeout");
     1
+}
+
+/// Update the board's firmware over the current link (P52, docs/ota.md) with a signed package
+/// (`tools/sign_fw.py sign`, or the `.fwp` the release bundles). The board stages it on its SD
+/// card (resumes a cut transfer), checks the signature and restarts into it.
+fn ota(opts: LinkOptions, file: &Path) -> i32 {
+    let fwp = match std::fs::read(file)
+        .map_err(|e| e.to_string())
+        .and_then(|d| fenix_link::ota::parse_fwp(&d))
+    {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!("{}: {e}", file.display());
+            return 1;
+        }
+    };
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    let mut s = fenix_link::ota::OtaSend::new(fwp);
+    println!("v{} ({} B)", s.version(), s.size());
+    let t0 = Instant::now();
+    link.send(s.begin());
+    let (mut shown, mut said_resume, mut t_end) = (0u8, false, None);
+    loop {
+        match s.poll() {
+            Ok(msgs) => {
+                for m in msgs {
+                    if matches!(m, Msg::FwEnd) {
+                        t_end = Some(Instant::now());
+                        println!(
+                            "sent in {:.1} s; the board checks and installs",
+                            t0.elapsed().as_secs_f32()
+                        );
+                    }
+                    link.send(m);
+                }
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                return 1;
+            }
+        }
+        if !said_resume && s.stage() == fenix_link::ota::OtaStage::Sending {
+            said_resume = true;
+            if s.resumed_at > 0 {
+                println!("resuming at {} B (staged on the card)", s.resumed_at);
+            }
+        }
+        if s.percent() / 10 > shown / 10 {
+            shown = s.percent();
+            println!("{shown}%");
+        }
+        let wait = if s.stage() == fenix_link::ota::OtaStage::Sending {
+            5
+        } else {
+            100
+        };
+        match link.recv_event(Duration::from_millis(wait)) {
+            Some(Event::Msg(Msg::FwAck { next_offset })) => s.on_ack(next_offset),
+            Some(Event::Msg(Msg::FwResult { code, text })) => {
+                let why = if text.is_empty() {
+                    fenix_link::ota::result_text(code).to_string()
+                } else {
+                    text
+                };
+                println!(
+                    "result {code}: {why} (total {:.1} s{})",
+                    t0.elapsed().as_secs_f32(),
+                    t_end.map_or(String::new(), |t| format!(
+                        ", install {:.1} s",
+                        t.elapsed().as_secs_f32()
+                    ))
+                );
+                return if code == fw::OK { 0 } else { 1 };
+            }
+            Some(e) => print_event(&e),
+            None => {}
+        }
+    }
 }
 
 /// Set bindings of an app like its PC half would (`cpu=42`, `on=true`, `cpu_text=42 %`), then
