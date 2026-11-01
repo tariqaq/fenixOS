@@ -57,6 +57,8 @@ pub struct Board {
     pub app_id: String,
     /// The board's radio (RADIO_STATE, firmware 0.1.8 and later; None before).
     pub radio: Option<fenix_proto::RadioState>,
+    /// The board's microSD card (SD_STATE, firmware 0.1.20 and later; None before).
+    pub sd: Option<fenix_proto::SdState>,
 }
 
 /// A CH340 port that did not answer as fenixOS (blank board, other firmware, other protocol).
@@ -610,6 +612,7 @@ impl Engine {
                         screen: 0,
                         app_id: String::new(),
                         radio: None,
+                        sd: None,
                     });
                 }
                 self.log(app, Source::Pc, false, format!("Board found on {port}"));
@@ -725,6 +728,16 @@ impl Engine {
                 match s.board.as_mut() {
                     Some(b) if b.radio.as_ref() != Some(&r) => {
                         b.radio = Some(r);
+                        true
+                    }
+                    _ => false,
+                }
+            }
+            Event::Msg(Msg::SdState(sd)) => {
+                let mut s = self.state.lock().unwrap();
+                match s.board.as_mut() {
+                    Some(b) if b.sd.as_ref() != Some(&sd) => {
+                        b.sd = Some(sd);
                         true
                     }
                     _ => false,

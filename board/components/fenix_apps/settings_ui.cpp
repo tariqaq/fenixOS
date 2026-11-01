@@ -251,13 +251,50 @@ static const char* apps_count_text() {
   return t;
 }
 
+// 7.5 GB, 512 MB: one decimal from 10 GB down, whole numbers above.
+static void size_text(char* out, size_t cap, uint32_t kb) {
+  if (kb < 1024 * 1024) {
+    snprintf(out, cap, "%u MB", (unsigned)(kb / 1024));
+  } else {
+    uint32_t tenths = (uint32_t)((uint64_t)kb * 10 / (1024 * 1024));
+    if (tenths < 100)
+      snprintf(out, cap, "%u.%u GB", (unsigned)(tenths / 10), (unsigned)(tenths % 10));
+    else
+      snprintf(out, cap, "%u GB", (unsigned)(tenths / 10));
+  }
+}
+
 static void storage_screen(lv_obj_t* scr) {
   navbar(scr, "Settings", "Storage");
   lv_obj_t* c = content(scr, 12);
+  char v[40];
+  // microSD (P50). Opening this page also checks the card is still there (no card-detect pin).
+  lv_obj_t* sdg = group(c);
+  sys::SdInfo sd = sys::sd_info();
+  switch (sd.state) {
+    case fnx::sd_state::READY: {
+      char f[16], t[16];
+      size_text(f, sizeof f, sd.free_kb);
+      size_text(t, sizeof t, sd.total_kb);
+      snprintf(v, sizeof v, "%s free of %s", f, t);
+      break;
+    }
+    case fnx::sd_state::NO_FS:
+      snprintf(v, sizeof v, "Not FAT32");
+      break;
+    case fnx::sd_state::FAILED:
+      snprintf(v, sizeof v, "Not readable");
+      break;
+    default:
+      snprintf(v, sizeof v, "No card");
+      break;
+  }
+  info_row(sdg, "SD card", v);
+  if (sd.state == fnx::sd_state::NO_FS) note(c, "Format the card as FAT32 on a PC to use it here.");
+  sys::sd_probe();
   lv_obj_t* g = group(c);
   uint32_t used = 0, total = 0;
   sys::store_usage(&used, &total);
-  char v[40];
   snprintf(v, sizeof v, "%u KB of %u KB", (unsigned)used, (unsigned)total);
   info_row(g, "App storage", v);
   separator(g, 10);
@@ -269,6 +306,8 @@ static void storage_screen(lv_obj_t* scr) {
     info_row(list, app_tiles()[i].name, "");
   }
 }
+
+void settings_on_sd() { refresh_if_top(storage_screen); }
 
 // ---- Host PC ----
 

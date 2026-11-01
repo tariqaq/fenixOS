@@ -20,6 +20,7 @@ namespace ty {
 constexpr uint8_t HELLO = 0x01, HELLO_ACK = 0x02, PING = 0x03, PONG = 0x04, LOG = 0x05, ERROR = 0x06, STATS = 0x07;
 constexpr uint8_t TIME_SET = 0x10, REBOOT = 0x11, BOARD_STATE = 0x12, TOUCH = 0x13, SYSINFO_REQ = 0x14, SYSINFO = 0x15;
 constexpr uint8_t RADIO_STATE = 0x16, RADIO_SET = 0x17, WIFI_SCAN_REQ = 0x18, WIFI_SCAN = 0x19, WIFI_JOIN = 0x1A;
+constexpr uint8_t SD_STATE = 0x1C;  // P50, optional
 constexpr uint8_t WEATHER_SET = 0x1B;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
@@ -182,6 +183,18 @@ struct RadioState {
 };
 bool read_radio_state(Reader& r, RadioState& s);
 void write_radio_state(Writer& w, const RadioState& s);
+// SD_STATE (P50): the microSD card.
+namespace sd_state {
+// NO_FS: a card answered but has no FAT file system (exFAT, NTFS, blank).
+constexpr uint8_t NONE = 0, READY = 1, NO_FS = 2, FAILED = 3;
+}
+struct SdState {
+  uint8_t state;
+  uint32_t total_kb, free_kb;
+  uint16_t clock_khz;
+};
+bool read_sd_state(Reader& r, SdState& s);
+void write_sd_state(Writer& w, const SdState& s);
 // WIFI_SCAN: status:u8, count:u8, then that many WifiAp.
 struct WifiAp {
   char ssid[SSID_LEN];

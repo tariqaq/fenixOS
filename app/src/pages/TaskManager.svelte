@@ -194,6 +194,9 @@
           { name: "Firmware", used: cur.app_size, total: cur.app_slot, unit: bytes },
           { name: "Apps", used: cur.apps_used, total: cur.apps_total, unit: bytes },
           { name: "Settings", used: cur.nvs_used, total: cur.nvs_total, unit: (n: number) => `${n} entries` },
+          ...(board.sd?.state === 1
+            ? [{ name: "SD card", used: (board.sd.total_kb - board.sd.free_kb) * 1024, total: board.sd.total_kb * 1024, unit: bytes }]
+            : []),
         ] as d (d.name)}
           <div class="meter">
             <p class="lbl">{d.name}<span class="num">{d.unit(d.used)} of {d.unit(d.total)}</span></p>

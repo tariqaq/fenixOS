@@ -337,6 +337,20 @@ void write_radio_state(Writer& w, const RadioState& s) {
   w.str(s.name);
 }
 
+bool read_sd_state(Reader& r, SdState& s) {
+  s.state = r.u8();
+  s.total_kb = r.u32();
+  s.free_kb = r.u32();
+  s.clock_khz = r.u16();
+  return r.done();
+}
+void write_sd_state(Writer& w, const SdState& s) {
+  w.u8(s.state);
+  w.u32(s.total_kb);
+  w.u32(s.free_kb);
+  w.u16(s.clock_khz);
+}
+
 bool read_wifi_ap(Reader& r, WifiAp& a) {
   r.str(a.ssid, sizeof a.ssid);
   a.rssi = (int8_t)r.u8();

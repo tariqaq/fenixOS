@@ -47,7 +47,7 @@ PC app (fenixOS v0.1.0, Windows):
 
 ### 1.2 Not in v0.1
 
-SD card, Wi-Fi and NTP (both came in P34), Bluetooth (tried in P33, removed in P38), LDR auto-brightness, sounds, developer overlay, factory reset, manual time set, on-board OTA, other time zones, macOS or Linux PC app, enforced sandboxing of sidecars (C10: trust comes from the registry), Authenticode code signing, any real extra app (extra apps live in their own repos; this repo only has a test fixture app).
+SD card (came in P50, v0.1.20), Wi-Fi and NTP (both came in P34), Bluetooth (tried in P33, removed in P38), LDR auto-brightness, sounds, developer overlay, factory reset, manual time set, on-board OTA, other time zones, macOS or Linux PC app, enforced sandboxing of sidecars (C10: trust comes from the registry), Authenticode code signing, any real extra app (extra apps live in their own repos; this repo only has a test fixture app).
 
 ## 2. Repo layout
 
@@ -140,7 +140,7 @@ docs/, pics/
 | Session | `HELLO` (P→B: magic, proto ver), `HELLO_ACK` (B→P: magic, proto ver, fw version, panel size, rotation, free heap, app storage used/free, MAC), `PING`/`PONG`, `LOG`, `ERROR`, `STATS` |
 | System | `TIME_SET` (UTC epoch s), `REBOOT`, `BOARD_STATE` (B→P: screen, open app, dimmed, uptime); added later without a proto bump: `TOUCH` (P→B), `SYSINFO_REQ` / `SYSINFO` (P27, Task manager) |
 | Apps | `APP_LIST_REQ`/`APP_LIST` (id, version, sha256 per installed app), `APP_INSTALL_BEGIN` (id, version, size, sha256), `APP_CHUNK` (offset, data), `APP_INSTALL_END` → `APP_RESULT`, `APP_REMOVE`, `APP_OPENED`/`APP_CLOSED` (B→P), `HOST_STATE` (P→B: per app, PC half running or not) |
-| Bindings | `BIND_SET` (P→B: app, binding id, typed value: int, bool, string, image ref; corrected: proto 1 has int, bool and text only, an image binding is planned for P50, `docs/requests/morpheus.md`), `EVENT` (B→P: app, element id, kind tap/long/change, value) |
+| Bindings | `BIND_SET` (P→B: app, binding id, typed value: int, bool, string, image ref; corrected: proto 1 has int, bool and text only, an image binding is planned for P50-M, `docs/requests/morpheus.md`), `EVENT` (B→P: app, element id, kind tap/long/change, value) |
 | Stream | `STREAM_START` (P→B: target fps), `STREAM_STOP`, `STREAM_RECT` (B→P: x, y, w, h, codec, chunk), `STREAM_SYNC`, `STREAM_INFO`. Corrected: no frame number or `STREAM_FRAME_END` in proto 1; since P14 the board also sends `STREAM_START` / `STREAM_STOP` as state reports (`proto/spec.md`) |
 
 - The max payload stays about 1200 B. Larger items are chunked.

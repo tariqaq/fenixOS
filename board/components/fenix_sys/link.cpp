@@ -144,6 +144,7 @@ static void post(LinkEv t, int32_t v = 0, const char* text = nullptr) {
 }
 
 bool link_poll(LinkEvent* e) { return s_events && xQueueReceive(s_events, e, 0) == pdTRUE; }
+void link_post(LinkEv t, int32_t v, const char* text) { post(t, v, text); }
 bool link_connected() { return s_connected; }
 bool bind_poll(BindValue* v) { return s_binds && xQueueReceive(s_binds, v, 0) == pdTRUE; }
 
@@ -267,6 +268,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
         report_oom();
       }
       radio_report();  // every HELLO: a new PC session may start before the old one timed out
+      sd_report();
       return;
     }
     case fnx::ty::PING: {

@@ -59,7 +59,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
-- Morpheus requests (`docs/requests/morpheus.md`), before P50 starts: (1) `view` only, or a bindable `show` on every element too? (2) a `secret` setting type (masked, DPAPI)? (3) one release or two (P50 + P51)? Then the user's go.
+- Morpheus requests (`docs/requests/morpheus.md`), before P50-M starts: (1) `view` only, or a bindable `show` on every element too? (2) a `secret` setting type (masked, DPAPI)? (3) one release or two (P50-M + P51-M)? Then the user's go.
 
 ## Now
 
@@ -94,7 +94,14 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 2. Flashed the spike (`fenix flash`), read UART0, flashed fenixOS v0.1.19 back (`fenix hello`: v0.1.19, settings kept)
   - [x] 3. Results in `docs/board-info.md` "SD card check": 8 GB SDHC, FAT32, 40 MHz works (2.7 MB/s raw reads); FAT32 over exFAT
 - [x] SD card run 2 (user, 2026-11-02: "reformat ... enable long file names ... find a fix" for the bus clash): spike formats only a card not in the SD Association layout (done once: partition and data area on 4 MB boundaries, 32 KB clusters), 40 MHz, LFN on, 4 KB stdio buffer, touch on bit-banged SPI while the card streams on the other core (346 µs per touch read, no effect on SD). fenixOS v0.1.19 flashed back. Results: `docs/board-info.md` "Run 2"
-- [ ] P50 App runtime for Morpheus, release v0.1.20 (not started; plan, waiting for the user)
+- [~] P50 SD card base, release v0.1.20 (user, 2026-11-02: "implement it"; picks in `docs/decisions.md` "2026-11-02: SD, apps, OTA")
+  - [x] 1. Touch on software SPI: `fenix_hal/include/fenix_touch.hpp` (XPT2046 bit-banged, LovyanGFX's frame and median filter), `fenix_lgfx.hpp` uses it; SPI3 left to the SD card
+  - [x] 2. `fenix_sys/sd.cpp`: SPI3 at 40 MHz, FAT32 at `/sd`, long names on the heap, 512 B sectors, `max_files` 4; one-shot mount task; probe again from Settings › Storage and on HELLO; a card that stops answering is marked gone. Found: SPI DMA AUTO fails next to the LCD (falls back to channel 2); the local `sdkconfig` kept 8.3 names and 4 KB sectors (mount cost 28 KB, now 9.6 KB). Image 1,155,568 B (+38 KB); heap with Wi-Fi and card 70.6 KB (v0.1.19: 79.9)
+  - [x] 3. `SD_STATE` 0x1C (B→P, optional): Rust and C++ codecs, vector appended, spec row
+  - [x] 4. Board Settings › Storage: SD card group; simulator stub and golden
+  - [x] 5. PC: engine state, Board page row, Task manager meter, `fenix sd`
+  - [~] 6. Docs (spec, board-info, PLAN, README, decisions, Morpheus refs), tests (checks ok, cargo 0 failed, proto host 41/41, svelte-check 0/0, sim 25/25), v0.1.20 built, installed (/S), flashed (`fenix hello`: v0.1.20; `fenix sd`: ready, 7671 MB free, 40 MHz), tagged. Left: the user taps the panel to check touch on software SPI
+- [ ] P50-M App runtime for Morpheus (was P50, not started; waits for the SD/OTA phases)
   - [ ] 1. Reproduce the `opened` burst: 50 `BIND_SET` right after `APP_OPENED`, count what the board applies. Fix: PC keeps the latest value per binding and paces the burst; board queue with compact entries (text in a small ring), deeper than 16
   - [ ] 2. `view` element (kind 9): int `bind` picks the one child shown (`LV_OBJ_FLAG_HIDDEN` on the rest); compiler, both readers, host tests, sim screen
   - [ ] 3. Bindable button text (string) and icon glyph (int index on `icon` and icon buttons); 14 glyphs added to the fill icon fonts (`play`, `pause`, `skip-forward`, `skip-back`, `speaker-high`, `speaker-x`, `microphone`, `microphone-slash`, `headphones`, `game-controller`, `music-notes`, `video`, `phone`, `sparkle`); flash measured
@@ -102,7 +109,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [ ] 5. Measure on the board: Morpheus-sized layout with 120×120 art, Wi-Fi on (PC over Wi-Fi and over USB) and radio off; lowest heap with `fenix bench` (no stream). Set the RAM estimate cap (~56 KB) and the art cap (96 or 120) from it
   - [ ] 6. `screen` permission: `tools/registry.py`, `templates/app/tools/app.py`, `app/src/lib/api.ts`, `docs/registry.md`, template `registry.md`
   - [ ] 7. Docs (packages, spec, sidecars, registry, template copies), template pin to v0.1.20, zip; tests; release; answer in `docs/requests/morpheus.md`
-- [ ] P51 Text and labels, release v0.1.21 (not started)
+- [ ] P51-M Text and labels for Morpheus (was P51, not started)
   - [ ] 1. Latin-1 Supplement (0xA0–0xFF) in the text fonts (`tools/gen_fonts.py`); flash measured
   - [ ] 2. SDK helper: transliterate to the board's glyph set, `?` for unknown
   - [ ] 3. Label `overflow` (`wrap`, `clip`, `ellipsis`, `scroll`) and `max_lines`
@@ -111,9 +118,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [x] Phone Web Bluetooth page: dropped, P38 removed Bluetooth (needs BLE on the board)
-  - [ ] OTA over Wi-Fi after the SD card (user; 2026-10-31: not before the SD card, even if P38 makes two slots fit the 4 MB flash). A/B slots need ~2 x 1.6 MB; the 4 MB flash fits that only with the apps partition (1.94 MB) moved to the SD card
-  - [ ] With the SD card (user, 2026-11-01): CJK fonts and text beyond Latin-1, app screens built only when shown (Morpheus requests)
-  - [ ] SD card in fenixOS (card in the slot since 2026-11-02, not planned yet), from the spike: touch on a bit-banged XPT2046 class (LovyanGFX has only hardware SPI), SD on SPI3 at 40 MHz, FAT32 with `CONFIG_FATFS_LFN_HEAP`, `CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096`, `CONFIG_WL_SECTOR_SIZE_512` (measure the RAM), a format in the SD Association layout (spike code), stacks over 4 KB for tasks that open files
+  - [x] OTA over Wi-Fi after the SD card: planned as P52 (two 1.5 MB slots, 896 KB flash app store)
+  - [ ] With the SD card (user, 2026-11-01): CJK fonts and text beyond Latin-1 (fonts from SD planned in P54), app screens built only when shown (Morpheus requests)
   - Not planned: both radios at once (P29: ~40 KB free), LCD SPI at 80 MHz (garbles the panel, P10), fps caps for RAM (no gain), A2DP and HID (user)
 
 ## Decisions (current; superseded ones in the history file)

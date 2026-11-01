@@ -91,6 +91,12 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       write_radio_state(w, s);
       break;
     }
+    case ty::SD_STATE: {
+      SdState s;
+      if (!read_sd_state(r, s)) return false;
+      write_sd_state(w, s);
+      break;
+    }
     case ty::RADIO_SET:
       w.u8(r.u8());
       if (!r.done()) return false;

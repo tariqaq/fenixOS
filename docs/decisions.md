@@ -257,3 +257,20 @@ Consequences:
 | SD clock | 20 MHz (IDF default) / **40 MHz** | **40 MHz**: the highest ESP32 step (80 / 2) under the card's 50 MHz limit; worked on this card in both runs |
 | Long file names | Off (8.3) / **on, buffers on the heap** | **On** (user: "a no brainer"): app ids name files |
 | SPI clash (LCD, touch and SD on three pin sets, two SPI controllers) | Switch SPI3's pins between touch and SD / **touch on software SPI** | **Software SPI for touch**: 346 µs per read, only while pressed (~2 % of core 1), the SD card keeps hardware SPI at 40 MHz; tested together without effect on either |
+
+## 2026-11-02: SD, apps, OTA (user picks; plan in `tasks.md` P50 to P55)
+
+The user's request: an app added in the PC app installs both halves, the board half on the SD card; switching an app off on the PC stops it on both sides but keeps it on the board; OTA updates from an SD package, USB or Wi-Fi with two slots; RAM kept low throughout; ideas for the 8 GB card.
+
+| Question | Options | Choice |
+|---|---|---|
+| Flash layout | Keep one 2 MB slot + 1.94 MB app store / **two 1.5 MB OTA slots + 896 KB app store** / two 1.9 MB slots, no flash app store | **Two 1.5 MB slots + 896 KB LittleFS** (nvs 0x9000 24 KB, otadata 0xF000 8 KB, phy_init 0x11000 4 KB, ota_0 0x20000, ota_1 0x1A0000, apps 0x320000): the image is 1,155,568 B (v0.1.20), so a 1.5 MB slot (1,572,864 B) leaves ~407 KB to grow; the flash store stays as the fallback with no card. Moving to it needs one serial flash (new partition table and bootloader) |
+| OTA trust | Hash only / **signed firmware** | **Signed (ECDSA P-256)**: the release signs the image; the board checks the signature before it switches slots. The private key is kept like the updater key, never in git |
+| App switched off on the PC | Remove it from the board (today) / **keep it, stop both halves** | **Keep it.** The tile stays; opening it shows "Turned off on your PC" with a **Turn on** button that asks the PC, which switches the app on without a click on the PC |
+| Where the board half goes | Flash / **SD card, flash when there is no card** | **SD card first**, global default apps too |
+| No card | Refuse installs / **fall back to flash** | **Flash fallback** (smaller cap). Tiles of apps on a missing card are greyed: "Insert the SD card" |
+| OTA path | Write the spare slot while receiving / **stage on the card, then install** | **Stage on SD** (PC to card, resumable), check the signature, then write the spare slot. With no card, write the slot directly (USB or Wi-Fi) |
+| Package size cap | 1 MB / **8 MB on SD, 256 KB on flash** | **8 MB on SD** (user: "can be way higher than 1 mb surely"): install time (~42 KB/s over USB, ~3 min for 8 MB) and RAM per screen are the real limits, not the card. 256 KB on the flash fallback |
+| What else the card brings | (all picked) | Logs and crash records on SD; keep the previous firmware (roll back from Settings); bigger packages; ~30 apps (paged APP_LIST); last values while the PC is off; fonts from SD (LVGL Tiny TTF, `LV_TINY_TTF_FILE_SUPPORT`); screenshots to SD; UI sounds (speaker on IO26) |
+| Order | Plan only / **build the SD base now, plan the rest** | **SD base now** (P50, v0.1.20), the rest planned, then standby |
+| SD mount RAM | `max_files` 2 / **4** | **4** (P50): each costs 552 B; fonts from SD will hold a file open while an install, a log or a screenshot opens others |

@@ -131,6 +131,9 @@ void on_link(const sys::LinkEvent& e) {
       break;
     case sys::LinkEv::TIME_SET:
       break;  // home_tick picks the new time up
+    case sys::LinkEv::SD_CHANGED:
+      settings_on_sd();
+      break;
     case sys::LinkEv::STREAM_START:
       stream_set(true, e.value);
       break;

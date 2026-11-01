@@ -99,3 +99,9 @@ CONFIG_LWIP_IRAM_OPTIMIZATION=y
 # CONFIG_LOG_IN_IRAM is not set
 # SNTP (P34): pool.ntp.org and time.cloudflare.com.
 CONFIG_LWIP_SNTP_MAX_SERVERS=2
+
+# microSD (P50, docs/board-info.md "SD card check"): long file names (app ids name files), buffers
+# on the heap; FatFs sector buffers at 512 B (4 KB is for FAT on wear-levelled flash, unused here).
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255
+CONFIG_WL_SECTOR_SIZE_512=y

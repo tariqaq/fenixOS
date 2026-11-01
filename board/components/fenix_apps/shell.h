@@ -19,6 +19,7 @@ void home_screen(lv_obj_t* scr);
 void home_tick();
 void settings_screen(lv_obj_t* scr);
 void settings_tick();  // refreshes Wireless when the radio's state changes
+void settings_on_sd();  // the microSD card changed: refreshes Storage if it shows
 void stream_screen(lv_obj_t* scr);
 void session_open();
 // Stream rate when started on the board (the PC asks for the same). USB's 460800 baud is full at

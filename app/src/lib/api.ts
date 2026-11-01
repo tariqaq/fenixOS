@@ -22,6 +22,29 @@ export interface Board {
   app_id: string;
   /** The board's radio; null before firmware 0.1.8 or before its first report. */
   radio: RadioState | null;
+  /** The board's microSD card; null before firmware 0.1.20 or before its first report. */
+  sd: SdState | null;
+}
+
+/** SD_STATE (proto/spec.md, P50). state: 0 no card, 1 ready, 2 no FAT file system, 3 not readable. */
+export interface SdState {
+  state: number;
+  total_kb: number;
+  free_kb: number;
+  clock_khz: number;
+}
+
+/** "7.5 GB free of 7.5 GB", "No card": the board's SD card in words. */
+export function sdText(sd: SdState | null): string {
+  if (!sd) return "Unknown";
+  if (sd.state === 1) return `${sizeText(sd.free_kb)} free of ${sizeText(sd.total_kb)}`;
+  return ["No card", "", "Not FAT32", "Not readable"][sd.state] ?? "Unknown";
+}
+
+function sizeText(kb: number): string {
+  if (kb < 1024 * 1024) return `${Math.floor(kb / 1024)} MB`;
+  const gb = kb / (1024 * 1024);
+  return gb < 10 ? `${(Math.floor(gb * 10) / 10).toFixed(1)} GB` : `${Math.floor(gb)} GB`;
 }
 
 /** RADIO_STATE (proto/spec.md). mode: 0 off, 2 Wi-Fi (1 was Bluetooth, removed in P38). state: 0 off, 1 starting,

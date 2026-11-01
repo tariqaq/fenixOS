@@ -214,6 +214,13 @@ bool stream_has_room(size_t) { return true; }
 uint32_t stream_dropped() { return 0; }
 void stream_set_active(bool on) { s_stream = on; }
 
+// microSD (P50): the 8 GB card on the user's board, freshly formatted, so Storage looks real.
+SdInfo sd_info() { return {fnx::sd_state::READY, 7855104, 7855104, 40000}; }
+void sd_start() {}
+void sd_probe() {}
+void sd_report() {}
+void link_post(LinkEv, int32_t, const char*) {}
+
 // Radios (P32): no stacks; a switch takes effect at once instead of after a restart.
 static RadioInfo s_radio{};
 void radio_start() {}

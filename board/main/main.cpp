@@ -24,6 +24,7 @@ extern "C" void app_main(void) {
   fx::sys::store_mount();
   fx::sys::link_start();
   fx::sys::radio_start();
+  fx::sys::sd_start();
 
   fx::sys::LinkEvent e;
   for (;;) {

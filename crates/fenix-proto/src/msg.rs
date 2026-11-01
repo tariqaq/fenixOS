@@ -23,6 +23,7 @@ pub mod ty {
     pub const WIFI_SCAN: u8 = 0x19;
     pub const WIFI_JOIN: u8 = 0x1A;
     pub const WEATHER_SET: u8 = 0x1B;
+    pub const SD_STATE: u8 = 0x1C;
     pub const APP_LIST_REQ: u8 = 0x20;
     pub const APP_LIST: u8 = 0x21;
     pub const APP_INSTALL_BEGIN: u8 = 0x22;
@@ -225,6 +226,27 @@ pub mod radio_state {
     pub const FAILED: u8 = 5;
 }
 
+/// `SD_STATE` states (P50).
+pub mod sd_state {
+    pub const NONE: u8 = 0;
+    pub const READY: u8 = 1;
+    /// A card answered but has no FAT file system (exFAT, NTFS, blank).
+    pub const NO_FS: u8 = 2;
+    pub const FAILED: u8 = 3;
+}
+
+/// The board's microSD card (P50; optional, firmware 0.1.20 and later).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct SdState {
+    /// `sd_state`.
+    pub state: u8,
+    pub total_kb: u32,
+    pub free_kb: u32,
+    /// SPI clock the card runs at.
+    pub clock_khz: u16,
+}
+
 /// `WIFI_SCAN` security of an access point.
 pub mod wifi_auth {
     pub const OPEN: u8 = 0;
@@ -296,6 +318,7 @@ pub enum Msg {
     /// Switch the radio: the board saves the mode and restarts.
     RadioSet(u8),
     WifiScanReq,
+    SdState(SdState),
     WifiScan {
         status: u8,
         aps: Vec<WifiAp>,
@@ -485,6 +508,7 @@ impl Msg {
             RadioState(_) => ty::RADIO_STATE,
             RadioSet(_) => ty::RADIO_SET,
             WifiScanReq => ty::WIFI_SCAN_REQ,
+            SdState(_) => ty::SD_STATE,
             WifiScan { .. } => ty::WIFI_SCAN,
             WifiJoin { .. } => ty::WIFI_JOIN,
             WeatherSet { .. } => ty::WEATHER_SET,
@@ -596,6 +620,9 @@ impl Msg {
             }
             RadioSet(m) => {
                 w.u8(*m);
+            }
+            SdState(s) => {
+                w.u8(s.state).u32(s.total_kb).u32(s.free_kb).u16(s.clock_khz);
             }
             WifiScan { status, aps } => {
                 w.u8(*status).u8(aps.len() as u8);
@@ -755,6 +782,12 @@ impl Msg {
             }),
             ty::RADIO_SET => Msg::RadioSet(r.u8()?),
             ty::WIFI_SCAN_REQ => Msg::WifiScanReq,
+            ty::SD_STATE => Msg::SdState(SdState {
+                state: r.u8()?,
+                total_kb: r.u32()?,
+                free_kb: r.u32()?,
+                clock_khz: r.u16()?,
+            }),
             ty::WIFI_SCAN => {
                 let status = r.u8()?;
                 let n = r.u8()?;

@@ -8,6 +8,7 @@
 //! fenix sysinfo                    the Task manager's numbers: two SYSINFO 1 s apart, per-core
 //!                                  load, heap, flash, tasks with CPU % and stack free
 //! fenix radio [off|wifi]           show the radio, or switch it (the board restarts)
+//! fenix sd                         show the microSD card (firmware 0.1.20 and later)
 //! fenix wifi scan                  networks the board hears (Wi-Fi mode)
 //! fenix wifi join <ssid> [pass]    save a network on the board and connect; wifi forget
 //! fenix weather <lat> <lon> <name>  weather place (Wi-Fi mode fetches it); weather off. The PC
@@ -75,6 +76,7 @@ fn main() {
             Some("wifi") => one_shot(opts, Msg::RadioSet(radio::WIFI)),
             _ => usage(),
         },
+        "sd" => sd_show(opts),
         "weather" => match (args.get(1).map(|s| s.as_str()), args.get(2), args.get(3)) {
             (Some("off"), _, _) => one_shot(
                 opts,
@@ -194,7 +196,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -433,6 +435,33 @@ fn radio_show(opts: LinkOptions) -> i32 {
         }
     }
     eprintln!("no RADIO_STATE (firmware before 0.1.8?)");
+    1
+}
+
+/// The board sends SD_STATE right after the handshake (firmware 0.1.20 and later).
+fn sd_show(opts: LinkOptions) -> i32 {
+    let link = Link::spawn(opts);
+    let end = Instant::now() + Duration::from_secs(6);
+    while Instant::now() < end {
+        if let Some(Event::Msg(Msg::SdState(s))) = link.recv_event(Duration::from_millis(50)) {
+            let state = ["no card", "ready", "no FAT file system", "not readable"]
+                .get(s.state as usize)
+                .copied()
+                .unwrap_or("?");
+            if s.state == fenix_proto::sd_state::READY {
+                println!(
+                    "sd: {state}, {} MB free of {} MB, {} kHz",
+                    s.free_kb / 1024,
+                    s.total_kb / 1024,
+                    s.clock_khz
+                );
+            } else {
+                println!("sd: {state}");
+            }
+            return 0;
+        }
+    }
+    eprintln!("no SD_STATE (firmware before 0.1.20?)");
     1
 }
 

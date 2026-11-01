@@ -3,7 +3,7 @@
   // (artboard 16); "Reinstall firmware" opens the update dialog (artboard 12).
   import Icon from "../lib/Icon.svelte";
   import Mirror from "../lib/Mirror.svelte";
-  import { linkText, rebootBoard, uptime, type Board } from "../lib/api";
+  import { linkText, rebootBoard, sdText, uptime, type Board } from "../lib/api";
 
   let {
     board,
@@ -33,6 +33,9 @@
         <div class="row"><p>Firmware</p><p class="value">fenixOS v{board.firmware}</p></div>
         <div class="row"><p>Model</p><p class="value">ESP32-2432S028R</p></div>
         <div class="row"><p>Up for</p><p class="value">{uptime(up)}</p></div>
+        {#if board.sd}
+          <div class="row"><p>SD card</p><p class="value">{sdText(board.sd)}</p></div>
+        {/if}
       </div>
       <p class="hint">
         {#if matches}

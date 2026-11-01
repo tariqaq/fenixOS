@@ -2,19 +2,20 @@
 
 Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
 
-**Current state (2026-11-01): fenixOS v0.1.19** (flashed with `fenix flash`, P48). Corrected: said v0.1.15.
+**Current state (2026-11-02): fenixOS v0.1.20** (flashed with `fenix flash`, P50: SD card base, touch on software SPI). Corrected: said v0.1.19.
 
 Current numbers (v0.1.12 unless marked; the sections below are a dated log, so older numbers in them are history):
 
 | What | Value |
 |---|---|
-| Firmware image | 1,117,296 B in the 2 MB factory slot (47% free, v0.1.15); IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
-| Heap at boot, Wi-Fi joined | 81.8 KB free of 281 KB (P40); 82.2 KB at v0.1.15 (`fenix hello`, 8 s after boot) |
+| Firmware image | 1,155,568 B in the 2 MB factory slot (45% free, v0.1.20; SD card base, P50); 1,117,296 B at v0.1.15; IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
+| Heap at boot, Wi-Fi joined | 70.6 KB free of 281 KB with the SD card mounted (v0.1.20, 50 s up; the mount takes 9.6 KB, P50); 79.9 KB at v0.1.19 without the card code; 81.8 KB at P40 |
 | Heap at boot, radio off | 154.9 KB (P38, before the P40 trims) |
 | Animation fps (`fenix bench 15 nostream`) | 25.5 (P38) |
 | Stream over USB / Wi-Fi (`fenix bench 15`) | 25.0 fps, 43 KB/s / 25.8 fps, 53 KB/s; lowest heap in a Wi-Fi stream 23.9 KB (P40). Stream rate since P46: 10 fps over USB, 25 over Wi-Fi (table in the P46 section) |
 | Install of a 32 KB package | 0.48 s over USB, 0.41-0.55 s over Wi-Fi; lowest heap 51.3 KB (P39) |
 | App store | LittleFS, 1984 KB (8 KB used when empty) |
+| SD card | 8 GB SDHC, FAT32 (SD Association layout), SPI3 at 40 MHz, 2.7 MB/s reads (P50) |
 
  Corrected: the board was fully erased on 2026-10-29 (`esptool erase-flash`, a 4 MB read-back all `0xFF`) before fenixOS went on it. Both earlier images are backed up and can be restored (below).
 
@@ -272,8 +273,19 @@ The spike now checks the layout and formats only a card that is not in the SD As
 - **Long file names:** `CONFIG_FATFS_LFN_HEAP=y`, `CONFIG_FATFS_MAX_LFN=255`: `apps/io.github.tariqaq.morpheus.fxp` (64 KB) written, listed by name, stat'd, deleted.
 - **Touch on software SPI:** XPT2046 bit-banged at ~2 MHz (the chip allows 2.5 MHz; LovyanGFX's driver only does hardware SPI, so fenixOS needs a small touch class of its own). The same 57-byte frame LovyanGFX sends per touch read takes 346 µs (326 to 406) against ~200 µs on hardware SPI at 2.5 MHz. A read happens only while the screen is pressed (the IRQ pin is checked first, as LovyanGFX does), every 16 ms (`LV_DEF_REFR_PERIOD`), so it costs ~2 % of core 1 while a finger is down and nothing otherwise. Temperature channel 730 to 830 raw across 1,001 reads (plausible values, so the bus works); IRQ high before conversions (the IRQ reads low just after a conversion, so it must be sampled first).
 - **Both at once:** 4 MB written and read back on core 0 at 2,244 KB/s (verified) while touch was read every 10 ms on core 1: no effect either way.
-- Stack and RAM: a FatFs `FIL` holds its own sector buffer (`CONFIG_FATFS_PER_FILE_CACHE=y`) of `FF_MAX_SS`, which is 4 KB because `CONFIG_WL_SECTOR_SIZE=4096` (FatFs on wear-levelled flash), so a `FIL` on a 4 KB task stack overflowed. fenixOS has no FAT on flash (its app store is LittleFS), so `CONFIG_WL_SECTOR_SIZE_512` should cut each open file and the volume buffer to 512 B. Not measured.
+- Stack and RAM: a FatFs `FIL` holds its own sector buffer (`CONFIG_FATFS_PER_FILE_CACHE=y`) of `FF_MAX_SS`, which is 4 KB because `CONFIG_WL_SECTOR_SIZE=4096` (FatFs on wear-levelled flash), so a `FIL` on a 4 KB task stack overflowed. fenixOS has no FAT on flash (its app store is LittleFS), so `CONFIG_WL_SECTOR_SIZE_512` should cut each open file and the volume buffer to 512 B. Corrected (P50, measured): it does, `sizeof(FIL)` 552 B and `sizeof(FATFS)` 564 B (below).
 - fenixOS v0.1.19 flashed back (`fenix hello`: v0.1.19, settings kept).
+
+## SD card in fenixOS (P50, 2026-11-02)
+
+fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MHz, FAT32 at `/sd`, long names, `max_files` 4, never formats. A one-shot task mounts it after boot (no card-detect pin: Settings › Storage and a PC connecting probe again). Touch moved to software SPI (`fenix_hal/include/fenix_touch.hpp`).
+
+- **DMA channel:** `spi_bus_initialize(SPI3_HOST, ..., SPI_DMA_CH_AUTO)` failed with `ESP_ERR_NOT_FOUND` (0x105) next to LovyanGFX's LCD on SPI2. Probed: `SPI_DMA_CH1` 0x105, `SPI_DMA_CH2` ok, no DMA ok. LovyanGFX holds channel 1; why AUTO did not pick channel 2 was not traced. `sd.cpp` tries AUTO, then channel 2, then 1.
+- **`sdkconfig.defaults` does not change an existing `board/sdkconfig`:** a choice already written there (`CONFIG_FATFS_LFN_NONE`, `CONFIG_WL_SECTOR_SIZE_4096`) wins over a new default. The first P50 build kept 8.3 names and 4 KB sectors, and the mount cost 28 KB of heap. Fix: delete those lines from the local `board/sdkconfig` (not in git; CI starts from the defaults) and build again.
+- **Heap cost of the mount (measured, 512 B sectors):** 9.6 KB, plus 0.3 KB for the SPI bus. Of it: the VFS context with 4 × `FIL` (552 B each, with its sector cache) and `FATFS` (564 B), plus two fixed path buffers of `FILENAME_MAX + 3` (2 × 1,027 B) in IDF's `vfs_fat.c`; the rest is the sdspi device, the card struct and the FatFs mutex. Each extra `max_files` costs 552 B. Long-name buffers are on the heap only during a call.
+- **Heap with Wi-Fi joined, card mounted:** 70.6 KB free (lowest 66.0 KB) at 50 s up, against 79.9 KB on v0.1.19 at the same point (`fenix sysinfo`).
+- **Image:** 1,155,568 B (+38 KB on v0.1.19: FatFs, sdspi, SD state and UI).
+- **Card seen by fenixOS:** 7,856,128 KB total, 7,856,096 KB free, 40,000 kHz (`fenix sd`).
 
 ### SD clock
 

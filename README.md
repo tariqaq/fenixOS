@@ -2,7 +2,7 @@
 
 A small operating system for the ESP32-2432S028R ("Cheap Yellow Display", 2.8" 320×240 touch screen), plus its companion app for Windows. Both share one version number.
 
-- **Board:** C++17 on ESP-IDF v5.5.5, LVGL 9 + LovyanGFX. Boot screen, a home screen with time and date, three system apps (Settings, Session, Stream), apps installed from the PC, Wi-Fi (PC link, network time, weather, a status page at http://fenixos.local/) and burn-in protection for the LCD.
+- **Board:** C++17 on ESP-IDF v5.5.5, LVGL 9 + LovyanGFX. Boot screen, a home screen with time and date, three system apps (Settings, Session, Stream), apps installed from the PC, Wi-Fi (PC link, network time, weather, a status page at http://fenixos.local/) a microSD card (FAT32, shown in Settings › Storage) and burn-in protection for the LCD.
 - **PC app:** Rust + Tauri 2 + Svelte 5. Lives in the tray, finds the board over USB (or Wi-Fi at fenixos.local), installs and switches apps, mirrors the board's screen, shows the board's load live (Task manager: CPU per core, memory, storage, the link, threads), keeps the board's firmware and time in step.
 - **Design:** Apple-style dark theme (`DESIGN.md`), Inter and Phosphor icons.
 

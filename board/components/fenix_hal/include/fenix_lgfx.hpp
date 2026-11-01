@@ -1,15 +1,18 @@
 // LovyanGFX config for the ESP32-2432S028R (CYD, PCB V1.4).
-// Pins: pics/ANALYSIS.md. LCD on HSPI (SPI2), touch XPT2046 on its own VSPI (SPI3) bus.
+// Pins: pics/ANALYSIS.md. LCD on HSPI (SPI2); touch XPT2046 on software SPI (fenix_touch.hpp, P50),
+// because the microSD slot needs SPI3 (VSPI).
 #pragma once
 
 #define LGFX_USE_V1
 #include <LovyanGFX.hpp>
 
+#include "fenix_touch.hpp"
+
 class LGFX : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 panel_;
   lgfx::Bus_SPI bus_;
   lgfx::Light_PWM light_;
-  lgfx::Touch_XPT2046 touch_;
+  TouchSoftXPT2046 touch_;
 
  public:
   void set_spi_hz(uint32_t hz) {
@@ -79,8 +82,7 @@ class LGFX : public lgfx::LGFX_Device {
       cfg.pin_int = 36;
       cfg.bus_shared = false;
       cfg.offset_rotation = 0;
-      cfg.spi_host = SPI3_HOST;
-      cfg.freq = 2500000;
+      cfg.spi_host = -1;  // software SPI (fenix_touch.hpp)
       cfg.pin_sclk = 25;
       cfg.pin_mosi = 32;
       cfg.pin_miso = 39;

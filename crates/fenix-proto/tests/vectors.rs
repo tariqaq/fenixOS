@@ -285,6 +285,15 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 down: true,
             },
         ),
+        (
+            "sd_state",
+            Msg::SdState(SdState {
+                state: sd_state::READY,
+                total_kb: 7_855_104,
+                free_kb: 7_851_008,
+                clock_khz: 40_000,
+            }),
+        ),
     ]
 }
 

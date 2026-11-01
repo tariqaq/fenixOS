@@ -80,6 +80,7 @@ enum class LinkEv : uint8_t {
   STREAM_SYNC,
   HOST_STATE,  // value = running, text = app id
   APPS_CHANGED,  // text = app id installed or removed
+  SD_CHANGED,    // the microSD card came, went or changed (sd_info)
 };
 struct LinkEvent {
   LinkEv type;
@@ -89,6 +90,7 @@ struct LinkEvent {
 void link_start();
 bool link_connected();
 bool link_poll(LinkEvent* e);  // UI task: next pending event
+void link_post(LinkEv t, int32_t v = 0, const char* text = nullptr);  // any task: queue an event for the UI
 void link_log(uint8_t level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 // Send one frame (type + body). Blocks while the TX buffer is full. Thread-safe.
 void link_send(uint8_t type, const uint8_t* body, size_t n);
@@ -136,6 +138,14 @@ int radio_scan_results(fnx::WifiAp* out, int max);  // last scan, strongest firs
 void radio_join(const char* ssid, const char* pass);  // saved in plaintext; empty ssid forgets
 void radio_reconnect();                               // the saved network, now
 bool radio_saved_network(char* out, size_t cap);
+// ---- microSD (P50, sd.cpp): FAT32 at /sd, SPI3 at 40 MHz, long file names ----
+constexpr const char* SD_PATH = "/sd";
+using SdInfo = fnx::SdState;
+void sd_start();   // boot: mounts in a short-lived background task
+void sd_probe();   // checks a mounted card is still there, or mounts one; async, SD_CHANGED on a change
+SdInfo sd_info();
+void sd_report();  // SD_STATE to the PC; without a ready card it also probes again
+
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
 void web_start();  // phone page on port 80, status only (web.cpp)
