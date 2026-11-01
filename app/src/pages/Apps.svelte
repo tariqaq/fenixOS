@@ -7,11 +7,12 @@
   import Switch from "../lib/Switch.svelte";
   import AppSettings from "./AppSettings.svelte";
   import AddApp from "./AddApp.svelte";
-  import { setAppEnabled, tileColor, type AppView } from "../lib/api";
+  import SyncCard from "../lib/SyncCard.svelte";
+  import { setAppEnabled, tileColor, type AppView, type SyncItem } from "../lib/api";
   import { flip } from "svelte/animate";
   import { BASE, ease, enter, pop } from "../lib/motion";
 
-  let { apps }: { apps: AppView[] } = $props();
+  let { apps, sync }: { apps: AppView[]; sync: SyncItem[] } = $props();
 
   type View = { kind: "list" } | { kind: "settings"; id: string } | { kind: "add" };
   let view = $state<View>({ kind: "list" });
@@ -49,8 +50,14 @@
         <span>Add app</span>
       </button>
     </div>
+    {#if sync.length}
+      <SyncCard items={sync} />
+    {/if}
     {#if apps.length}
-      <p class="intro">Switch an app on to install it on the board. Click a tile for its settings.</p>
+      <p class="intro">
+        Added apps are on the board too. Switch one off to stop its PC part; its board tile fades. Click a tile for
+        its settings.
+      </p>
       <div class="grid">
         {#each apps as a (a.id)}
           <div
@@ -69,7 +76,7 @@
               </span>
             </button>
             <div class="switch">
-              <Switch tile checked={a.enabled} label="{a.name} on the board" onchange={(on) => setAppEnabled(a.id, on)} />
+              <Switch tile checked={a.enabled} label="{a.name} on" onchange={(on) => setAppEnabled(a.id, on)} />
             </div>
           </div>
         {/each}
@@ -78,7 +85,7 @@
       <div class="empty">
         <Icon name="puzzle-piece" size={40} color="var(--label-2)" />
         <p class="title">No apps yet</p>
-        <p class="text-empty">Add an app from the fenixOS registry. It shows up here, and on the board once you switch it on.</p>
+        <p class="text-empty">Add an app from the fenixOS registry. It shows up here and on the board.</p>
         <button type="button" class="link" onclick={() => go({ kind: "add" })}>Browse apps</button>
       </div>
     {/if}

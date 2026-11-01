@@ -143,9 +143,17 @@ static int run_script(const std::string& path, const std::string& out) {
       if (w[1] == "on") sim::post(sys::LinkEv::STREAM_START, num(2));
       else sim::post(sys::LinkEv::STREAM_STOP);
       run_for(300);
-    } else if (v == "host" && w.size() == 3 && (w[2] == "on" || w[2] == "off")) {
-      sim::post(sys::LinkEv::HOST_STATE, w[2] == "on", w[1].c_str());
+    } else if (v == "host" && w.size() == 3 &&
+               (w[2] == "on" || w[2] == "off" || w[2] == "gone" || w[2] == "starting")) {
+      uint8_t st = w[2] == "on" ? fnx::host::RUNNING
+                   : w[2] == "off" ? fnx::host::OFF
+                   : w[2] == "gone" ? fnx::host::NOT_HERE
+                                    : fnx::host::STARTING;
+      sim::post(sys::LinkEv::HOST_STATE, st, w[1].c_str());
       run_for(300);
+    } else if (v == "card" && w.size() == 2 && (w[1] == "in" || w[1] == "out")) {
+      sim::set_card(w[1] == "in");
+      run_for(600);
     } else {
       return fail(where, "unknown or malformed line: " + line);
     }

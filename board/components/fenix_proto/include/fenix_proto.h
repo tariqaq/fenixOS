@@ -24,7 +24,7 @@ constexpr uint8_t SD_STATE = 0x1C;  // P50, optional
 constexpr uint8_t WEATHER_SET = 0x1B;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
-constexpr uint8_t HOST_STATE = 0x2A;
+constexpr uint8_t HOST_STATE = 0x2A, APP_INDEX_REQ = 0x2B, APP_INDEX = 0x2C, APP_TURN_ON = 0x2D;  // index, turn on: P51
 constexpr uint8_t BIND_SET = 0x30, EVENT = 0x31;
 constexpr uint8_t STREAM_START = 0x40, STREAM_STOP = 0x41, STREAM_RECT = 0x42, STREAM_SYNC = 0x43, STREAM_INFO = 0x44;
 }  // namespace ty
@@ -35,8 +35,20 @@ constexpr uint8_t PROTO_MISMATCH = 1, UNKNOWN_TYPE = 2, BAD_BODY = 3, BUSY = 4, 
 }
 namespace app {
 constexpr uint8_t OP_INSTALL = 1, OP_REMOVE = 2;
-constexpr uint8_t OK = 0, NO_SPACE = 1, BAD_HASH = 2, BAD_PACKAGE = 3, BUSY = 4, STORAGE = 5, UNKNOWN_APP = 6;
+constexpr uint8_t OK = 0, NO_SPACE = 1, BAD_HASH = 2, BAD_PACKAGE = 3, BUSY = 4, STORAGE = 5, UNKNOWN_APP = 6,
+                  TOO_BIG_FOR_FLASH = 7;  // P51: over the 128 KB flash cap and no SD card
 }  // namespace app
+// HOST_STATE: the app's PC half. Before P51 a bool (0 off or not ready, 1 running).
+namespace host {
+constexpr uint8_t OFF = 0, RUNNING = 1, NOT_HERE = 2, STARTING = 3;  // NOT_HERE: kept on the board only
+}
+namespace app_where {
+constexpr uint8_t FLASH = 0, SD = 1;
+}
+namespace app_state {
+constexpr uint8_t READY = 0, CARD_MISSING = 1;
+}
+constexpr int APP_INDEX_PAGE = 8;  // APP_INDEX entries per page (worst case 8 x 107 B fits a frame)
 namespace screen {
 constexpr uint8_t BOOT = 0, HOME = 1, SETTINGS = 2, SESSION = 3, STREAM = 4, APP = 5;
 }
@@ -230,6 +242,15 @@ struct AppEntry {
 };
 void write_app_entry(Writer& w, const AppEntry& e);
 bool read_app_entry(Reader& r, AppEntry& e);
+
+// APP_INDEX (P51): page:u8, pages:u8, count:u8, then that many AppIndexEntry.
+struct AppIndexEntry {
+  char id[ID_LEN], version[ID_LEN];
+  uint8_t sha256[32];
+  uint8_t where, state;  // app_where, app_state
+};
+void write_app_index_entry(Writer& w, const AppIndexEntry& e);
+bool read_app_index_entry(Reader& r, AppIndexEntry& e);
 
 struct AppInstallBegin {
   char id[ID_LEN], version[ID_LEN];

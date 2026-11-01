@@ -30,6 +30,7 @@ void touch(bool down, int x = 0, int y = 0);
 void store_dir(const std::string& dir);
 void post(sys::LinkEv type, int32_t value = 0, const char* text = "");
 void set_connected(bool on);
+void set_card(bool in);  // the pretend SD card, which holds the store's apps (P51)
 // `name=value` pairs for app `id`'s binds, resolved through its package; false if unknown.
 bool set_binds(const std::string& id, const std::vector<std::string>& pairs, std::string* err);
 bool install(const std::string& fxp, std::string* id, std::string* err);

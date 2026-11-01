@@ -26,6 +26,7 @@ SAMPLE=io.github.tariqaq.sample
 "${FENIX_PKG:-target/debug/fenix-pkg.exe}" build tools/sample-app/board -o "$PKG" >/dev/null
 "$F" install "$PKG" >/dev/null
 sleep 1
+"$F" swipe 40 182 300 182 >/dev/null; sleep 0.8   # Home turned to the new tile's page: back to the first
 shot home
 # Landscape: Settings tree
 tap 58 200; shot settings
@@ -60,9 +61,9 @@ tap 158 200; shot session
 tap 160 226; sleep 0.3               # Cancel
 tap 258 200; shot stream
 back
-# Host app (landscape): scroll the tiles, open the sample, set values like its PC half would.
-"$F" swipe 314 200 40 200 >/dev/null; sleep 0.8
-tap 254 200
+# Host app (landscape): second page of tiles (P51), open the sample, set values like its PC half would.
+"$F" swipe 300 182 40 182 >/dev/null; sleep 0.8; shot home_page2
+tap 58 182
 "$F" set "$PKG" cpu=42 "cpu_text=42 %" mem=63 "mem_text=5.1 GB" on=true level=80 >/dev/null
 shot app
 "$F" host "$SAMPLE" off >/dev/null; shot app_host_off

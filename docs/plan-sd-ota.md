@@ -13,7 +13,7 @@ Rules for every phase:
 | Resident RAM added | Budget |
 |---|---|
 | SD mount (P50, measured) | 9.6 KB |
-| App index for 32 apps (P51) | ≤ 2 KB (compact entries; tiles built only for the Home page shown) |
+| App index for 32 apps (P51) | ≤ 2 KB (compact entries; tiles built only for the Home page shown). Corrected (P51): 3.8 KB (120 B an app, `docs/decisions.md`), offset by Home keeping icons for the shown page only |
 | App on/off and where-stored flags (P51) | ≤ 0.3 KB |
 | OTA (P52) | 0 at idle; ≤ 12 KB while an update runs (4 KB copy buffer, SHA-256, ECDSA verify) |
 | Logs to SD (P53) | ≤ 1 KB (512 B line buffer, flushed every 5 s and on errors) |

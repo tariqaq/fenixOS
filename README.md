@@ -36,10 +36,10 @@ Checked file by file in P42 and P45 (2026-11-01), with games that use kernel ant
 
 An app has two halves:
 
-- **Board half:** a small package (`.fxp`, at most 64 KB) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. The board draws it with the system theme. Spec: `docs/packages.md`.
+- **Board half:** a small package (`.fxp`) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. The board draws it with the system theme. Spec: `docs/packages.md`.
 - **PC half (optional):** a Windows program that fenixOS starts while the app is switched on. It sets binding values ("cpu = 42") and gets the board's taps and slider moves over named pipes. Rust apps use `crates/fenix-sdk`; the protocol is in `docs/sidecars.md`.
 
-Apps come from the registry (`registry/`, rules in `docs/registry.md`). Switching an app on in the dashboard installs its package on the board and starts its PC half; switching it off removes both. `tools/sample-app` is a complete example.
+Apps come from the registry (`registry/`, rules in `docs/registry.md`). Adding an app installs its package on the board (on the SD card when one is in) and starts its PC half; switching it off stops the PC half and fades its tile on the board, which offers Turn on; Remove app removes both. When the board and the PC differ, the Apps page lists it under Sync with board. `tools/sample-app` is a complete example.
 
 **Make an app:** unzip `fenixos-app-template.zip` (source: `templates/app/`) into a new repo under `github.com/tariqaq/`, open Claude Code there and describe the app. The zip holds the agent rules, the format, design, PC-half and registry guides, a working starter app (board screen, Rust PC half, manifest) and the build, test and release tools.
 

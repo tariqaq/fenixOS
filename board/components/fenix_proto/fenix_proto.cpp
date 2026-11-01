@@ -403,6 +403,23 @@ void write_app_entry(Writer& w, const AppEntry& e) {
   w.bytes(e.sha256, 32);
 }
 
+bool read_app_index_entry(Reader& r, AppIndexEntry& e) {
+  r.str(e.id, sizeof e.id);
+  r.str(e.version, sizeof e.version);
+  const uint8_t* h = r.take(32);
+  if (h) memcpy(e.sha256, h, 32);
+  e.where = r.u8();
+  e.state = r.u8();
+  return r.ok();
+}
+void write_app_index_entry(Writer& w, const AppIndexEntry& e) {
+  w.str(e.id);
+  w.str(e.version);
+  w.bytes(e.sha256, 32);
+  w.u8(e.where);
+  w.u8(e.state);
+}
+
 bool read_app_install_begin(Reader& r, AppInstallBegin& b) {
   r.str(b.id, sizeof b.id);
   r.str(b.version, sizeof b.version);

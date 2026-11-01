@@ -11,8 +11,8 @@ mod registry;
 mod sidecar;
 mod tray;
 mod update;
-mod welcome;
 mod weather;
+mod welcome;
 mod wifi;
 
 use std::path::PathBuf;
@@ -376,7 +376,7 @@ async fn list_registry(app: AppHandle) -> Result<Vec<RegistryItem>, String> {
     .map_err(|e| e.to_string())?
 }
 
-/// Download, check and add an app from the last registry read, then switch it on.
+/// Download, check and add an app from the last registry read, then switch it on (both halves).
 #[tauri::command]
 async fn add_app(app: AppHandle, id: String) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
@@ -409,6 +409,72 @@ async fn add_app(app: AppHandle, id: String) -> Result<(), String> {
             enable: true,
         });
         Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// One choice from Apps › Sync with board (P51).
+#[derive(serde::Deserialize)]
+struct SyncChoice {
+    id: String,
+    action: apps::SyncAction,
+}
+
+/// Apply the user's sync choices. Adding a PC half downloads it from the registry first (switched
+/// off: the board's tile offers Turn on); the rest goes to the engine.
+#[tauri::command]
+async fn sync_apps(app: AppHandle, choices: Vec<SyncChoice>) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let engine = app.state::<Arc<Engine>>();
+        let mut errors = Vec::new();
+        let mut reg: Option<Vec<registry::Manifest>> = None;
+        for c in choices {
+            if c.action != apps::SyncAction::Pc {
+                engine.post(Cmd::Sync {
+                    id: c.id,
+                    action: c.action,
+                });
+                continue;
+            }
+            if reg.is_none() {
+                match registry::fetch(&registry::source()) {
+                    Ok((list, _)) => {
+                        *engine.registry.lock().unwrap() = list.clone();
+                        reg = Some(list);
+                    }
+                    Err(e) => {
+                        errors.push(format!("the registry could not be read ({e})"));
+                        break;
+                    }
+                }
+            }
+            let Some(m) = reg.iter().flatten().find(|m| m.id == c.id).cloned() else {
+                errors.push(format!("{} is not in the registry", c.id));
+                continue;
+            };
+            engine.log(
+                &app,
+                Source::Apps,
+                false,
+                format!("Downloading {} v{}", m.name, m.version),
+            );
+            match apps::fetch_app(&registry::source(), &m) {
+                Ok(()) => engine.post(Cmd::Added {
+                    manifest: Box::new(m),
+                    enable: false,
+                }),
+                Err(e) => errors.push(format!("{} could not be added: {e}", m.name)),
+            }
+        }
+        for e in &errors {
+            engine.log(&app, Source::Apps, true, format!("Sync: {e}"));
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors.join("; "))
+        }
     })
     .await
     .map_err(|e| e.to_string())?
@@ -490,6 +556,7 @@ fn main() {
             set_app_setting,
             app_button,
             remove_app,
+            sync_apps,
             mirror_frame,
             mirror_set,
             mirror_touch,

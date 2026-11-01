@@ -109,7 +109,20 @@ export interface AppView {
   elevated: boolean;
   settings: Setting[];
   values: Record<string, unknown>;
+  /** Where the board half lives (P51); empty when it is not on the board. */
+  place: "" | "sd" | "flash" | "card_missing";
 }
+
+/** One difference between this PC and the board (engine `SyncItem`, P51). */
+export interface SyncItem {
+  id: string;
+  name: string;
+  kind: "board_missing" | "board_older" | "board_differs" | "pc_older" | "board_only";
+  pc_version: string;
+  board_version: string;
+  card_missing: boolean;
+}
+export type SyncAction = "board" | "pc" | "keep" | "remove";
 
 /** A registry app for Add app. */
 export interface RegistryApp {
@@ -132,6 +145,8 @@ export interface State {
   app_version: string;
   firmware_ok: boolean;
   apps: AppView[];
+  /** Apps › Sync with board (P51). */
+  sync: SyncItem[];
   bundled_firmware: string | null;
   update: { stage: "erasing" | "writing" | "restarting" | "done" | "failed"; percent: number; error: string } | null;
   /** The board streams its screen; started or stopped here or on the board (P14). */
@@ -254,6 +269,7 @@ export const setAppEnabled = (id: string, on: boolean) => invoke("set_app_enable
 export const setAppSetting = (id: string, key: string, value: unknown) => invoke("set_app_setting", { id, key, value });
 export const appButton = (id: string, key: string) => invoke("app_button", { id, key });
 export const removeApp = (id: string) => invoke("remove_app", { id });
+export const syncApps = (choices: { id: string; action: SyncAction }[]) => invoke("sync_apps", { choices });
 
 /** Tile colour: a tile token name or `#RRGGBB` (docs/registry.md). */
 export function tileColor(c: string): string {

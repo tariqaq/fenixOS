@@ -1,7 +1,7 @@
 //! User settings and installed-app state in `%APPDATA%\fenixOS\config.json` (PLAN §3.5).
 //! Written whole to a temp file and renamed, so a crash never leaves half a file.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::PathBuf;
 
@@ -27,6 +27,10 @@ pub struct Config {
     /// `fenixos.local` while no USB board is plugged in. `None` (never seen) also looks.
     #[serde(default)]
     pub board_wifi: Option<bool>,
+    /// Board apps the user keeps without a PC half here (P51 sync: "Keep on board"); the board
+    /// shows them as "Not on this PC".
+    #[serde(default)]
+    pub kept_on_board: BTreeSet<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

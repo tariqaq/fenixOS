@@ -245,7 +245,7 @@ static void home_style_screen(lv_obj_t* scr) {
 
 static const char* apps_count_text() {
   static char t[16];
-  size_t n = app_tiles().size();
+  size_t n = (size_t)app_count();
   if (n == 0) return "No apps";
   snprintf(t, sizeof t, n == 1 ? "%u app" : "%u apps", (unsigned)n);
   return t;
@@ -296,14 +296,19 @@ static void storage_screen(lv_obj_t* scr) {
   uint32_t used = 0, total = 0;
   sys::store_usage(&used, &total);
   snprintf(v, sizeof v, "%u KB of %u KB", (unsigned)used, (unsigned)total);
-  info_row(g, "App storage", v);
+  info_row(g, "App space on board", v);
   separator(g, 10);
   info_row(g, "Installed apps", apps_count_text());
-  if (app_tiles().empty()) return;
+  if (app_count() == 0) return;
+  // Where each app lives (P51): new apps go to the card when one is in.
   lv_obj_t* list = group(c);
-  for (size_t i = 0; i < app_tiles().size(); i++) {
+  sys::AppMeta m;
+  for (int i = 0; app_at(i, &m); i++) {
     if (i) separator(list, 10);
-    info_row(list, app_tiles()[i].name, "");
+    const char* where = m.where == fnx::app_where::FLASH        ? "Board"
+                        : m.state == fnx::app_state::CARD_MISSING ? "Card missing"
+                                                                  : "SD card";
+    info_row(list, m.name, where);
   }
 }
 

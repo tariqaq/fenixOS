@@ -308,3 +308,14 @@ Plan: `docs/plan-sd-ota.md`. Each row: the question, the options, what was chose
 
 | Question | Options | Choice |
 |---|---|---|
+| App index entry (P51) | Keep the sha in RAM (152 B a app) / **read the `.sha` file when asked** (120 B) | **120 B**: id 49, version 32, name 32, colour, where, state. 32 apps = 3.8 KB, over the plan's 2 KB row, but Home no longer keeps icon copies of every app (v0.1.20: ~1 KB each for 10 apps); only the page shown, and the previous one for one rebuild. Plan row corrected |
+| Card apps while the card is out | Hide them / **keep their tiles** | **Keep**: `/apps/sd.idx` on flash lists them; faded tile, card glyph, "Insert the SD card" on open |
+| Same app on flash and card | Card wins / **flash wins** | **Flash wins** at a scan (the card copy is deleted): flash is there at every boot |
+| Removing an app whose card is out | Forget it / **refuse** | **Refuse** (`APP_RESULT` storage): the files are on the card; Sync offers it again later |
+| Disabled-look opacity | New token / **`LV_OPA_40`** | **LV_OPA_40** in code: no `disabled` opacity token exists; one value, used twice |
+| SD glyph | Draw one / **Phosphor `sim-card`** | **sim-card**: Phosphor has no sd-card glyph; the card shape reads the same at 14 and 40 px |
+| Landscape Home page size | Narrower tiles to fit 4 / **3 tiles of 92 px** | **3 a page**: same tile size as before; the system apps fill page 1, installed apps follow |
+| A new app installed | Stay on the page / **turn to its page** | **Turn to its page**, so the fade-in is seen |
+| `HOST_STATE` for a crashed PC half | Off / **starting while it restarts, off when it gave up** | As chosen: off offers Turn on, which clears the error and starts it again |
+| Board installs at connect | Automatic (as before) / **only on Sync** | **Only on Sync** (user: sync sheet, one click). Add, update, switch on and Remove on this PC still act at once |
+| Package cap | 8 MB / **none** | **None** (user: no fixed SD cap). The content limits (24 KB images, 8 KB strings, 40 KB RAM) still bound real packages near 33 KB, so a 2 MB timing test needs a format that streams images (not in P51); registry download cap 64 MB |

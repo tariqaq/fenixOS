@@ -35,6 +35,9 @@ pub mod ty {
     pub const APP_OPENED: u8 = 0x28;
     pub const APP_CLOSED: u8 = 0x29;
     pub const HOST_STATE: u8 = 0x2A;
+    pub const APP_INDEX_REQ: u8 = 0x2B;
+    pub const APP_INDEX: u8 = 0x2C;
+    pub const APP_TURN_ON: u8 = 0x2D;
     pub const BIND_SET: u8 = 0x30;
     pub const EVENT: u8 = 0x31;
     pub const STREAM_START: u8 = 0x40;
@@ -67,7 +70,37 @@ pub mod app {
     pub const BUSY: u8 = 4;
     pub const STORAGE: u8 = 5;
     pub const UNKNOWN_APP: u8 = 6;
+    /// P51: the package is over the flash cap (128 KB) and there is no SD card.
+    pub const TOO_BIG_FOR_FLASH: u8 = 7;
 }
+
+/// `HOST_STATE` states: how the app's PC half is doing. Before P51 the byte was a bool
+/// (0 off or not ready, 1 running); 2 and 3 are new, and boards before 0.1.21 read them as running.
+pub mod host {
+    /// Switched off on the PC (or its PC half stopped for good).
+    pub const OFF: u8 = 0;
+    pub const RUNNING: u8 = 1;
+    /// The board has it, this PC does not (kept on the board only).
+    pub const NOT_HERE: u8 = 2;
+    /// Switched on; the PC half is starting.
+    pub const STARTING: u8 = 3;
+}
+
+/// `APP_INDEX` entry: where the app is stored.
+pub mod app_where {
+    pub const FLASH: u8 = 0;
+    pub const SD: u8 = 1;
+}
+
+/// `APP_INDEX` entry: can the board open it now.
+pub mod app_state {
+    pub const READY: u8 = 0;
+    /// Stored on the SD card, which is not in the board.
+    pub const CARD_MISSING: u8 = 1;
+}
+
+/// Entries per `APP_INDEX` page (the board's choice; the PC reads `pages`).
+pub const APP_INDEX_PAGE: usize = 8;
 
 /// `BOARD_STATE` screens.
 pub mod screen {
@@ -184,6 +217,18 @@ pub struct AppEntry {
     pub id: String,
     pub version: String,
     pub sha256: [u8; 32],
+}
+
+/// One app in `APP_INDEX` (P51).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppIndexEntry {
+    pub id: String,
+    pub version: String,
+    pub sha256: [u8; 32],
+    /// `app_where`.
+    pub place: u8,
+    /// `app_state`.
+    pub state: u8,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -379,8 +424,22 @@ pub enum Msg {
     AppClosed {
         id: String,
     },
+    /// `host` state of the app's PC half.
     HostState {
-        running: bool,
+        state: u8,
+        id: String,
+    },
+    /// Ask for one page of the board's app index (P51; replaces APP_LIST, which holds 10).
+    AppIndexReq {
+        page: u8,
+    },
+    AppIndex {
+        page: u8,
+        pages: u8,
+        apps: Vec<AppIndexEntry>,
+    },
+    /// The board's Turn on button for an app switched off on the PC.
+    AppTurnOn {
         id: String,
     },
     BindSet {
@@ -527,6 +586,9 @@ impl Msg {
             AppOpened { .. } => ty::APP_OPENED,
             AppClosed { .. } => ty::APP_CLOSED,
             HostState { .. } => ty::HOST_STATE,
+            AppIndexReq { .. } => ty::APP_INDEX_REQ,
+            AppIndex { .. } => ty::APP_INDEX,
+            AppTurnOn { .. } => ty::APP_TURN_ON,
             BindSet { .. } => ty::BIND_SET,
             Event { .. } => ty::EVENT,
             StreamStart { .. } => ty::STREAM_START,
@@ -616,27 +678,43 @@ impl Msg {
                 }
             }
             RadioState(s) => {
-                w.u8(s.mode).u8(s.state).u8(s.rssi as u8).bytes(&s.ip).str(&s.name);
+                w.u8(s.mode)
+                    .u8(s.state)
+                    .u8(s.rssi as u8)
+                    .bytes(&s.ip)
+                    .str(&s.name);
             }
             RadioSet(m) => {
                 w.u8(*m);
             }
             SdState(s) => {
-                w.u8(s.state).u32(s.total_kb).u32(s.free_kb).u16(s.clock_khz);
+                w.u8(s.state)
+                    .u32(s.total_kb)
+                    .u32(s.free_kb)
+                    .u16(s.clock_khz);
             }
             WifiScan { status, aps } => {
                 w.u8(*status).u8(aps.len() as u8);
                 for a in aps {
-                    w.str(&a.ssid).u8(a.rssi as u8).u8(a.channel).u8(a.auth).bytes(&a.bssid);
+                    w.str(&a.ssid)
+                        .u8(a.rssi as u8)
+                        .u8(a.channel)
+                        .u8(a.auth)
+                        .bytes(&a.bssid);
                 }
             }
             WifiJoin { ssid, password } => {
                 w.str(ssid).str(password);
             }
-            WeatherSet { lat_e4, lon_e4, name } => {
+            WeatherSet {
+                lat_e4,
+                lon_e4,
+                name,
+            } => {
                 w.i32(*lat_e4).i32(*lon_e4).str(name);
             }
-            Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq | WifiScanReq => {}
+            Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq
+            | WifiScanReq => {}
             Touch { x, y, down } => {
                 w.u16(*x).u16(*y).u8(*down as u8);
             }
@@ -671,11 +749,24 @@ impl Msg {
             AppResult { op, code, id, text } => {
                 w.u8(*op).u8(*code).str(id).bytes(text.as_bytes());
             }
-            AppRemove { id } | AppOpened { id } | AppClosed { id } => {
+            AppRemove { id } | AppOpened { id } | AppClosed { id } | AppTurnOn { id } => {
                 w.str(id);
             }
-            HostState { running, id } => {
-                w.u8(*running as u8).str(id);
+            HostState { state, id } => {
+                w.u8(*state).str(id);
+            }
+            AppIndexReq { page } => {
+                w.u8(*page);
+            }
+            AppIndex { page, pages, apps } => {
+                w.u8(*page).u8(*pages).u8(apps.len() as u8);
+                for e in apps {
+                    w.str(&e.id)
+                        .str(&e.version)
+                        .bytes(&e.sha256)
+                        .u8(e.place)
+                        .u8(e.state);
+                }
             }
             BindSet { bind, id, value } => {
                 let kind = match value {
@@ -900,9 +991,27 @@ impl Msg {
             ty::APP_OPENED => Msg::AppOpened { id: r.str()? },
             ty::APP_CLOSED => Msg::AppClosed { id: r.str()? },
             ty::HOST_STATE => Msg::HostState {
-                running: r.u8()? != 0,
+                state: r.u8()?,
                 id: r.str()?,
             },
+            ty::APP_INDEX_REQ => Msg::AppIndexReq { page: r.u8()? },
+            ty::APP_INDEX => {
+                let page = r.u8()?;
+                let pages = r.u8()?;
+                let n = r.u8()?;
+                let mut apps = Vec::with_capacity(n as usize);
+                for _ in 0..n {
+                    apps.push(AppIndexEntry {
+                        id: r.str()?,
+                        version: r.str()?,
+                        sha256: r.arr()?,
+                        place: r.u8()?,
+                        state: r.u8()?,
+                    });
+                }
+                Msg::AppIndex { page, pages, apps }
+            }
+            ty::APP_TURN_ON => Msg::AppTurnOn { id: r.str()? },
             ty::BIND_SET => {
                 let bind = r.u16()?;
                 let kind = r.u8()?;

@@ -41,7 +41,7 @@ The PC app lists apps from the registry in this repo. Each app lives in its own 
 | `color` | A tile token (`gray` `indigo` `blue` `teal` `green` `orange` `red` `purple` `pink`) or `#RRGGBB` |
 | `icon` | A Phosphor icon name (fill weight), for the PC tile. The board tile uses the package's own icon |
 | `repo` | `https://github.com/tariqaq/<repo>`: shown as Source |
-| `board` | Required. Board package (`.fxp`): `url`, `sha256` (lowercase hex), `size` in bytes (≤ 64 KB) |
+| `board` | Required. Board package (`.fxp`): `url`, `sha256` (lowercase hex), `size` in bytes (≤ 64 MB, a download cap; P51 dropped the 64 KB package cap) |
 | `pc` | Optional. The PC half (win-x64 `.exe`): `url`, `sha256`, `size`, `elevated` (true: Windows asks for admin each time it starts) |
 | `permissions` | What the PC half does, from the list below, each once. Shown before Add and on the App settings page |
 | `settings` | The app's options, rendered by fenixOS (below). Values go to the PC half |

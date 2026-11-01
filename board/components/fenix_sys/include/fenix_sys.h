@@ -38,16 +38,29 @@ void clock_set_utc(uint32_t epoch_s);
 bool clock_valid();
 bool clock_local(struct tm* out);  // false while invalid
 
-// ---- App storage (LittleFS partition "apps" at /apps; rules in docs/packages.md) ----
-constexpr int MAX_APPS = 10;  // APP_LIST fits in one frame; Home has room for them
-struct AppMeta {
-  char id[64], version[64];
-  uint8_t sha256[32];
+// ---- App storage (P51; rules in docs/packages.md "Where apps live") ----
+// Packages go to the SD card (/sd/fenixos/apps) when one is in, else to flash (LittleFS
+// partition "apps" at /apps, FLASH_PKG_MAX per package). An index in RAM lists them all.
+constexpr int MAX_APPS = 32;  // APP_INDEX pages them; Home pages its tiles
+constexpr uint32_t FLASH_PKG_MAX = 128 * 1024;
+struct AppMeta {  // 120 B
+  char id[49];  // fpkg::MAX_ID + 1
+  char version[32];
+  char name[32];
+  uint32_t color;  // tile colour
+  uint8_t where;   // fnx::app_where
+  uint8_t state;   // fnx::app_state: CARD_MISSING while its SD card is out
 };
-bool store_mount();  // also deletes leftovers of an interrupted install or remove
-void store_usage(uint32_t* used_kb, uint32_t* total_kb);
-int store_list(AppMeta* out, int max);           // sorted by id
+bool store_mount();  // boot: flash apps, plus the card's apps from /apps/sd.idx (card missing until scanned)
+void store_usage(uint32_t* used_kb, uint32_t* total_kb);  // the flash store
+int store_count();
+bool store_at(int i, AppMeta* out);               // sorted by id; false past the end
+bool store_find(const char* id, AppMeta* out);
+bool store_sha(const char* id, uint8_t out[32]);  // false if missing or its card is out
 FILE* store_open(const char* id, size_t* n);  // the package file and its size; caller closes. nullptr if missing
+// sd.cpp, from its task: the card was mounted (scan its apps) or went away (mark them missing).
+// Posts APPS_CHANGED with an empty id.
+void store_sd_changed(bool ready);
 // Install and remove. Link task only. Results are fnx::app codes.
 uint8_t store_begin(const char* id, const char* version, uint32_t size, const uint8_t sha256[32]);
 uint32_t store_chunk(uint32_t offset, const uint8_t* data, size_t n);  // next expected offset
@@ -78,8 +91,8 @@ enum class LinkEv : uint8_t {
   STREAM_START,  // value = fps
   STREAM_STOP,
   STREAM_SYNC,
-  HOST_STATE,  // value = running, text = app id
-  APPS_CHANGED,  // text = app id installed or removed
+  HOST_STATE,  // value = fnx::host state, text = app id
+  APPS_CHANGED,  // text = app id installed or removed; empty: several (the SD card came or went)
   SD_CHANGED,    // the microSD card came, went or changed (sd_info)
 };
 struct LinkEvent {
@@ -145,6 +158,7 @@ void sd_start();   // boot: mounts in a short-lived background task
 void sd_probe();   // checks a mounted card is still there, or mounts one; async, SD_CHANGED on a change
 SdInfo sd_info();
 void sd_report();  // SD_STATE to the PC; without a ready card it also probes again
+void sd_update_free();  // after a write to the card: new free space, SD_STATE on a change
 
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address

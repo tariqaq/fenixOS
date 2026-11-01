@@ -18,7 +18,6 @@ constexpr uint8_t FORMAT = 1;
 constexpr size_t HEADER_LEN = 32;
 constexpr uint16_t NONE = 0xFFFF;
 
-constexpr size_t MAX_SIZE = 64 * 1024;
 constexpr size_t MAX_ELEMS = 200;
 constexpr size_t MAX_STRING_BYTES = 8 * 1024;
 constexpr size_t MAX_BINDS = 64;
@@ -126,8 +125,10 @@ class Package {
 
 bool valid_id(std::string_view id);
 
-// Read only the header and string table (enough for id and version) from the start of a file.
-// `n` may be shorter than the package; false if the strings do not fit in it.
-bool peek(const uint8_t* data, size_t n, std::string_view* id, std::string_view* version);
+// Read only the header and the first strings (id, version and, if asked, name) from the start of
+// a file, plus the tile colour. `n` may be shorter than the package; false if the strings asked for
+// do not fit in it.
+bool peek(const uint8_t* data, size_t n, std::string_view* id, std::string_view* version,
+          std::string_view* name = nullptr, uint32_t* color = nullptr);
 
 }  // namespace fpkg

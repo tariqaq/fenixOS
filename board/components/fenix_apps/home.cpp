@@ -1,8 +1,11 @@
 // Home: clock, date, PC status and the launcher (Tiles or Dock). Artboards HomeA, HomeB,
-// HomePortrait, HomeNoTime.
+// HomePortrait, HomeNoTime. Since P51 the launcher shows one page of tiles at a time (swipe
+// sideways, dots below): up to 32 apps fit, and only the shown tiles' icons are in RAM.
 #include <stdio.h>
 #include <string.h>
 
+#include <memory>
+#include <string>
 #include <vector>
 
 #include "fenix_sys.h"
@@ -22,11 +25,14 @@ static int s_shown_min = -2;  // minute of day on screen; -1 = "--:--"
 static int s_shown_conn = -1;
 static int s_shown_radio = -1;
 static int s_shown_wx = -1;
+static lv_obj_t* s_launch;  // the launcher's container, rebuilt alone on a page swipe
+static lv_obj_t* s_dots;    // page dots under it (hidden for one page)
+static int s_page;          // launcher page, kept across rebuilds (rotation, app changes)
 
 // The old Home is deleted after a rebuilt one is made: only forget our own objects.
 static void forget(lv_event_t* e) {
   if (lv_event_get_target(e) != s_clock) return;
-  s_clock = s_date = s_radio_icon = s_status_icon = s_status_text = nullptr;
+  s_clock = s_date = s_radio_icon = s_status_icon = s_status_text = s_launch = s_dots = nullptr;
   s_shown_min = -2;
   s_shown_conn = -1;
   s_shown_radio = -1;
@@ -58,12 +64,45 @@ struct TileSpec {
   uint32_t color;
   lv_event_cb_t cb;
   void* ud;
+  bool faded;  // PC half off or not on this PC, or its SD card is out (P51)
+  bool card;   // SD card badge: stored on the card, which is out
 };
 
-static void launch_cb(lv_event_t* e) { static_cast<const Launch*>(lv_event_get_user_data(e))->open(); }
+// A swipe also ends in a click on the tile under the finger: ignore that one.
+static bool swiped() { return lv_indev_get_gesture_dir(lv_indev_active()) != LV_DIR_NONE; }
+
+static void launch_cb(lv_event_t* e) {
+  if (!swiped()) static_cast<const Launch*>(lv_event_get_user_data(e))->open();
+}
+
+// Shown installed apps: their index entry and icons, at fixed addresses (images point at the
+// descriptors). The previous page's set is kept one build longer: the old screen can still draw
+// while the new one replaces it.
+struct Shown {
+  sys::AppMeta m;
+  AppIcons ic;
+};
+static std::vector<std::unique_ptr<Shown>> s_shown, s_prev;
+
 static void app_cb(lv_event_t* e) {
-  size_t i = (size_t)(uintptr_t)lv_event_get_user_data(e);
-  if (i < app_tiles().size()) app_open(app_tiles()[i].id);
+  if (swiped()) return;
+  const Shown* a = static_cast<const Shown*>(lv_event_get_user_data(e));
+  app_open(a->m.id);
+}
+
+// The cached entry for `id` (moved out of the previous set when there), or a new one.
+static Shown* shown_for(const sys::AppMeta& m, std::vector<std::unique_ptr<Shown>>& old) {
+  for (auto& p : old)
+    if (p && strcmp(p->m.id, m.id) == 0) {
+      p->m = m;  // name, colour or state may have changed; the icons were read for this id
+      s_shown.push_back(std::move(p));
+      return s_shown.back().get();
+    }
+  auto n = std::make_unique<Shown>();
+  n->m = m;
+  if (m.state == fnx::app_state::READY) app_icons(m.id, n->ic);
+  s_shown.push_back(std::move(n));
+  return s_shown.back().get();
 }
 
 // Tile glyph or package icon, tinted white.
@@ -74,6 +113,15 @@ static lv_obj_t* tile_icon(lv_obj_t* parent, const TileSpec& s, const lv_font_t*
   lv_obj_set_style_image_recolor(im, col(FX_COLOR_LABEL), 0);
   lv_obj_set_style_image_recolor_opa(im, LV_OPA_COVER, 0);
   return im;
+}
+
+// SD card glyph in a tile's top-right corner, `inset` px from its edges: the app is on the card,
+// which is out (P51). Alignment is to the content box, so the padding is taken back out.
+static void badge(lv_obj_t* parent, int inset) {
+  lv_obj_t* b = text(parent, FX_ICON_SIM_CARD, &fx_icon_fill_14, FX_COLOR_LABEL);
+  lv_obj_add_flag(b, LV_OBJ_FLAG_IGNORE_LAYOUT);
+  lv_obj_align(b, LV_ALIGN_TOP_RIGHT, lv_obj_get_style_pad_right(parent, LV_PART_MAIN) - inset,
+               inset - lv_obj_get_style_pad_top(parent, LV_PART_MAIN));
 }
 
 static lv_obj_t* tile(lv_obj_t* parent, const TileSpec& s, bool grid) {
@@ -96,6 +144,8 @@ static lv_obj_t* tile(lv_obj_t* parent, const TileSpec& s, bool grid) {
   lv_obj_set_width(name, LV_PCT(100));
   lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
   if (s.cb) lv_obj_add_event_cb(t, s.cb, LV_EVENT_CLICKED, s.ud);
+  if (s.card) badge(t, 8);
+  if (s.faded) lv_obj_set_style_opa(t, LV_OPA_40, 0);
   return t;
 }
 
@@ -111,11 +161,13 @@ static lv_obj_t* dock_item(lv_obj_t* parent, const TileSpec& s) {
   lv_obj_set_style_bg_color(sq, col(s.color), 0);
   lv_obj_set_style_bg_opa(sq, LV_OPA_COVER, 0);
   lv_obj_center(tile_icon(sq, s, &fx_icon_fill_26));
+  if (s.card) badge(sq, 3);
   lv_obj_t* name = text(it, s.name, &fx_font_caption_medium, FX_COLOR_LABEL);
   lv_obj_set_width(name, 56);
   lv_obj_set_style_text_align(name, LV_TEXT_ALIGN_CENTER, 0);
   lv_label_set_long_mode(name, LV_LABEL_LONG_MODE_DOTS);
   if (s.cb) lv_obj_add_event_cb(it, s.cb, LV_EVENT_CLICKED, s.ud);
+  if (s.faded) lv_obj_set_style_opa(it, LV_OPA_40, 0);
   return it;
 }
 
@@ -124,6 +176,8 @@ static void tile_anim_exec(void* o, int32_t v) {
   lv_obj_set_style_opa((lv_obj_t*)o, v * 255 / 256, 0);
   lv_obj_set_style_transform_scale((lv_obj_t*)o, 205 + v * 51 / 256, 0);
 }
+static char s_fade_id[sizeof(sys::AppMeta::id)];  // tile fading in on the page being built
+
 static void ghost_done(lv_anim_t* a) {
   app_ghost_done();
   lv_obj_delete_async((lv_obj_t*)a->var);
@@ -144,39 +198,106 @@ static void tile_anim(lv_obj_t* o, bool in) {
 }
 
 enum Mode { ROW, GRID, DOCK };
+static Mode s_mode;
 
-// System apps, then installed apps (by id), then a removed app fading out.
-static void launcher(lv_obj_t* parent, Mode mode) {
-  std::vector<TileSpec> specs;
-  for (const Launch& l : SYSTEM_APPS) specs.push_back({l.name, l.icon, nullptr, l.color, launch_cb, (void*)&l});
-  const auto& apps = app_tiles();
-  for (size_t i = 0; i < apps.size(); i++) {
-    const AppTile& t = apps[i];
-    specs.push_back({t.name, nullptr, mode == DOCK ? &t.large : &t.small, t.color, app_cb, (void*)(uintptr_t)i});
+// Items per launcher page. Tiles: 3 across in landscape (92 px + 8 gap), 2x2 in portrait; Dock:
+// as many 56 px items with 16 px gaps as fit the width.
+static int per_page(Mode mode) {
+  if (mode == ROW) return 3;
+  if (mode == GRID) return 4;
+  int m = portrait() ? FX_MARGIN_PORTRAIT : FX_MARGIN_LANDSCAPE;
+  return LV_MAX(1, (width() - 2 * m + 16) / 72);
+}
+
+static int item_count() { return (int)N_SYSTEM + app_count(); }
+static int page_count(Mode mode) { return LV_MAX(1, (item_count() + per_page(mode) - 1) / per_page(mode)); }
+
+static void show_dots(Mode mode) {
+  if (!s_dots) return;
+  lv_obj_clean(s_dots);
+  int n = page_count(mode);
+  if (n < 2) {
+    lv_obj_add_flag(s_dots, LV_OBJ_FLAG_HIDDEN);
+    return;
   }
-  const AppTile* g = app_ghost();
-  if (g) specs.push_back({g->name, nullptr, mode == DOCK ? &g->large : &g->small, g->color, nullptr, nullptr});
+  lv_obj_remove_flag(s_dots, LV_OBJ_FLAG_HIDDEN);
+  for (int i = 0; i < n; i++) {
+    lv_obj_t* d = box(s_dots);
+    lv_obj_set_size(d, 6, 6);
+    lv_obj_set_style_radius(d, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(d, col(i == s_page ? FX_COLOR_LABEL : FX_COLOR_SURFACE_3), 0);
+    lv_obj_set_style_bg_opa(d, LV_OPA_COVER, 0);
+  }
+}
+
+// One page: system apps, then installed apps (by id), then a removed app fading out when its
+// tile was on this page. A newly installed app turns to its page.
+static void launcher(lv_obj_t* parent, Mode mode) {
+  int per = per_page(mode), n = item_count();
+  sys::AppMeta m;
+  for (int i = 0; app_at(i, &m); i++)
+    if (app_take_fade_in(m.id)) {
+      strlcpy(s_fade_id, m.id, sizeof s_fade_id);
+      s_page = ((int)N_SYSTEM + i) / per;
+    }
+  s_page = LV_CLAMP(0, s_page, page_count(mode) - 1);
+  s_prev.swap(s_shown);
+  s_shown.clear();
+  std::vector<TileSpec> specs;
+  std::vector<bool> fade_in;
+  for (int i = s_page * per; i < n && i < (s_page + 1) * per; i++) {
+    if (i < (int)N_SYSTEM) {
+      const Launch& l = SYSTEM_APPS[i];
+      specs.push_back({l.name, l.icon, nullptr, l.color, launch_cb, (void*)&l, false, false});
+      fade_in.push_back(false);
+      continue;
+    }
+    if (!app_at(i - (int)N_SYSTEM, &m)) break;
+    Shown* a = shown_for(m, s_prev);
+    bool missing = m.state == fnx::app_state::CARD_MISSING;
+    uint8_t h = app_host(m.id);
+    bool faded = missing || h == fnx::host::OFF || h == fnx::host::NOT_HERE;
+    specs.push_back({a->m.name, nullptr, mode == DOCK ? &a->ic.large : &a->ic.small, a->m.color, app_cb, a, faded,
+                     missing});
+    fade_in.push_back(strcmp(s_fade_id, m.id) == 0);
+  }
+  s_fade_id[0] = 0;
+  // The removed tile fades out where it was, if that page shows and there is room for it.
+  const char* gid = app_ghost();
+  const Shown* g = nullptr;
+  if (gid)
+    for (auto& p : s_prev)
+      if (p && strcmp(p->m.id, gid) == 0) g = p.get();
+  if (g && (int)specs.size() < per)
+    specs.push_back({g->m.name, nullptr, mode == DOCK ? &g->ic.large : &g->ic.small, g->m.color, nullptr, nullptr,
+                     false, false});
+  else if (gid)
+    app_ghost_done();
   for (size_t i = 0; i < specs.size(); i++) {
     lv_obj_t* o = mode == DOCK ? dock_item(parent, specs[i]) : tile(parent, specs[i], mode == GRID);
     if (mode == GRID) lv_obj_set_grid_cell(o, LV_GRID_ALIGN_STRETCH, i % 2, 1, LV_GRID_ALIGN_STRETCH, i / 2, 1);
-    bool is_app = i >= N_SYSTEM && i - N_SYSTEM < apps.size();
-    if (is_app && app_take_fade_in(apps[i - N_SYSTEM].id)) tile_anim(o, true);
-    if (g && i == specs.size() - 1) {
+    if (i < fade_in.size() && fade_in[i]) tile_anim(o, true);
+    if (i >= fade_in.size()) {  // the ghost
       lv_obj_remove_flag(o, LV_OBJ_FLAG_CLICKABLE);
       tile_anim(o, false);
     }
   }
+  show_dots(mode);
 }
 
-// A launcher row that scrolls sideways when its items do not fit.
-static lv_obj_t* scroll_row(lv_obj_t* parent, int gap) {
-  lv_obj_t* r = rowbox(parent, gap);
-  lv_obj_set_width(r, LV_PCT(100));
-  lv_obj_add_flag(r, LV_OBJ_FLAG_SCROLLABLE);
-  lv_obj_add_flag(r, LV_OBJ_FLAG_CLICKABLE);  // drags must reach the scroller
-  lv_obj_set_scroll_dir(r, LV_DIR_HOR);
-  lv_obj_set_scrollbar_mode(r, LV_SCROLLBAR_MODE_OFF);
-  return r;
+static void relaunch(void*) {
+  if (!s_launch) return;
+  lv_obj_clean(s_launch);
+  launcher(s_launch, s_mode);
+}
+
+// Swipe left or right anywhere on Home turns the page; the launcher is rebuilt after the event.
+static void swipe_cb(lv_event_t*) {
+  lv_dir_t d = lv_indev_get_gesture_dir(lv_indev_active());
+  int to = s_page + (d == LV_DIR_LEFT ? 1 : d == LV_DIR_RIGHT ? -1 : 0);
+  if (to == s_page || to < 0 || to >= page_count(s_mode)) return;
+  s_page = to;
+  lv_async_call(relaunch, nullptr);
 }
 
 // The artboards set line-height = font size; LVGL labels are one font line tall,
@@ -227,7 +348,6 @@ void home_screen(lv_obj_t* scr) {
 
   bool centred = port || dock;
   lv_obj_set_style_pad_all(scr, m, 0);
-  if (!centred) lv_obj_set_style_pad_right(scr, 0, 0);  // tiles run off the right edge
   // Track place too: a column's track is only as wide as its widest item.
   lv_flex_align_t cross = centred ? LV_FLEX_ALIGN_CENTER : LV_FLEX_ALIGN_START;
   lv_obj_set_flex_align(scr, LV_FLEX_ALIGN_START, cross, cross);
@@ -241,39 +361,33 @@ void home_screen(lv_obj_t* scr) {
   lv_obj_t* spacer = box(scr);
   lv_obj_set_flex_grow(spacer, 1);
 
-  int n_items = N_SYSTEM + app_tiles().size() + (app_ghost() ? 1 : 0);
   if (dock) {
-    lv_obj_t* d = scroll_row(scr, 16);
-    bool fits = n_items * 56 + (n_items - 1) * 16 <= width() - 2 * m;
-    lv_obj_set_flex_align(d, fits ? LV_FLEX_ALIGN_CENTER : LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START,
-                          LV_FLEX_ALIGN_START);
-    launcher(d, DOCK);
+    s_mode = DOCK;
+    s_launch = rowbox(scr, 16);
+    lv_obj_set_width(s_launch, LV_PCT(100));
+    lv_obj_set_flex_align(s_launch, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
   } else if (port) {
-    // Two columns; two rows show, more rows scroll. LVGL keeps a pointer to the row template.
-    static int32_t rows[(sys::MAX_APPS + N_SYSTEM + 2) / 2 + 1];
+    // Two columns, two rows. LVGL keeps a pointer to the templates.
+    static const int32_t rows[] = {64, 64, LV_GRID_TEMPLATE_LAST};
     static const int32_t cols[] = {LV_GRID_FR(1), LV_GRID_FR(1), LV_GRID_TEMPLATE_LAST};
-    int n_rows = (n_items + 1) / 2;
-    for (int r = 0; r < n_rows; r++) rows[r] = 64;
-    rows[n_rows] = LV_GRID_TEMPLATE_LAST;
-    lv_obj_t* g = box(scr);
-    lv_obj_set_size(g, LV_PCT(100), LV_SIZE_CONTENT);
-    lv_obj_set_style_max_height(g, 2 * 64 + 8, 0);
-    lv_obj_set_layout(g, LV_LAYOUT_GRID);
-    lv_obj_set_grid_dsc_array(g, cols, rows);
-    lv_obj_set_style_pad_row(g, 8, 0);
-    lv_obj_set_style_pad_column(g, 8, 0);
-    if (n_rows > 2) {
-      lv_obj_add_flag(g, LV_OBJ_FLAG_SCROLLABLE);
-      lv_obj_add_flag(g, LV_OBJ_FLAG_CLICKABLE);
-      lv_obj_set_scroll_dir(g, LV_DIR_VER);
-      lv_obj_set_scrollbar_mode(g, LV_SCROLLBAR_MODE_OFF);
-    }
-    launcher(g, GRID);
+    s_mode = GRID;
+    s_launch = box(scr);
+    lv_obj_set_size(s_launch, LV_PCT(100), 2 * 64 + 8);
+    lv_obj_set_layout(s_launch, LV_LAYOUT_GRID);
+    lv_obj_set_grid_dsc_array(s_launch, cols, rows);
+    lv_obj_set_style_pad_row(s_launch, 8, 0);
+    lv_obj_set_style_pad_column(s_launch, 8, 0);
   } else {
-    lv_obj_t* r = scroll_row(scr, 8);
-    lv_obj_set_style_pad_right(r, FX_MARGIN_LANDSCAPE, 0);
-    launcher(r, ROW);
+    s_mode = ROW;
+    s_launch = rowbox(scr, 8);
+    lv_obj_set_width(s_launch, LV_PCT(100));
   }
+  s_dots = rowbox(scr, 6);
+  lv_obj_set_style_margin_top(s_dots, 8, 0);
+  if (!centred) lv_obj_set_width(s_dots, LV_PCT(100));
+  lv_obj_set_flex_align(s_dots, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  launcher(s_launch, s_mode);
+  lv_obj_add_event_cb(scr, swipe_cb, LV_EVENT_GESTURE, nullptr);
   home_tick();
 }
 

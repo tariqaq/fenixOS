@@ -31,6 +31,19 @@
     const v = (e.target as HTMLInputElement).value.slice(0, s.max_len ?? 100);
     if (v !== value(s)) setAppSetting(app.id, s.key, v);
   }
+  // Where the board half lives (P51).
+  function placeText(p: AppView["place"]): string {
+    switch (p) {
+      case "sd":
+        return "SD card";
+      case "flash":
+        return "Flash";
+      case "card_missing":
+        return "SD card (out)";
+      default:
+        return "Not installed";
+    }
+  }
 </script>
 
 <div class="wrap">
@@ -52,7 +65,7 @@
       <Switch checked={app.enabled} labelledby="onoff-{app.id}" onchange={(on) => setAppEnabled(app.id, on)} />
     </div>
   </div>
-  {#if app.enabled && app.status !== "on"}
+  {#if app.status === "installing" || (app.enabled && app.status !== "on")}
     <p class="state" class:problem={app.status === "error"} in:enter={{ y: -4, duration: FAST }}>{app.detail}</p>
   {/if}
 
@@ -141,6 +154,7 @@
     <dl class="group facts">
       <div class="row"><dt>Source</dt><dd><a href={app.repo}>{source}</a></dd></div>
       <div class="row"><dt>Version</dt><dd>{app.version}</dd></div>
+      <div class="row"><dt>On the board</dt><dd>{placeText(app.place)}</dd></div>
     </dl>
   </section>
 

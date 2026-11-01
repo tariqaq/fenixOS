@@ -421,7 +421,7 @@ Measured in Wi-Fi mode with a 32 KB worst-case package (110x110 RGB565 image, 7 
 | Free with the app open | 32.9 KB | 40.0 KB |
 | Lowest heap with the app open | 21.7 KB | 26.3 KB |
 
-The 64 KB package cap is not reachable in practice: the image (24 KB) and string (8 KB) caps bound a package near 33 KB plus tile icons.
+The 64 KB package cap was not reachable in practice: the image (24 KB) and string (8 KB) caps bound a package near 33 KB plus tile icons. Corrected (P51): the cap is gone; flash takes ≤ 128 KB a package, the SD card any size.
 
 **Use after free on app close (found P45, 2026-11-01).** App labels show the package's strings in place (`lv_label_set_text_static`) and images point at the package's descriptors. `close_app` freed the package as soon as the app left the top of the stack, but the app screen still draws for its 250 ms slide out, so it read freed memory: on the board, garbage text or a crash; in the simulator, a label that ran on through freed bytes and stalled `sim_shots.py` about once in 30 runs (after `app_portrait`, tap Home). Found with a temporary DbgHelp watchdog in the simulator. Fix: `close_app` moves the package, descriptors and pixels into `s_retired`, freed when the app screen is deleted (`LV_EVENT_DELETE`); 150 simulator runs, no stall. `fpkg::Package::parse` also leaves the Package empty on failure (a failed parse could leave elements with null props). `sim_shots.py` now kills a run after 60 s.
 

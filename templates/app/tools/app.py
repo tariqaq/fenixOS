@@ -28,7 +28,7 @@ TILES = {"gray", "indigo", "blue", "teal", "green", "orange", "red", "purple", "
 PERMISSIONS = {"keys", "media", "system-stats", "network", "files", "programs"}
 SETTING_TYPES = {"toggle", "slider", "choice", "text", "button"}
 ALLOWED_URL = "https://github.com/tariqaq/"
-MAX_BOARD = 64 * 1024
+MAX_BOARD = 64 * 1024 * 1024  # P51: no package cap; the board checks its content limits
 
 ID_RE = re.compile(r"^io\.github\.[A-Za-z0-9-]+\.[A-Za-z0-9._-]+$")
 VER_RE = re.compile(r"^\d+\.\d+\.\d+$")

@@ -1,7 +1,8 @@
 // Host apps (docs/packages.md): Home tiles for installed packages, and the app screen built from
-// a package. One app is open at a time. Packages are read from flash in pieces (P39): tiles read
-// the two icons only, and an open app keeps its strings, props and the images its elements show,
-// from which its LVGL objects are rebuilt (rotation, host state). Artboards 6a, 6b.
+// a package. One app is open at a time. Packages are read from the SD card or flash in pieces
+// (P39): tiles read the two icons only, and only for the tiles Home shows (P51); an open app keeps
+// its strings, props and the images its elements show, from which its LVGL objects are rebuilt
+// (rotation, host state). Artboards 6a, 6b.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -20,8 +21,8 @@ using namespace fx::ui;
 
 // ---- Installed apps (tiles) ----
 
-static std::vector<AppTile> s_tiles;
-static AppTile s_ghost;  // removed tile still fading out on Home; id empty = none
+static std::vector<std::string> s_ids;  // ids at the last reload, to tell installs from removals
+static char s_ghost[fpkg::MAX_ID + 1];  // removed tile still fading out on Home; empty = none
 static char s_fade_in[fpkg::MAX_ID + 1];
 
 static lv_image_dsc_t a8_dsc(const uint8_t* px, uint16_t w, uint16_t h) {
@@ -36,13 +37,12 @@ static lv_image_dsc_t a8_dsc(const uint8_t* px, uint16_t w, uint16_t h) {
   return d;
 }
 
-// Point the icon descriptors at this tile's own pixel copy (after a copy or move).
-static void fix_icons(AppTile& t) {
+void app_icons_fix(AppIcons& t) {
   t.small.data = t.small.data_size ? t.px.data() : nullptr;
   t.large.data = t.large.data_size ? t.px.data() + t.small.data_size : nullptr;
 }
 
-// Parse an installed package from flash; `f` stays open for reading assets (caller closes).
+// Parse an installed package; `f` stays open for reading assets (caller closes).
 static const char* read_pkg(const char* id, fpkg::Package& p, FILE** f) {
   size_t n = 0;
   *f = sys::store_open(id, &n);
@@ -55,52 +55,48 @@ static bool read_at(FILE* f, const fpkg::Asset& a, uint8_t* out) {
   return fseek(f, (long)a.offset, SEEK_SET) == 0 && fread(out, 1, a.len, f) == a.len;
 }
 
-static bool has_tile(const char* id) {
-  for (const AppTile& t : s_tiles)
-    if (strcmp(t.id, id) == 0) return true;
+static bool known(const char* id) {
+  for (const std::string& s : s_ids)
+    if (s == id) return true;
   return false;
 }
 
 void apps_reload() {
-  s_tiles.clear();
-  sys::AppMeta list[sys::MAX_APPS];
-  int n = sys::store_list(list, sys::MAX_APPS);
-  s_tiles.reserve(n);
-  for (int i = 0; i < n; i++) {
-    fpkg::Package p;
-    FILE* f = nullptr;
-    if (read_pkg(list[i].id, p, &f)) {
-      sys::link_log(2, "app %s: unreadable package", list[i].id);
-      if (f) fclose(f);
-      continue;
-    }
-    AppTile t{};
-    snprintf(t.id, sizeof t.id, "%.*s", (int)p.id.size(), p.id.data());
-    snprintf(t.name, sizeof t.name, "%.*s", (int)p.name.size(), p.name.data());
-    t.color = p.head.tile_color;
-    const fpkg::Asset* s = p.head.icon_small != fpkg::NONE ? &p.assets[p.head.icon_small] : nullptr;
-    const fpkg::Asset* l = p.head.icon_large != fpkg::NONE ? &p.assets[p.head.icon_large] : nullptr;
-    // Tile icons are A8 by construction (fenix-pkg); anything else shows the puzzle glyph.
-    if (s && s->format != fpkg::asset_format::A8) s = nullptr;
-    if (l && l->format != fpkg::asset_format::A8) l = nullptr;
-    t.px.resize((s ? s->len : 0) + (l ? l->len : 0));
-    if ((s && !read_at(f, *s, t.px.data())) || (l && !read_at(f, *l, t.px.data() + (s ? s->len : 0)))) {
-      t.px.clear();
-      s = l = nullptr;
-    }
-    fclose(f);
-    if (s) t.small = a8_dsc(nullptr, s->w, s->h);
-    if (l) t.large = a8_dsc(nullptr, l->w, l->h);
-    s_tiles.push_back(std::move(t));
-  }
-  for (AppTile& t : s_tiles) fix_icons(t);
+  s_ids.clear();
+  sys::AppMeta m;
+  for (int i = 0; sys::store_at(i, &m); i++) s_ids.emplace_back(m.id);
 }
 
-const std::vector<AppTile>& app_tiles() { return s_tiles; }
-const AppTile* app_ghost() { return s_ghost.id[0] ? &s_ghost : nullptr; }
-void app_ghost_done() {
-  s_ghost = AppTile{};
+int app_count() { return sys::store_count(); }
+bool app_at(int i, sys::AppMeta* out) { return sys::store_at(i, out); }
+
+bool app_icons(const char* id, AppIcons& t) {
+  t = AppIcons{};
+  fpkg::Package p;
+  FILE* f = nullptr;
+  if (read_pkg(id, p, &f)) {
+    if (f) fclose(f);
+    return false;
+  }
+  const fpkg::Asset* s = p.head.icon_small != fpkg::NONE ? &p.assets[p.head.icon_small] : nullptr;
+  const fpkg::Asset* l = p.head.icon_large != fpkg::NONE ? &p.assets[p.head.icon_large] : nullptr;
+  // Tile icons are A8 by construction (fenix-pkg); anything else shows the puzzle glyph.
+  if (s && s->format != fpkg::asset_format::A8) s = nullptr;
+  if (l && l->format != fpkg::asset_format::A8) l = nullptr;
+  t.px.resize((s ? s->len : 0) + (l ? l->len : 0));
+  if ((s && !read_at(f, *s, t.px.data())) || (l && !read_at(f, *l, t.px.data() + (s ? s->len : 0)))) {
+    t.px.clear();
+    s = l = nullptr;
+  }
+  fclose(f);
+  if (s) t.small = a8_dsc(nullptr, s->w, s->h);
+  if (l) t.large = a8_dsc(nullptr, l->w, l->h);
+  app_icons_fix(t);
+  return s || l;
 }
+
+const char* app_ghost() { return s_ghost[0] ? s_ghost : nullptr; }
+void app_ghost_done() { s_ghost[0] = 0; }
 bool app_take_fade_in(const char* id) {
   if (strcmp(s_fade_in, id) != 0) return false;
   s_fade_in[0] = 0;
@@ -131,6 +127,8 @@ static struct {
   std::vector<lv_image_dsc_t> images;  // per asset; data null unless an element shows it
   std::vector<uint8_t*> pixels;        // what the descriptors point at (malloc)
   int64_t close_at;  // pending return to Home (app removed while showing HostOff)
+  bool missing;      // stored on the SD card, which is out: no package loaded (P51)
+  bool turning_on;   // Turn on was pressed; waiting for the PC's HOST_STATE
 } s_app;
 
 // A closed app's package, images and pixels, kept until its screen is deleted: labels show the
@@ -150,12 +148,17 @@ static void free_retired(lv_event_t* = nullptr) {
   s_retired.pkg = fpkg::Package();
 }
 
-static std::vector<std::string> s_host_off;  // apps whose PC half is switched off (HOST_STATE)
+// HOST_STATE per app, as the PC last said; cleared when the link drops. No entry = running.
+struct Host {
+  std::string id;
+  uint8_t state;  // fnx::host
+};
+static std::vector<Host> s_host;
 
-static bool host_off(const char* id) {
-  for (const std::string& s : s_host_off)
-    if (s == id) return true;
-  return false;
+uint8_t app_host(const char* id) {
+  for (const Host& h : s_host)
+    if (h.id == id) return h.state;
+  return fnx::host::RUNNING;
 }
 
 const char* open_app_id() { return s_app.open ? s_app.id : ""; }
@@ -181,7 +184,7 @@ static void send_event(uint16_t elem, uint8_t kind, int32_t value) {
 
 static void close_app() {
   if (!s_app.open) return;
-  if (sys::link_connected()) send_id(fnx::ty::APP_CLOSED, s_app.id);
+  if (sys::link_connected() && !s_app.missing) send_id(fnx::ty::APP_CLOSED, s_app.id);
   s_app.open = false;
   // At most one app screen outlives the app (nav keeps two screens, only during a slide), and
   // opening another app loads a new screen first, which deletes it: the older leftovers are free.
@@ -195,6 +198,8 @@ static void close_app() {
   s_app.vals.clear();
   s_app.bound.clear();
   s_app.close_at = 0;
+  s_app.missing = false;
+  s_app.turning_on = false;
 }
 
 static bool load_app(const char* id) {
@@ -244,6 +249,18 @@ static bool load_app(const char* id) {
 
 void app_open(const char* id) {
   close_app();
+  sys::AppMeta m;
+  if (!sys::store_find(id, &m)) return;
+  if (m.state == fnx::app_state::CARD_MISSING) {
+    // "Insert the SD card" (P51): the card is looked for now, and the app opens for real when
+    // the card's apps come back (APPS_CHANGED with an empty id).
+    s_app.open = s_app.missing = true;
+    strlcpy(s_app.id, m.id, sizeof s_app.id);
+    strlcpy(s_app.name, m.name, sizeof s_app.name);
+    sys::sd_probe();
+    nav_push(app_screen, true);
+    return;
+  }
   if (!load_app(id)) return;
   nav_push(app_screen, true);
   if (sys::link_connected()) send_id(fnx::ty::APP_OPENED, s_app.id);
@@ -505,28 +522,62 @@ static void build_layout(lv_obj_t* body) {
   }
 }
 
-// Artboards 6a / 6b: centred icon, title, one line of help.
-static void host_state(lv_obj_t* body, bool off) {
+enum Why { WAITING, OFF, NOT_HERE, STARTING, MISSING };
+
+static void turn_on_cb(lv_event_t*) {
+  if (s_app.turning_on || !sys::link_connected()) return;
+  s_app.turning_on = true;
+  send_id(fnx::ty::APP_TURN_ON, s_app.id);  // the PC switches it on, then sends HOST_STATE
+  refresh_if_top(app_screen);
+}
+
+// Artboards 6a / 6b: centred icon (or spinner), title, one line of help. P51 adds Turn on for an
+// app switched off on the PC, "Not on this PC", "Starting" and "Insert the SD card".
+static void host_state(lv_obj_t* body, Why why) {
   lv_obj_set_flex_align(body, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
   lv_obj_set_style_pad_hor(body, 24, 0);
   lv_obj_set_style_pad_bottom(body, 16, 0);
   lv_obj_set_style_pad_row(body, 6, 0);
-  if (off) {
-    text(body, FX_ICON_DESKTOP_TOWER, &fx_icon_fill_40, FX_COLOR_LABEL_2);
-  } else {
-    spinner(body, 22, FX_COLOR_WARNING);
-  }
-  lv_obj_t* t = text(body, off ? "Turned off on host PC" : "Waiting for host PC", &fx_font_title, FX_COLOR_LABEL);
-  lv_obj_set_style_margin_top(t, off ? 4 : 8, 0);
-  char help[120];
-  if (off)
-    snprintf(help, sizeof help, "Switch %s on in fenixOS on your PC to use it here.", s_app.name);
+  bool spin = why == WAITING || why == STARTING || (why == OFF && s_app.turning_on);
+  if (spin)
+    spinner(body, 22, why == WAITING ? FX_COLOR_WARNING : FX_COLOR_ACCENT);
   else
-    snprintf(help, sizeof help, "%s runs with your PC. Open fenixOS on the PC and connect the board.", s_app.name);
+    text(body, why == MISSING ? FX_ICON_SIM_CARD : FX_ICON_DESKTOP_TOWER, &fx_icon_fill_40, FX_COLOR_LABEL_2);
+  const char* title = why == WAITING     ? "Waiting for host PC"
+                      : why == STARTING  ? "Starting on host PC"
+                      : why == NOT_HERE  ? "Not on this PC"
+                      : why == MISSING   ? "Insert the SD card"
+                      : s_app.turning_on ? "Turning on"
+                                         : "Turned off on host PC";
+  lv_obj_t* t = text(body, title, &fx_font_title, FX_COLOR_LABEL);
+  lv_obj_set_style_margin_top(t, spin ? 8 : 4, 0);
+  char help[140];
+  const char* n = s_app.name;
+  switch (why) {
+    case WAITING:
+      snprintf(help, sizeof help, "%s runs with your PC. Open fenixOS on the PC and connect the board.", n);
+      break;
+    case STARTING:
+      snprintf(help, sizeof help, "%s is starting on your PC. It shows here when it is ready.", n);
+      break;
+    case NOT_HERE:
+      snprintf(help, sizeof help, "%s was added on another PC. Add it in fenixOS on this PC to use it here.", n);
+      break;
+    case MISSING:
+      snprintf(help, sizeof help, "%s is stored on the SD card. Put the card back in to open it.", n);
+      break;
+    default:
+      snprintf(help, sizeof help, "Turn %s on here or in fenixOS on your PC.", n);
+      break;
+  }
   lv_obj_t* h = text(body, help, &fx_font_label, FX_COLOR_LABEL_2);
   lv_obj_set_width(h, LV_PCT(100));
   lv_obj_set_style_text_align(h, LV_TEXT_ALIGN_CENTER, 0);
   lv_obj_set_style_text_line_space(h, 18 - lv_font_get_line_height(&fx_font_label), 0);
+  if (why == OFF && !s_app.turning_on) {
+    lv_obj_t* b = capsule(body, FX_ICON_POWER, &fx_icon_fill_16, "Turn on", FX_COLOR_ACCENT, 40, turn_on_cb, nullptr);
+    lv_obj_set_style_margin_top(b, 10, 0);
+  }
 }
 
 void app_screen(lv_obj_t* scr) {
@@ -537,8 +588,18 @@ void app_screen(lv_obj_t* scr) {
   lv_obj_set_width(body, LV_PCT(100));
   lv_obj_set_flex_grow(body, 1);
   if (!s_app.open) return;
-  if (!sys::link_connected()) return host_state(body, false);
-  if (host_off(s_app.id)) return host_state(body, true);
+  if (s_app.missing) return host_state(body, MISSING);
+  if (!sys::link_connected()) return host_state(body, WAITING);
+  switch (app_host(s_app.id)) {
+    case fnx::host::OFF:
+      return host_state(body, OFF);
+    case fnx::host::NOT_HERE:
+      return host_state(body, NOT_HERE);
+    case fnx::host::STARTING:
+      return host_state(body, STARTING);
+    default:
+      break;
+  }
   lv_obj_add_flag(body, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(body, LV_OBJ_FLAG_CLICKABLE);  // drags must reach the scroller
   lv_obj_set_scroll_dir(body, LV_DIR_VER);
@@ -551,33 +612,65 @@ void app_screen(lv_obj_t* scr) {
 void app_on_link(const sys::LinkEvent& e) {
   switch (e.type) {
     case sys::LinkEv::CONNECTED:
-      if (s_app.open) send_id(fnx::ty::APP_OPENED, s_app.id);
+      if (s_app.open && !s_app.missing) send_id(fnx::ty::APP_OPENED, s_app.id);
       refresh_if_top(app_screen);
       break;
-    case sys::LinkEv::DISCONNECTED:
-      s_host_off.clear();
+    case sys::LinkEv::DISCONNECTED: {
+      bool faded = false;
+      for (const Host& h : s_host) faded |= h.state == fnx::host::OFF || h.state == fnx::host::NOT_HERE;
+      s_host.clear();
+      s_app.turning_on = false;
       refresh_if_top(app_screen);
+      if (faded && nav_top() == home_screen) nav_rebuild();  // no PC: tiles show plain again
       break;
+    }
     case sys::LinkEv::HOST_STATE: {
-      bool was = host_off(e.text);
-      if (e.value) {
-        for (size_t i = 0; i < s_host_off.size(); i++)
-          if (s_host_off[i] == e.text) s_host_off.erase(s_host_off.begin() + i--);
-      } else if (!was) {
-        s_host_off.emplace_back(e.text);
+      uint8_t was = app_host(e.text), now = (uint8_t)e.value;
+      bool is_open = strcmp(open_app_id(), e.text) == 0;
+      if (is_open && now != fnx::host::OFF && s_app.turning_on) {
+        s_app.turning_on = false;
+        refresh_if_top(app_screen);
       }
-      if (was != host_off(e.text) && strcmp(open_app_id(), e.text) == 0) refresh_if_top(app_screen);
+      if (was == now) break;
+      bool found = false;
+      for (Host& h : s_host)
+        if (h.id == e.text) {
+          h.state = now;
+          found = true;
+        }
+      if (!found) s_host.push_back({e.text, now});
+      if (is_open) refresh_if_top(app_screen);
+      // Tiles fade while the PC half is off or missing (P51).
+      auto faded = [](uint8_t s) { return s == fnx::host::OFF || s == fnx::host::NOT_HERE; };
+      if (faded(was) != faded(now) && nav_top() == home_screen) nav_rebuild();
       break;
     }
     case sys::LinkEv::APPS_CHANGED: {
       const char* id = e.text;
       bool home_top = nav_top() == home_screen;
-      bool had = has_tile(id);
-      AppTile old{};
-      for (const AppTile& t : s_tiles)
-        if (strcmp(t.id, id) == 0) old = t;
+      if (!id[0]) {  // the SD card came or went: many tiles changed (P51)
+        apps_reload();
+        if (s_app.open) {
+          sys::AppMeta m;
+          bool there = sys::store_find(s_app.id, &m);
+          bool ready = there && m.state == fnx::app_state::READY;
+          if (s_app.missing && ready) {  // card back: open the app for real
+            char keep[fpkg::MAX_ID + 1];
+            strlcpy(keep, s_app.id, sizeof keep);
+            close_app();
+            if (load_app(keep) && sys::link_connected()) send_id(fnx::ty::APP_OPENED, s_app.id);
+            refresh_if_top(app_screen);
+          } else if (!s_app.missing && !ready && nav_top() == app_screen) {
+            nav_pop();  // its card was pulled while it showed
+          }
+        }
+        if (home_top) nav_rebuild();
+        settings_on_sd();
+        break;
+      }
+      bool had = known(id);
       apps_reload();
-      bool now = has_tile(id);
+      bool now = known(id);
       bool is_open = strcmp(open_app_id(), id) == 0;
       if (now) {
         if (!had) strlcpy(s_fade_in, id, sizeof s_fade_in);
@@ -589,17 +682,15 @@ void app_on_link(const sys::LinkEvent& e) {
           refresh_if_top(app_screen);
         }
       } else if (had) {
-        bool off_shown = is_open && nav_top() == app_screen && host_off(id);
-        if (is_open || home_top) {
-          s_ghost = old;
-          fix_icons(s_ghost);
-        }
+        bool off_shown = is_open && nav_top() == app_screen && app_host(id) == fnx::host::OFF;
+        if (is_open || home_top) strlcpy(s_ghost, id, sizeof s_ghost);
         if (is_open && off_shown)
           s_app.close_at = esp_timer_get_time() + 2000000;  // 6b stays up for 2 s
         else if (is_open)
           nav_pop();
       }
       if (home_top) nav_rebuild();
+      settings_on_sd();  // Storage lists the apps and where they live
       break;
     }
     default:

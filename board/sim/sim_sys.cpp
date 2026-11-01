@@ -20,6 +20,7 @@ namespace sim {
 
 static std::string s_store;
 static bool s_connected;
+static bool s_card_out;
 static std::deque<sys::LinkEvent> s_events;
 static std::deque<sys::BindValue> s_binds;
 
@@ -31,6 +32,13 @@ void post(sys::LinkEv type, int32_t value, const char* text) {
   e.value = value;
   strlcpy(e.text, text, sizeof e.text);
   s_events.push_back(e);
+}
+
+void set_card(bool in) {
+  if (in == !s_card_out) return;
+  s_card_out = !in;
+  post(sys::LinkEv::APPS_CHANGED, 0, "");
+  post(sys::LinkEv::SD_CHANGED);
 }
 
 void set_connected(bool on) {
@@ -138,26 +146,52 @@ void store_usage(uint32_t* used_kb, uint32_t* total_kb) {
   *used_kb = (uint32_t)(used / 1024);
   *total_kb = 1984;
 }
-int store_list(AppMeta* out, int max) {
+// The index, read from the folder on each call (a few files). Apps count as on the SD card;
+// `card out` in a script marks them missing (P51).
+static std::vector<AppMeta> index() {
   std::vector<AppMeta> v;
   std::error_code ec;
   if (!sim::s_store.empty())
     for (const auto& f : fs::directory_iterator(sim::s_store, ec)) {
       if (f.path().extension() != ".fxp") continue;
       std::vector<uint8_t> d = sim::read_file(f.path());
-      std::string_view id, ver;
-      if (d.empty() || !fpkg::peek(d.data(), d.size(), &id, &ver)) continue;
+      std::string_view id, ver, name;
+      uint32_t color = 0;
+      if (d.empty() || !fpkg::peek(d.data(), d.size(), &id, &ver, &name, &color)) continue;
       AppMeta m{};
       strlcpy(m.id, std::string(id).c_str(), sizeof m.id);
       strlcpy(m.version, std::string(ver).c_str(), sizeof m.version);
+      strlcpy(m.name, std::string(name).c_str(), sizeof m.name);
+      m.color = color;
+      m.where = fnx::app_where::SD;
+      m.state = sim::s_card_out ? fnx::app_state::CARD_MISSING : fnx::app_state::READY;
       v.push_back(m);
     }
   std::sort(v.begin(), v.end(), [](const AppMeta& a, const AppMeta& b) { return strcmp(a.id, b.id) < 0; });
-  int n = 0;
-  for (; n < (int)v.size() && n < max; n++) out[n] = v[n];
-  return n;
+  return v;
 }
+int store_count() { return (int)index().size(); }
+bool store_at(int i, AppMeta* out) {
+  std::vector<AppMeta> v = index();
+  if (i < 0 || i >= (int)v.size()) return false;
+  *out = v[i];
+  return true;
+}
+bool store_find(const char* id, AppMeta* out) {
+  for (const AppMeta& m : index())
+    if (strcmp(m.id, id) == 0) {
+      *out = m;
+      return true;
+    }
+  return false;
+}
+bool store_sha(const char*, uint8_t out[32]) {
+  memset(out, 0, 32);
+  return false;
+}
+void store_sd_changed(bool) {}
 FILE* store_open(const char* id, size_t* n) {
+  if (sim::s_card_out) return nullptr;
   std::error_code ec;
   fs::path p = sim::pkg_path(id);
   uintmax_t size = fs::file_size(p, ec);
@@ -215,7 +249,11 @@ uint32_t stream_dropped() { return 0; }
 void stream_set_active(bool on) { s_stream = on; }
 
 // microSD (P50): the 8 GB card on the user's board, freshly formatted, so Storage looks real.
-SdInfo sd_info() { return {fnx::sd_state::READY, 7855104, 7855104, 40000}; }
+SdInfo sd_info() {
+  if (sim::s_card_out) return {fnx::sd_state::NONE, 0, 0, 0};
+  return {fnx::sd_state::READY, 7855104, 7855104, 40000};
+}
+void sd_update_free() {}
 void sd_start() {}
 void sd_probe() {}
 void sd_report() {}

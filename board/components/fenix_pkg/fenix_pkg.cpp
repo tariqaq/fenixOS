@@ -115,20 +115,24 @@ bool valid_id(std::string_view id) {
   return true;
 }
 
-bool peek(const uint8_t* data, size_t n, std::string_view* id, std::string_view* version) {
+bool peek(const uint8_t* data, size_t n, std::string_view* id, std::string_view* version, std::string_view* name,
+          uint32_t* color) {
   MemSource src(data, n);
   Rd r{src};
   Header h;
   Counts c;
-  if (!read_header(r, h, c) || c.id >= c.ns || c.version >= c.ns) return false;
+  if (!read_header(r, h, c) || c.id >= c.ns || c.version >= c.ns || (name && c.name >= c.ns)) return false;
   uint16_t last = c.id > c.version ? c.id : c.version;
+  if (name && c.name > last) last = c.name;
   for (uint16_t i = 0; i <= last; i++) {
     uint16_t len = r.u16();
     size_t at = src.pos;
     if (!r.ok || !src.skip(len)) return false;
     if (i == c.id) *id = std::string_view((const char*)data + at, len);
     if (i == c.version) *version = std::string_view((const char*)data + at, len);
+    if (name && i == c.name) *name = std::string_view((const char*)data + at, len);
   }
+  if (color) *color = h.tile_color;
   return r.ok;
 }
 
@@ -151,7 +155,6 @@ const char* Package::read(Source& src, size_t n) {
   assets.clear();
   arena.clear();
   id = name = version = {};
-  if (n > MAX_SIZE) return "package too big";
   Rd r{src};
   Counts c;
   if (!read_header(r, head, c)) return "not a fenixOS package";

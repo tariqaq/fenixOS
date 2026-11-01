@@ -59,7 +59,7 @@ Checked by the compiler and again by the board before it commits an install. Bot
 
 | What | Limit |
 |---|---|
-| Package size | 64 KB |
+| Package size | none (P51; was 64 KB). On the board's flash: 128 KB |
 | Elements | 200 |
 | Strings (all, bytes) | 8 KB |
 | Bindings | 64 |
@@ -140,20 +140,42 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 
 `board/components/fenix_apps/app_pkg.cpp`, artboards HostWaiting (6a) and HostOff (6b).
 
-- **Tiles:** Home shows the system apps, then installed apps sorted by id: tile colour, the 20 px icon (Tiles) or 26 px icon (Dock), tinted white. A new tile fades and scales in (0.8 → 1, 250 ms); a removed one fades and scales out. Landscape tiles and the Dock scroll sideways when they do not fit; the portrait grid shows two rows and scrolls.
-- **Open:** tapping a tile reads the package from flash (strings, element props and the images its elements show; tile icons stay in flash), fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
+- **Tiles:** Home shows the system apps, then installed apps sorted by id: tile colour, the 20 px icon (Tiles) or 26 px icon (Dock), tinted white. Since P51 the launcher is paged: 3 tiles a page in landscape, 2 × 2 in portrait, as many Dock items as fit (4 in landscape); swipe left or right anywhere on Home, dots under the tiles show the page. Only the shown tiles' icons are read (and the previous page's, kept one rebuild so the old screen can still draw). A new tile turns Home to its page and fades and scales in (0.8 → 1, 250 ms); a removed one fades and scales out where it was.
+- **Faded tiles (P51):** 40% opacity when the app's PC half is switched off (`HOST_STATE` off) or not on this PC (not here), or when the app is on an SD card that is out (with a card glyph in the corner). A faded tile still opens.
+- **Open:** tapping a tile reads the package from the SD card or flash (strings, element props and the images its elements show; tile icons stay in storage), fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
 - **Close:** back, or any other screen change, sends `APP_CLOSED`; what was read is freed when the app screen is deleted (its slide out still draws it). `BOARD_STATE` reports screen 5 and the app id while it is open.
-- **States:** no PC link: 6a "Waiting for host PC". `HOST_STATE` off for this app: 6b "Turned off on host PC". Otherwise the layout.
+- **States:** card out: "Insert the SD card" (the card is looked for at once; the app opens when it comes back). No PC link: 6a "Waiting for host PC". `HOST_STATE` (P51): off, 6b "Turned off on host PC" with a **Turn on** button (sends `APP_TURN_ON`; "Turning on" with a spinner until the PC answers); not here, "Not on this PC"; starting, "Starting on host PC" with a spinner. Running (or no state from this PC yet): the layout.
 - **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. Values for other apps, or with no app open, are dropped.
 - **Events:** buttons send tap (1) and long press (2); switches send change (3) with 0/1; sliders send change (3) with the value on release. The board updates its cache for a bound control the user changed.
-- **Install / remove while open:** an update reloads the package in place. A remove returns Home at once, or after 2 s when 6b is showing (the PC's switch-off sends `HOST_STATE` off, then `APP_REMOVE`).
+- **Install / remove while open:** an update reloads the package in place. A remove returns Home at once, or after 2 s when 6b is showing (Remove app on the PC sends `HOST_STATE` off, then `APP_REMOVE`). Pulling the card under an open SD app returns Home.
 - **Defaults:** buttons 40 px tall (icon buttons 40 × 40, DESIGN.md's touch target), button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`. Built-in widgets match the system screens (slider, capsule button).
 - Not testable over the link: 6a (connecting the CLI ends it). The PC simulator shows it (`board/sim/golden/app_waiting.png`, the `disconnect` step in `board/sim/screens.txt`).
 
 ## Store on the board
 
-- LittleFS partition `apps` (~1.9 MB) at `/apps`: `<id>.fxp` and `<id>.sha` (32-byte sha256).
-- Install: `APP_INSTALL_BEGIN` opens `/apps/<id>.tmp`; each `APP_CHUNK` at the expected offset is written and acked with the next offset (others are acked with the expected offset, so the PC rewinds); `APP_INSTALL_END` checks size, sha256 and the package header and limits, then removes the old files and renames the temp file. Leftover `*.tmp` files are deleted at boot, so a power cut never leaves a half app. The UART RX ISR runs from IRAM (`CONFIG_UART_ISR_IN_IRAM`) and the RX buffer is 5 KB (the PC keeps at most 4 KB of chunks unacked; peak 2.1 KB, P40), so flash writes do not drop chunk bytes.
-- `APP_LIST` reads each package header (id, version) and its `.sha`. Up to 10 apps (`MAX_APPS`).
-- A failed check leaves the old version in place. A `.fxp` or `.sha` without its partner is deleted at boot too (a cut between the two steps of a commit or remove); the PC reinstalls it on the next reconcile.
-- Measured (2026-10-29, COM9): 1.6 KB sample installs in 0.13 s, a 21 KB package with a 110×90 RGB565 image in 0.51 s (~42 KB/s, so a 64 KB package takes ~1.6 s). Remove brings the store back to its empty size (8 KB of LittleFS metadata).
+### Where apps live (P51)
+
+- **SD card first:** with a FAT32 card in, packages go to `/sd/fenixos/apps/<id>.fxp` and `.sha`. No size cap: the card's free space (64 KB kept spare) and FAT32's 4 GB per file. **No card:** LittleFS at `/apps`, 128 KB per package (`sys::FLASH_PKG_MAX`), else `APP_RESULT` 7 "too big for flash". One app is in one place: an install drops the copy in the other store.
+- **Index:** `sys::store_*` keep one list in RAM (`AppMeta`, 120 B: id, version, name, tile colour, where, state), sorted by id, up to 32 apps (`MAX_APPS`). The sha is read from the `.sha` file when asked. Home, Settings › Storage and the link read it; nobody keeps a copy.
+- **Card out:** `/apps/sd.idx` on flash lists the card's apps (`id\tversion\tcolour\tname` per line), so their tiles stay (faded, card glyph) with the card out; they are "card missing" until the card is back and scanned. A flash copy wins over a card copy of the same app at a scan (the card's is deleted). An app whose card is out cannot be removed.
+- **Link:** `APP_INDEX_REQ` / `APP_INDEX` page the index (8 apps a page, where and state per app, sha zero while the card is out). `APP_LIST` still answers with the first 10 apps for older PC apps.
+
+### Install and remove
+
+- Install: `APP_INSTALL_BEGIN` opens `<dir>/<id>.tmp` in the store chosen above; each `APP_CHUNK` at the expected offset is written and acked with the next offset (others are acked with the expected offset, so the PC rewinds); `APP_INSTALL_END` checks size, sha256 and the package header and limits, then removes the old files and renames the temp file. Leftover `*.tmp` files are deleted at boot, so a power cut never leaves a half app. The UART RX ISR runs from IRAM (`CONFIG_UART_ISR_IN_IRAM`) and the RX buffer is 5 KB (the PC keeps at most 4 KB of chunks unacked; peak 2.1 KB, P40), so flash writes do not drop chunk bytes.
+- A failed check leaves the old version in place. A `.fxp` or `.sha` without its partner is deleted at boot (flash) or at the card's mount (SD) too (a cut between the two steps of a commit or remove); Sync with board offers it again.
+- Measured (2026-10-29, COM9): 1.6 KB sample installs in 0.13 s, a 21 KB package with a 110×90 RGB565 image in 0.51 s (~42 KB/s over USB). Remove brings the flash store back to its empty size (8 KB of LittleFS metadata).
+- Package size in practice: the content limits above (24 KB of images, 8 KB of strings) bound a package near 33 KB plus tile icons, so dropping the 64 KB cap (P51) changes no real package today; it leaves room for later formats that stream images from the card.
+
+## On, off and sync (P51)
+
+| Action on the PC | PC half | Board half |
+|---|---|---|
+| Add app (registry) | Downloaded, switched on | Installed (SD card, else flash ≤ 128 KB) |
+| Switch off | Stopped | Kept; `HOST_STATE` off: tile fades, the app screen offers Turn on |
+| Switch on (here, or Turn on on the board) | Started (`HOST_STATE` starting, then running) | Installed if missing or different |
+| Remove app | Deleted with its settings | Removed |
+
+- **Sync with board:** when the board connects, the PC reads its index and lists what differs on the Apps page; nothing changes until the user clicks Sync. Per app: on this PC only, or older or a different copy on the board: put this PC's version on the board. Newer on the board: update this PC from the registry. On the board only: add the PC half from the registry (switched off), keep it on the board alone (remembered in `config.json` `kept_on_board`; the board shows "Not on this PC"), or remove it. Each row can also be left for later.
+- Every board app gets its `HOST_STATE` at connect: running, starting, off, or not here.
+- Installs over 128 KB show a percentage; one that would take over ~2 minutes at USB speed is announced in the log first. An install gives up after 30 s without progress.

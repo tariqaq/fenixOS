@@ -85,7 +85,7 @@
         {#key `${page}:${fresh}`}
           <div in:enter>
             {#if page === "apps"}
-              <Apps apps={snap.apps} />
+              <Apps apps={snap.apps} sync={snap.sync} />
             {:else if page === "board"}
               <Board
                 board={snap.board}

@@ -81,16 +81,19 @@ payload = type:u8 ‖ seq:u8 ‖ body
 | Type | Name | Dir | Body |
 |---|---|---|---|
 | 0x20 | APP_LIST_REQ | P→B | (empty) |
-| 0x21 | APP_LIST | B→P | count:u8 ‖ count × (id:str ‖ version:str ‖ sha256:32) |
+| 0x21 | APP_LIST | B→P | count:u8 ‖ count × (id:str ‖ version:str ‖ sha256:32). Since P51 (firmware 0.1.21) the first 10 apps only, for an older PC app; the PC uses APP_INDEX |
 | 0x22 | APP_INSTALL_BEGIN | P→B | id:str ‖ version:str ‖ size:u32 ‖ sha256:32 |
 | 0x23 | APP_CHUNK | P→B | offset:u32 ‖ data:bytes (≤ 1024) |
 | 0x24 | APP_ACK | B→P | next_offset:u32. Sent with 0 when APP_INSTALL_BEGIN is accepted, then after each chunk is written. A chunk at any other offset is not written and is acked with the expected offset. The PC keeps at most 4 chunks in flight and goes back to the last acked offset when acks stop for 1 s. The board drops an install after 10 s without install messages, or when the link drops |
 | 0x25 | APP_INSTALL_END | P→B | (empty). The board checks size and sha256, then commits |
-| 0x26 | APP_RESULT | B→P | op:u8 (1 install, 2 remove) ‖ code:u8 ‖ id:str ‖ text:bytes. Codes: 0 ok, 1 no space, 2 bad hash, 3 bad package, 4 busy, 5 storage error, 6 unknown app |
+| 0x26 | APP_RESULT | B→P | op:u8 (1 install, 2 remove) ‖ code:u8 ‖ id:str ‖ text:bytes. Codes: 0 ok, 1 no space, 2 bad hash, 3 bad package, 4 busy, 5 storage error, 6 unknown app, 7 too big for flash and no SD card (P51) |
 | 0x27 | APP_REMOVE | P→B | id:str |
 | 0x28 | APP_OPENED | B→P | id:str |
 | 0x29 | APP_CLOSED | B→P | id:str |
-| 0x2A | HOST_STATE | P→B | running:u8 ‖ id:str. `running` = the app's PC half is up |
+| 0x2A | HOST_STATE | P→B | state:u8 ‖ id:str. States: 0 off (switched off on the PC, or its PC half stopped for good), 1 running, 2 not on this PC (kept on the board only), 3 starting (switched on, PC half not ready yet). Before P51 the byte was `running` (0 or 1); boards before 0.1.21 read 2 and 3 as running |
+| 0x2B | APP_INDEX_REQ | P→B | page:u8. Optional (P51) |
+| 0x2C | APP_INDEX | B→P | page:u8 ‖ pages:u8 ‖ count:u8 ‖ count × (id:str ‖ version:str ‖ sha256:32 ‖ where:u8 (0 flash, 1 SD card) ‖ state:u8 (0 ready, 1 card missing)). Up to 32 apps, sorted by id, 8 per page; `pages` is at least 1. The PC asks for page 0, then each next page. Optional (P51) |
+| 0x2D | APP_TURN_ON | B→P | id:str. The Turn on button of an app switched off on the PC; the PC switches it on as if clicked there. Optional (P51) |
 
 ### Bindings (0x3_)
 

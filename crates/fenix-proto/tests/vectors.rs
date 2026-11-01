@@ -215,7 +215,7 @@ fn samples() -> Vec<(&'static str, Msg)> {
         (
             "host_state",
             Msg::HostState {
-                running: true,
+                state: host::RUNNING,
                 id: "a.b".into(),
             },
         ),
@@ -294,6 +294,46 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 clock_khz: 40_000,
             }),
         ),
+        ("app_index_req", Msg::AppIndexReq { page: 1 }),
+        (
+            "app_index",
+            Msg::AppIndex {
+                page: 1,
+                pages: 2,
+                apps: vec![
+                    AppIndexEntry {
+                        id: "io.github.tariqaq.sample".into(),
+                        version: "0.1.0".into(),
+                        sha256: sha(1),
+                        place: app_where::SD,
+                        state: app_state::READY,
+                    },
+                    AppIndexEntry {
+                        id: "a.b".into(),
+                        version: "1.2.3".into(),
+                        sha256: sha(9),
+                        place: app_where::SD,
+                        state: app_state::CARD_MISSING,
+                    },
+                ],
+            },
+        ),
+        (
+            "app_index_empty",
+            Msg::AppIndex {
+                page: 0,
+                pages: 1,
+                apps: vec![],
+            },
+        ),
+        ("app_turn_on", Msg::AppTurnOn { id: "a.b".into() }),
+        (
+            "host_state_not_here",
+            Msg::HostState {
+                state: host::NOT_HERE,
+                id: "a.b".into(),
+            },
+        ),
     ]
 }
 
@@ -350,9 +390,7 @@ fn decoder_splits_stream_and_skips_garbage() {
 
 #[test]
 fn rle16() {
-    let px: Vec<u16> = std::iter::repeat_n(0x1234, 300)
-        .chain([1, 2, 2])
-        .collect();
+    let px: Vec<u16> = std::iter::repeat_n(0x1234, 300).chain([1, 2, 2]).collect();
     let enc = rle16_encode(&px);
     let mut back = vec![];
     rle16_decode(&enc, &mut back).unwrap();

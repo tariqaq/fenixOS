@@ -17,11 +17,11 @@
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
 //! fenix bench [secs] [nostream|<fps>]  link throughput (stream at 10 fps unless given)
-//! fenix list                       installed apps
+//! fenix list                       installed apps (paged index since 0.1.21: where each lives)
 //! fenix install <file.fxp>         push a board package
 //! fenix remove <id>                remove an app
 //! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
-//! fenix host <id> on|off           tell the board an app's PC half runs or stopped
+//! fenix host <id> on|off|gone|starting   tell the board the state of an app's PC half
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
 //! fenix flash [dir] [--erase]      write firmware: a bundle (default app/src-tauri/resources/
 //!                                  firmware, from tools/bundle_firmware.py) or an ESP-IDF build
@@ -37,7 +37,9 @@ use std::path::Path;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
-use fenix_proto::{app, radio, scan_status, BindValue, Msg, RadioState, Stats, Sysinfo};
+use fenix_proto::{
+    app, app_state, app_where, host, radio, scan_status, BindValue, Msg, RadioState, Stats, Sysinfo,
+};
 use sha2::{Digest, Sha256};
 
 fn main() {
@@ -153,16 +155,25 @@ fn main() {
             None => usage(),
         },
         "set" if args.len() >= 3 => set(opts, Path::new(&args[1]), &args[2..]),
-        "host" => match (args.get(1), args.get(2).map(String::as_str)) {
-            (Some(id), Some("on" | "off")) => one_shot(
-                opts,
-                Msg::HostState {
-                    running: args[2] == "on",
-                    id: id.clone(),
-                },
-            ),
-            _ => usage(),
-        },
+        "host" => {
+            let state = match args.get(2).map(String::as_str) {
+                Some("on") => Some(host::RUNNING),
+                Some("off") => Some(host::OFF),
+                Some("gone") => Some(host::NOT_HERE),
+                Some("starting") => Some(host::STARTING),
+                _ => None,
+            };
+            match (args.get(1), state) {
+                (Some(id), Some(state)) => one_shot(
+                    opts,
+                    Msg::HostState {
+                        state,
+                        id: id.clone(),
+                    },
+                ),
+                _ => usage(),
+            }
+        }
         "soak" => soak(opts, arg_u64(&args, 1, 60)),
         "flash" => flash(opts, &args[1..]),
         "write" => match (args.get(1).and_then(|v| num(v)), args.get(2)) {
@@ -196,7 +207,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -408,11 +419,21 @@ fn ask_sysinfo(link: &Link) -> Option<Sysinfo> {
 }
 
 fn radio_text(s: &RadioState) -> String {
-    let mode = ["off", "Bluetooth (old firmware)", "Wi-Fi"].get(s.mode as usize).copied().unwrap_or("?");
-    let state = ["off", "starting", "ready", "connecting", "connected", "failed"]
-        .get(s.state as usize)
+    let mode = ["off", "Bluetooth (old firmware)", "Wi-Fi"]
+        .get(s.mode as usize)
         .copied()
         .unwrap_or("?");
+    let state = [
+        "off",
+        "starting",
+        "ready",
+        "connecting",
+        "connected",
+        "failed",
+    ]
+    .get(s.state as usize)
+    .copied()
+    .unwrap_or("?");
     let mut t = format!("radio: {mode}, {state}");
     if !s.name.is_empty() {
         t += &format!(", {}", s.name);
@@ -484,7 +505,17 @@ fn wifi_scan(opts: LinkOptions) -> i32 {
                     eprintln!("scan failed");
                     return 1;
                 }
-                let auth = ["open", "WEP", "WPA", "WPA2", "WPA/WPA2", "enterprise", "WPA3", "WPA2/WPA3", "other"];
+                let auth = [
+                    "open",
+                    "WEP",
+                    "WPA",
+                    "WPA2",
+                    "WPA/WPA2",
+                    "enterprise",
+                    "WPA3",
+                    "WPA2/WPA3",
+                    "other",
+                ];
                 for a in &aps {
                     let b = a.bssid.map(|x| format!("{x:02x}")).join(":");
                     println!(
@@ -699,7 +730,9 @@ fn bench(opts: LinkOptions, secs: u64, nostream: bool, fps: u8) -> i32 {
     // The link must stay up once the stream stops (P48: the board closed it after a Wi-Fi stream).
     let watch = Instant::now() + Duration::from_secs(4);
     while Instant::now() < watch {
-        if let Some(e @ (Event::Disconnected { .. } | Event::Connected { .. })) = link.recv_event(Duration::from_millis(100)) {
+        if let Some(e @ (Event::Disconnected { .. } | Event::Connected { .. })) =
+            link.recv_event(Duration::from_millis(100))
+        {
             print_event(&e);
         }
     }
@@ -785,27 +818,58 @@ fn list(opts: LinkOptions) -> i32 {
     if !wait_connected(&link, 6) {
         return 1;
     }
+    // The paged index (0.1.21) says where each app lives; older boards answer APP_LIST only.
+    let mut page = 0u8;
+    let mut apps = Vec::new();
+    link.send(Msg::AppIndexReq { page });
+    let mut end = Instant::now() + Duration::from_millis(1500);
+    while Instant::now() < end {
+        match link.recv_event(Duration::from_millis(100)) {
+            Some(Event::Msg(Msg::AppIndex {
+                page: p,
+                pages,
+                apps: v,
+            })) if p == page => {
+                apps.extend(v);
+                page += 1;
+                if page >= pages {
+                    for e in &apps {
+                        let place = match (e.place, e.state) {
+                            (_, app_state::CARD_MISSING) => "card missing",
+                            (app_where::SD, _) => "SD card",
+                            _ => "flash",
+                        };
+                        println!("{} {} {} {place}", e.id, e.version, short_sha(&e.sha256));
+                    }
+                    println!("{} app(s)", apps.len());
+                    return 0;
+                }
+                link.send(Msg::AppIndexReq { page });
+                end = Instant::now() + Duration::from_millis(1500);
+            }
+            _ => {}
+        }
+    }
+    if page > 0 {
+        eprintln!("the board stopped answering after page {page}");
+        return 1;
+    }
     link.send(Msg::AppListReq);
     let end = Instant::now() + Duration::from_secs(3);
     while Instant::now() < end {
         if let Some(Event::Msg(Msg::AppList(v))) = link.recv_event(Duration::from_millis(100)) {
             for e in &v {
-                println!(
-                    "{} {} {}",
-                    e.id,
-                    e.version,
-                    e.sha256
-                        .iter()
-                        .take(6)
-                        .map(|b| format!("{b:02x}"))
-                        .collect::<String>()
-                );
+                println!("{} {} {}", e.id, e.version, short_sha(&e.sha256));
             }
             println!("{} app(s)", v.len());
             return 0;
         }
     }
     1
+}
+
+fn short_sha(sha: &[u8; 32]) -> String {
+    sha.iter().take(6).map(|b| format!("{b:02x}")).collect()
 }
 
 /// Install a package: id and version come from the package itself. Keeps 4 chunks in flight and

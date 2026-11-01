@@ -11,7 +11,8 @@ use sha2::{Digest, Sha256};
 const INDEX_URL: &str =
     "https://raw.githubusercontent.com/tariqaq/fenixOS/main/registry/index.json";
 const ALLOWED_URL: &str = "https://github.com/tariqaq/";
-const MAX_BOARD: u64 = 64 * 1024;
+/// Download cap only (P51: packages have no size cap; their content limits are checked).
+const MAX_BOARD: u64 = 64 * 1024 * 1024;
 const MAX_PC: u64 = 64 * 1024 * 1024;
 const PERMISSIONS: [&str; 6] = [
     "keys",

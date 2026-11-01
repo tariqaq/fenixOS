@@ -78,7 +78,7 @@ The 20 built-in glyphs: `gear-six`, `power`, `screencast`, `arrow-clockwise`, `p
 ## States the board shows for you
 
 - No PC link: "Waiting for host PC".
-- The app switched off in the PC app: "Turned off on host PC".
+- The app switched off in the PC app: "Turned off on host PC", with a Turn on button. Starting: "Starting on host PC". Added on another PC only: "Not on this PC".
 - Otherwise the layout. An update reloads it in place; a removed app returns to Home.
 
 ## Limits
@@ -87,7 +87,7 @@ Checked by `fenix-pkg build` and again by the board before it installs.
 
 | What | Limit |
 |---|---|
-| Package size | 64 KB |
+| Package size | none (on the board's flash without an SD card: 128 KB) |
 | Elements | 200 |
 | Strings (all, bytes) | 8 KB |
 | Bindings | 64 |
@@ -95,7 +95,7 @@ Checked by `fenix-pkg build` and again by the board before it installs.
 | RAM estimate (`elements × 160 B + strings + images`) | 40 KB |
 | Tree depth | 8 |
 
-Images are stored raw: a 100 × 60 RGB565 image is 12 KB. Prefer A8 (1 byte a pixel, tinted with `color`) for icons and line art. The board holds up to 10 apps in about 1.9 MB.
+Images are stored raw: a 100 × 60 RGB565 image is 12 KB. Prefer A8 (1 byte a pixel, tinted with `color`) for icons and line art. The board holds up to 32 apps, on its SD card when one is in.
 
 ## Example
 

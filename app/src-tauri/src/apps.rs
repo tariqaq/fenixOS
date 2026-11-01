@@ -1,16 +1,22 @@
 //! App manager (PLAN §3.5): installed apps, their switches and settings, the board install queue,
 //! and the PC halves. Runs on the engine thread; the UI changes it through `Cmd`s.
 //! Files: `%LOCALAPPDATA%\fenixOS\apps\<id>\<version>\{manifest.json, app.fxp, pc.exe}`.
+//!
+//! Since P51 (docs/packages.md "On, off and sync"): Add installs both halves, switching off stops
+//! the PC half only (the board tile fades), Remove removes both. What differs between this PC and
+//! the board when it connects is listed (`sync_items`) and changed only when the user syncs.
 
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::Sender;
 use std::time::{Duration, Instant};
 
-use fenix_proto::{app as code, BindValue, Msg, MAX_CHUNK};
+use fenix_proto::{
+    app as code, app_state, app_where, host, AppIndexEntry, BindValue, Msg, MAX_CHUNK,
+};
 use fenix_sdk::wire::{Down, Up};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
@@ -20,7 +26,15 @@ use crate::registry::{self, Manifest};
 use crate::sidecar::{Note, Sidecar, Spec};
 
 const WINDOW: usize = 4 * MAX_CHUNK;
+/// An install or remove gives up after this long without progress (big packages take minutes).
 const OP_TIMEOUT: Duration = Duration::from_secs(30);
+/// Board installs over this size show a percentage (P51).
+const SHOW_PROGRESS_OVER: usize = 128 * 1024;
+/// Measured over USB (P51 plan): installs that take longer than `SLOW_INSTALL` say so first.
+const USB_BYTES_PER_S: usize = 42 * 1024;
+const SLOW_INSTALL: Duration = Duration::from_secs(120);
+/// An APP_INDEX page that does not come is asked for again.
+const INDEX_RETRY: Duration = Duration::from_secs(3);
 const RESTART_AFTER: [u64; 3] = [1, 5, 15];
 const FAIL_WINDOW: Duration = Duration::from_secs(120);
 
@@ -46,6 +60,11 @@ pub enum Cmd {
     Added {
         manifest: Box<Manifest>,
         enable: bool,
+    },
+    /// One choice from Apps › Sync with board (`pc` is done by the caller: download, then `Added`).
+    Sync {
+        id: String,
+        action: SyncAction,
     },
     Sidecar {
         id: String,
@@ -73,6 +92,111 @@ pub struct AppView {
     pub elevated: bool,
     pub settings: Vec<Value>,
     pub values: Map<String, Value>,
+    /// Where the board half lives: `sd`, `flash`, `card_missing` (its SD card is out), or empty
+    /// (not on the board, or no board).
+    pub place: String,
+}
+
+/// The board half as the board's APP_INDEX lists it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct BoardApp {
+    pub version: String,
+    /// All zero while its SD card is out.
+    pub sha: [u8; 32],
+    pub place: u8,
+    pub state: u8,
+}
+
+impl From<AppIndexEntry> for BoardApp {
+    fn from(e: AppIndexEntry) -> BoardApp {
+        BoardApp {
+            version: e.version,
+            sha: e.sha256,
+            place: e.place,
+            state: e.state,
+        }
+    }
+}
+
+/// The PC half, for the sync diff.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PcApp {
+    pub name: String,
+    pub version: String,
+    pub sha: [u8; 32],
+}
+
+/// One difference between this PC and the board (Apps › Sync with board).
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SyncItem {
+    pub id: String,
+    /// The PC's name for it, or the id when this PC does not have it.
+    pub name: String,
+    /// `board_missing`, `board_older`, `board_differs` (sync puts this PC's version on the
+    /// board), `pc_older` (sync updates the PC half from the registry), `board_only` (no PC
+    /// half here: add it from the registry, keep it on the board alone, or remove it).
+    pub kind: String,
+    pub pc_version: String,
+    pub board_version: String,
+    /// The board half is on an SD card that is out (it cannot be removed now).
+    pub card_missing: bool,
+}
+
+/// What the user picked for one `SyncItem`.
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum SyncAction {
+    /// Install this PC's version on the board.
+    Board,
+    /// Add or update the PC half from the registry (the caller downloads it).
+    Pc,
+    /// Keep a board-only app; the board shows "Not on this PC" for it.
+    Keep,
+    /// Remove a board-only app from the board.
+    Remove,
+}
+
+/// The sync diff (P51), pure so it is tested without a board. Apps the user chose to keep on the
+/// board alone (`kept`) are not listed; an app whose card is out is compared by version only.
+pub fn sync_diff(
+    pc: &BTreeMap<String, PcApp>,
+    board: &BTreeMap<String, BoardApp>,
+    kept: &BTreeSet<String>,
+) -> Vec<SyncItem> {
+    let mut out = Vec::new();
+    let item = |id: &str, name: &str, kind: &str, pcv: &str, b: Option<&BoardApp>| SyncItem {
+        id: id.into(),
+        name: name.into(),
+        kind: kind.into(),
+        pc_version: pcv.into(),
+        board_version: b.map(|b| b.version.clone()).unwrap_or_default(),
+        card_missing: b.is_some_and(|b| b.state == app_state::CARD_MISSING),
+    };
+    for (id, p) in pc {
+        let kind = match board.get(id) {
+            None => Some("board_missing"),
+            Some(b) if b.version != p.version => {
+                if registry::version_at_least(&p.version, &b.version) {
+                    Some("board_older")
+                } else {
+                    Some("pc_older")
+                }
+            }
+            Some(b) if b.state != app_state::CARD_MISSING && b.sha != p.sha => {
+                Some("board_differs")
+            }
+            Some(_) => None,
+        };
+        if let Some(k) = kind {
+            out.push(item(id, &p.name, k, &p.version, board.get(id)));
+        }
+    }
+    for (id, b) in board {
+        if !pc.contains_key(id) && !kept.contains(id) {
+            out.push(item(id, id, "board_only", "", Some(b)));
+        }
+    }
+    out
 }
 
 struct Installed {
@@ -105,6 +229,10 @@ struct Current {
     ended: bool,
     last_ack: Instant,
     started: Instant,
+    /// Last time the board took more bytes (or the op started): the timeout counts from here.
+    progress: Instant,
+    /// Percentage last shown for a big install.
+    shown_pct: u8,
 }
 
 pub struct Apps {
@@ -115,11 +243,14 @@ pub struct Apps {
     gen: u64,
     link: Sender<Msg>,
     inbox: Sender<Cmd>,
-    /// Board link up, firmware matches and APP_LIST received: installs may go ahead.
+    /// Board link up, firmware matches and the whole APP_INDEX received: installs may go ahead.
     board_ready: bool,
     connected: bool,
     firmware_ok: bool,
-    on_board: BTreeMap<String, [u8; 32]>,
+    on_board: BTreeMap<String, BoardApp>,
+    /// APP_INDEX being read: the page asked for, when, and the entries so far.
+    index_page: Option<(u8, Instant)>,
+    index: Vec<AppIndexEntry>,
     ops: VecDeque<Op>,
     current: Option<Current>,
     open_app: Option<String>,
@@ -207,6 +338,8 @@ impl Apps {
             connected: false,
             firmware_ok: false,
             on_board: BTreeMap::new(),
+            index_page: None,
+            index: Vec::new(),
             ops: VecDeque::new(),
             current: None,
             open_app: None,
@@ -277,9 +410,18 @@ impl Apps {
                 let c = self.cfg.apps.get(id)?;
                 let r = self.run.get(id);
                 let m = &i.manifest;
-                let busy = matches!(&self.current, Some(Current { op: Op::Install(x), .. }) if x == id)
+                let installing = matches!(&self.current, Some(Current { op: Op::Install(x), .. }) if x == id)
                     || self.ops.iter().any(|o| matches!(o, Op::Install(x) if x == id));
-                let (status, detail) = if !c.enabled {
+                let b = self.on_board.get(id);
+                let place = match b {
+                    None => "",
+                    Some(b) if b.state == app_state::CARD_MISSING => "card_missing",
+                    Some(b) if b.place == app_where::SD => "sd",
+                    Some(_) => "flash",
+                };
+                let (status, detail) = if installing {
+                    ("installing", self.install_detail(id))
+                } else if !c.enabled {
                     ("off", "Off".to_string())
                 } else if let Some(e) = r.and_then(|r| r.error.clone()) {
                     ("error", e)
@@ -287,10 +429,16 @@ impl Apps {
                     ("waiting", "On, waiting for the board".into())
                 } else if !self.firmware_ok {
                     ("update", "On, update the board first".into())
-                } else if busy || !self.board_ready {
-                    ("installing", "Installing on the board".into())
+                } else if !self.board_ready {
+                    ("installing", "Checking the board".into())
                 } else {
-                    ("on", "On, installed on the board".into())
+                    let d = match place {
+                        "" => "On, not on the board: Sync with board",
+                        "card_missing" => "On, on the board's SD card, which is out",
+                        "sd" => "On, on the board's SD card",
+                        _ => "On, in the board's flash",
+                    };
+                    ("on", d.into())
                 };
                 Some(AppView {
                     id: id.clone(),
@@ -308,8 +456,54 @@ impl Apps {
                     elevated: m.pc.as_ref().is_some_and(|p| p.elevated),
                     settings: m.settings.clone(),
                     values: c.settings.clone(),
+                    place: place.into(),
                 })
             })
+            .collect()
+    }
+
+    fn install_detail(&self, id: &str) -> String {
+        match &self.current {
+            Some(c) if matches!(&c.op, Op::Install(x) if x == id) => {
+                let size = self.installed.get(id).map_or(0, |i| i.fxp.len());
+                if size > SHOW_PROGRESS_OVER {
+                    format!("Installing on the board, {}%", c.acked * 100 / size)
+                } else {
+                    "Installing on the board".into()
+                }
+            }
+            _ => "Waiting to install on the board".into(),
+        }
+    }
+
+    /// What differs between this PC and the board (empty until the board's index is read).
+    pub fn sync_items(&self) -> Vec<SyncItem> {
+        if !self.board_ready {
+            return Vec::new();
+        }
+        let pc: BTreeMap<String, PcApp> = self
+            .installed
+            .iter()
+            .map(|(id, i)| {
+                (
+                    id.clone(),
+                    PcApp {
+                        name: i.manifest.name.clone(),
+                        version: i.manifest.version.clone(),
+                        sha: i.sha,
+                    },
+                )
+            })
+            .collect();
+        let pending = |id: &str| {
+            self.ops
+                .iter()
+                .chain(self.current.as_ref().map(|c| &c.op))
+                .any(|o| matches!(o, Op::Install(x) | Op::Remove(x) if x == id))
+        };
+        sync_diff(&pc, &self.on_board, &self.cfg.kept_on_board)
+            .into_iter()
+            .filter(|i| !pending(&i.id))
             .collect()
     }
 
@@ -332,7 +526,13 @@ impl Apps {
                 false
             }
             Cmd::Remove { id } => {
+                // Both halves (P51): the board half goes too when the board has it.
                 self.set_enabled(&id, false);
+                self.ops
+                    .retain(|o| !matches!(o, Op::Install(x) if x == &id));
+                if self.on_board.contains_key(&id) {
+                    self.ops.push_back(Op::Remove(id.clone()));
+                }
                 let name = self.name(&id);
                 self.installed.remove(&id);
                 self.cfg.apps.remove(&id);
@@ -343,6 +543,7 @@ impl Apps {
                 true
             }
             Cmd::Added { manifest, enable } => self.added(*manifest, enable),
+            Cmd::Sync { id, action } => self.sync(&id, action),
             Cmd::Sidecar { id, gen, note } => self.sidecar_note(&id, gen, note),
         }
     }
@@ -382,9 +583,38 @@ impl Apps {
                 settings,
             },
         );
+        self.cfg.kept_on_board.remove(&id);
         self.save();
         self.log(false, format!("{} v{} added", m.name, m.version));
         self.set_enabled(&id, enable || was_on);
+        // Both halves (P51): the board half goes on even while the app is switched off.
+        self.queue_install(&id);
+        true
+    }
+
+    fn sync(&mut self, id: &str, action: SyncAction) -> bool {
+        match action {
+            SyncAction::Board => self.queue_install(id),
+            SyncAction::Keep => {
+                self.cfg.kept_on_board.insert(id.into());
+                self.save();
+                self.log(false, format!("{id} kept on the board without its PC part"));
+                self.send_host_state(id);
+            }
+            SyncAction::Remove => {
+                if self.on_board.contains_key(id)
+                    && !self
+                        .ops
+                        .iter()
+                        .any(|o| matches!(o, Op::Remove(x) if x == id))
+                {
+                    self.ops.push_back(Op::Remove(id.into()));
+                }
+                self.cfg.kept_on_board.remove(id);
+                self.save();
+            }
+            SyncAction::Pc => {}
+        }
         true
     }
 
@@ -408,21 +638,14 @@ impl Apps {
                 self.start_sidecar(id);
             }
             self.queue_install(id);
+            self.send_host_state(id);
         } else {
+            // The board half stays (P51): its tile fades and offers Turn on.
             if changed {
                 self.log(false, format!("{name} switched off"));
             }
             self.stop_sidecar(id);
-            if self.board_ready {
-                let _ = self.link.send(Msg::HostState {
-                    running: false,
-                    id: id.into(),
-                });
-            }
-            self.ops.retain(|o| !matches!(o, Op::Install(x) if x == id));
-            if self.on_board.contains_key(id) {
-                self.ops.push_back(Op::Remove(id.into()));
-            }
+            self.send_host_state(id);
         }
         true
     }
@@ -431,7 +654,7 @@ impl Apps {
         let Some(i) = self.installed.get(id) else {
             return;
         };
-        if self.on_board.get(id) == Some(&i.sha) {
+        if self.on_board.get(id).is_some_and(|b| b.sha == i.sha) {
             self.send_host_state(id);
             return;
         }
@@ -457,7 +680,7 @@ impl Apps {
         self.current = None;
         self.open_app = None;
         if firmware_ok {
-            let _ = self.link.send(Msg::AppListReq);
+            self.ask_index();
         }
         self.all_sidecars(Down::Board { connected: true });
     }
@@ -476,18 +699,58 @@ impl Apps {
     /// A message from the board. True when what the UI shows changed.
     pub fn board_msg(&mut self, m: &Msg) -> bool {
         match m {
-            Msg::AppList(list) if self.connected && self.firmware_ok => {
-                self.on_board = list.iter().map(|e| (e.id.clone(), e.sha256)).collect();
-                self.board_ready = true;
-                self.reconcile();
+            Msg::AppIndex { page, pages, apps } if self.connected && self.firmware_ok => {
+                if self.index_page.map(|(p, _)| p) != Some(*page) {
+                    return false;
+                }
+                self.index.extend(apps.iter().cloned());
+                if page + 1 < *pages {
+                    self.index_page = Some((page + 1, Instant::now()));
+                    let _ = self.link.send(Msg::AppIndexReq { page: page + 1 });
+                    return false;
+                }
+                self.index_page = None;
+                self.on_board = std::mem::take(&mut self.index)
+                    .into_iter()
+                    .map(|e| (e.id.clone(), BoardApp::from(e)))
+                    .collect();
+                if !self.board_ready {
+                    self.board_ready = true;
+                    self.index_read();
+                }
                 true
             }
-            Msg::AppAck { next_offset } => {
-                if let Some(c) = self.current.as_mut() {
-                    c.acked = *next_offset as usize;
-                    c.last_ack = Instant::now();
+            Msg::AppTurnOn { id } => {
+                if self.cfg.apps.contains_key(id) {
+                    let name = self.name(id);
+                    self.log(false, format!("{name}: Turn on pressed on the board"));
+                    self.set_enabled(id, true)
+                } else {
+                    self.send_host_state(id);
+                    false
                 }
-                false
+            }
+            Msg::AppAck { next_offset } => {
+                let Some(c) = self.current.as_mut() else {
+                    return false;
+                };
+                let next = *next_offset as usize;
+                if next > c.acked {
+                    c.progress = Instant::now();
+                }
+                c.acked = next;
+                c.last_ack = Instant::now();
+                let size = match &c.op {
+                    Op::Install(id) => self.installed.get(id).map_or(0, |i| i.fxp.len()),
+                    Op::Remove(_) => 0,
+                };
+                if size <= SHOW_PROGRESS_OVER {
+                    return false;
+                }
+                let pct = (next * 100 / size) as u8;
+                let changed = pct != c.shown_pct;
+                c.shown_pct = pct;
+                changed
             }
             Msg::AppResult {
                 op,
@@ -539,43 +802,52 @@ impl Apps {
         }
     }
 
-    /// The PC is the source of truth: switched-on apps go on the board, everything else comes off.
-    fn reconcile(&mut self) {
-        let extra: Vec<String> = self
-            .on_board
-            .keys()
-            .filter(|id| !self.cfg.apps.get(*id).is_some_and(|c| c.enabled))
-            .cloned()
-            .collect();
-        for id in extra {
+    fn ask_index(&mut self) {
+        self.index.clear();
+        self.index_page = Some((0, Instant::now()));
+        let _ = self.link.send(Msg::AppIndexReq { page: 0 });
+    }
+
+    /// The board's apps are known after a connect: tell it each one's PC state, and say when the
+    /// two sides differ (the user syncs on the Apps page).
+    fn index_read(&mut self) {
+        let ids: Vec<String> = self.on_board.keys().cloned().collect();
+        for id in &ids {
+            self.send_host_state(id);
+        }
+        let n = self.sync_items().len();
+        if n > 0 {
             self.log(
                 false,
-                format!("Removing {id} from the board (not switched on here)"),
+                format!("The board and this PC differ in {n} app(s): Apps › Sync with board"),
             );
-            self.ops.push_back(Op::Remove(id));
         }
-        let on: Vec<String> = self
-            .cfg
-            .apps
-            .iter()
-            .filter(|(_, c)| c.enabled)
-            .map(|(k, _)| k.clone())
-            .collect();
-        for id in on {
-            self.queue_install(&id);
+    }
+
+    /// The state of an app's PC half as the board shows it (`fenix_proto::host`).
+    fn host_state(&self, id: &str) -> u8 {
+        let (Some(i), Some(c)) = (self.installed.get(id), self.cfg.apps.get(id)) else {
+            return host::NOT_HERE;
+        };
+        if !c.enabled {
+            return host::OFF;
+        }
+        if i.manifest.pc.is_none() {
+            return host::RUNNING;
+        }
+        match self.run.get(id) {
+            Some(r) if r.ready => host::RUNNING,
+            Some(r) if r.sidecar.is_some() || r.restart_at.is_some() => host::STARTING,
+            _ => host::OFF,
         }
     }
 
     fn send_host_state(&mut self, id: &str) {
-        if !self.board_ready {
+        if !self.board_ready || !self.on_board.contains_key(id) {
             return;
         }
-        let Some(i) = self.installed.get(id) else {
-            return;
-        };
-        let running = i.manifest.pc.is_none() || self.run.get(id).is_some_and(|r| r.ready);
         let _ = self.link.send(Msg::HostState {
-            running,
+            state: self.host_state(id),
             id: id.into(),
         });
     }
@@ -583,6 +855,12 @@ impl Apps {
     /// Drive the board queue: one install or remove at a time. True when the UI changed.
     pub fn tick(&mut self) -> bool {
         let mut changed = self.restart_due();
+        if let Some((page, at)) = self.index_page {
+            if at.elapsed() > INDEX_RETRY && self.connected {
+                self.index_page = Some((page, Instant::now()));
+                let _ = self.link.send(Msg::AppIndexReq { page });
+            }
+        }
         if !self.board_ready {
             return changed;
         }
@@ -592,6 +870,17 @@ impl Apps {
             };
             match &op {
                 Op::Install(id) => {
+                    let Some(i) = self.installed.get(id) else {
+                        return changed;
+                    };
+                    let secs = (i.fxp.len() / USB_BYTES_PER_S) as u64;
+                    if Duration::from_secs(secs) > SLOW_INSTALL {
+                        let (name, mb) = (i.manifest.name.clone(), i.fxp.len() as f32 / 1048576.0);
+                        self.log(
+                            false,
+                            format!("{name} is {mb:.1} MB: installing it on the board takes about {} min over USB", secs.div_ceil(60)),
+                        );
+                    }
                     let Some(i) = self.installed.get(id) else {
                         return changed;
                     };
@@ -613,13 +902,15 @@ impl Apps {
                 ended: false,
                 last_ack: Instant::now(),
                 started: Instant::now(),
+                progress: Instant::now(),
+                shown_pct: 0,
             });
             changed = true;
         }
         let Some(c) = self.current.as_mut() else {
             return changed;
         };
-        if c.started.elapsed() > OP_TIMEOUT {
+        if c.progress.elapsed() > OP_TIMEOUT {
             let id = match &c.op {
                 Op::Install(x) | Op::Remove(x) => x.clone(),
             };
@@ -667,13 +958,20 @@ impl Apps {
         match (op, rc) {
             (code::OP_INSTALL, code::OK) => {
                 if let Some(i) = self.installed.get(id) {
-                    self.on_board.insert(id.into(), i.sha);
+                    let b = BoardApp {
+                        version: i.manifest.version.clone(),
+                        sha: i.sha,
+                        place: app_where::SD,
+                        state: app_state::READY,
+                    };
+                    self.on_board.insert(id.into(), b);
                 }
                 self.log(
                     false,
                     format!("{name} installed on the board ({secs:.1} s)"),
                 );
                 self.send_host_state(id);
+                self.ask_index(); // where it went (SD card or flash)
             }
             (code::OP_REMOVE, code::OK | code::UNKNOWN_APP) => {
                 self.on_board.remove(id);
@@ -682,6 +980,9 @@ impl Apps {
             (code::OP_INSTALL, _) => {
                 let why = match rc {
                     code::NO_SPACE => "the board is full".to_string(),
+                    code::TOO_BIG_FOR_FLASH => {
+                        "it is over 128 KB and the board has no SD card; put a card in".to_string()
+                    }
                     _ => format!("code {rc}: {text}"),
                 };
                 self.log(
@@ -739,6 +1040,7 @@ impl Apps {
         r.gen = gen;
         r.ready = false;
         r.restart_at = None;
+        self.send_host_state(id); // STARTING until it says ready
     }
 
     fn stop_sidecar(&mut self, id: &str) {
@@ -784,9 +1086,7 @@ impl Apps {
                 if self.open_app.as_deref() == Some(id) {
                     self.to_sidecar(id, Down::Opened);
                 }
-                if self.on_board.contains_key(id) {
-                    self.send_host_state(id);
-                }
+                self.send_host_state(id);
                 false
             }
             Note::Up(Up::Set { bind, value }) => {
@@ -861,12 +1161,7 @@ impl Apps {
                     format!("{name}: PC part stopped ({why}); restarting in {wait} s")
                 };
                 self.log(true, msg);
-                if self.board_ready {
-                    let _ = self.link.send(Msg::HostState {
-                        running: false,
-                        id: id.into(),
-                    });
-                }
+                self.send_host_state(id); // starting again, or off
                 true
             }
         }
@@ -888,5 +1183,133 @@ impl Apps {
             }
         }
         !due.is_empty()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pc(list: &[(&str, &str, u8)]) -> BTreeMap<String, PcApp> {
+        list.iter()
+            .map(|(id, v, sha)| {
+                let app = PcApp {
+                    name: format!("{id} app"),
+                    version: v.to_string(),
+                    sha: [*sha; 32],
+                };
+                (id.to_string(), app)
+            })
+            .collect()
+    }
+
+    fn board(list: &[(&str, &str, u8, u8)]) -> BTreeMap<String, BoardApp> {
+        list.iter()
+            .map(|(id, v, sha, state)| {
+                let app = BoardApp {
+                    version: v.to_string(),
+                    sha: [*sha; 32],
+                    place: app_where::SD,
+                    state: *state,
+                };
+                (id.to_string(), app)
+            })
+            .collect()
+    }
+
+    fn kinds(items: &[SyncItem]) -> Vec<(String, String)> {
+        items
+            .iter()
+            .map(|i| (i.id.clone(), i.kind.clone()))
+            .collect()
+    }
+
+    const READY: u8 = app_state::READY;
+    const MISSING: u8 = app_state::CARD_MISSING;
+
+    #[test]
+    fn same_on_both_sides_is_in_sync() {
+        let d = sync_diff(
+            &pc(&[("a", "1.0.0", 1)]),
+            &board(&[("a", "1.0.0", 1, READY)]),
+            &BTreeSet::new(),
+        );
+        assert!(d.is_empty());
+    }
+
+    #[test]
+    fn pc_only_goes_to_the_board() {
+        // Switched off or not, an app added here belongs on the board too.
+        let d = sync_diff(
+            &pc(&[("a", "1.0.0", 1)]),
+            &BTreeMap::new(),
+            &BTreeSet::new(),
+        );
+        assert_eq!(kinds(&d), [("a".into(), "board_missing".into())]);
+        assert_eq!(d[0].name, "a app");
+    }
+
+    #[test]
+    fn board_only_is_listed_unless_kept() {
+        let b = board(&[("x", "2.0.0", 9, READY)]);
+        let d = sync_diff(&BTreeMap::new(), &b, &BTreeSet::new());
+        assert_eq!(kinds(&d), [("x".into(), "board_only".into())]);
+        assert_eq!(
+            (d[0].name.as_str(), d[0].board_version.as_str()),
+            ("x", "2.0.0")
+        );
+        let kept: BTreeSet<String> = ["x".to_string()].into();
+        assert!(sync_diff(&BTreeMap::new(), &b, &kept).is_empty());
+    }
+
+    #[test]
+    fn version_skew_updates_the_older_side() {
+        let d = sync_diff(
+            &pc(&[("a", "1.2.0", 1), ("b", "1.0.0", 2)]),
+            &board(&[("a", "1.1.0", 3, READY), ("b", "1.10.0", 4, READY)]),
+            &BTreeSet::new(),
+        );
+        assert_eq!(
+            kinds(&d),
+            [
+                ("a".into(), "board_older".into()),
+                ("b".into(), "pc_older".into())
+            ]
+        );
+    }
+
+    #[test]
+    fn same_version_different_build_goes_to_the_board() {
+        let d = sync_diff(
+            &pc(&[("a", "1.0.0", 1)]),
+            &board(&[("a", "1.0.0", 2, READY)]),
+            &BTreeSet::new(),
+        );
+        assert_eq!(kinds(&d), [("a".into(), "board_differs".into())]);
+    }
+
+    #[test]
+    fn card_missing_compares_versions_only() {
+        // Its sha is unknown (zero) while the card is out.
+        let d = sync_diff(
+            &pc(&[("a", "1.0.0", 1)]),
+            &board(&[("a", "1.0.0", 0, MISSING)]),
+            &BTreeSet::new(),
+        );
+        assert!(d.is_empty());
+        let d = sync_diff(
+            &BTreeMap::new(),
+            &board(&[("x", "1.0.0", 0, MISSING)]),
+            &BTreeSet::new(),
+        );
+        assert!(d[0].card_missing);
+    }
+
+    #[test]
+    fn sync_action_names() {
+        let a: SyncAction = serde_json::from_str("\"remove\"").unwrap();
+        assert_eq!(a, SyncAction::Remove);
+        let a: SyncAction = serde_json::from_str("\"board\"").unwrap();
+        assert_eq!(a, SyncAction::Board);
     }
 }

@@ -3,6 +3,7 @@
 // Mounting runs in a short-lived task (the card takes ~75 ms, a fresh FAT32 scan longer), so
 // boot and the UI never wait for it; the task ends when done and frees its stack.
 // There is no card-detect pin: sd_probe() checks a mounted card is still there, or mounts one.
+// The app store (store.cpp) scans the card's apps from the same task (P51).
 #include <string.h>
 
 #include "driver/sdspi_host.h"
@@ -98,12 +99,14 @@ static void mount() {
   uint64_t cl = (uint64_t)fs->csize * 512;
   set(fnx::sd_state::READY, (uint32_t)((uint64_t)(fs->n_fatent - 2) * cl / 1024), (uint32_t)(free_cl * cl / 1024),
       (uint16_t)s_card->real_freq_khz);
+  store_sd_changed(true);
 }
 
 static void probe_task(void*) {
   if (s_card && sdmmc_get_status(s_card) != ESP_OK) {  // pulled out
     unmount();
     set(fnx::sd_state::NONE);
+    store_sd_changed(false);
   }
   if (!s_card) mount();
   s_busy = false;
@@ -113,8 +116,9 @@ static void probe_task(void*) {
 void sd_probe() {
   if (s_busy) return;
   s_busy = true;
-  // FatFs mount and f_getfree need ~3 KB of stack; long names are on the heap.
-  if (xTaskCreatePinnedToCore(probe_task, "sd", 4096, nullptr, 2, nullptr, 0) != pdPASS) s_busy = false;
+  // FatFs mount and f_getfree need ~3 KB of stack, the app scan (512 B package head, paths) ~2 KB
+  // more; long names are on the heap. The stack is freed when the task ends.
+  if (xTaskCreatePinnedToCore(probe_task, "sd", 6144, nullptr, 2, nullptr, 0) != pdPASS) s_busy = false;
 }
 
 void sd_start() { sd_probe(); }
@@ -124,6 +128,13 @@ SdInfo sd_info() {
   SdInfo r = s_st;
   portEXIT_CRITICAL(&s_mux);
   return r;
+}
+
+void sd_update_free() {
+  uint64_t total = 0, free = 0;
+  SdInfo s = sd_info();
+  if (s.state != fnx::sd_state::READY || esp_vfs_fat_info(SD_PATH, &total, &free) != ESP_OK) return;
+  set(s.state, s.total_kb, (uint32_t)(free / 1024), s.clock_khz);
 }
 
 void sd_report() {

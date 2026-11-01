@@ -36,17 +36,20 @@ void led_pulse_connected();
 void led_busy(bool on);
 void led_error(bool on);
 
-// Host apps (app_pkg.cpp).
-struct AppTile {
-  char id[49];
-  char name[32];
-  uint32_t color;
-  std::vector<uint8_t> px;     // icon pixels (small then large, A8)
+// Host apps (app_pkg.cpp). The list is the store's index (sys::store_at); a tile's icons are read
+// from its package only while Home shows that tile (P51: up to 32 apps, pages of tiles).
+struct AppIcons {
+  std::vector<uint8_t> px;      // icon pixels (small then large, A8)
   lv_image_dsc_t small, large;  // data_size 0 = no icon
 };
-void apps_reload();  // read the store (boot, install, remove)
-const std::vector<AppTile>& app_tiles();
-const AppTile* app_ghost();  // a removed tile still to fade out on Home, or nullptr
+void apps_reload();  // after the store changed (boot, install, remove, SD card)
+int app_count();
+bool app_at(int i, sys::AppMeta* out);  // sorted by id
+bool app_icons(const char* id, AppIcons& out);  // false: none or unreadable (glyph instead)
+void app_icons_fix(AppIcons& ic);               // point the descriptors at px again (after a copy)
+// The app's PC half as the PC last said (fnx::host); RUNNING when no PC said otherwise.
+uint8_t app_host(const char* id);
+const char* app_ghost();  // id of a removed app whose tile still fades out on Home, or nullptr
 void app_ghost_done();
 bool app_take_fade_in(const char* id);  // true once, for a newly installed tile
 void app_open(const char* id);

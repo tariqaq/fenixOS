@@ -1,11 +1,13 @@
 # The system screens and the sample app, as tools/capture_screens.sh drives the real board.
 # Run: python tools/sim_shots.py  (builds the simulator and build/sample.fxp, then compares).
 # Verbs: tap x y | swipe x1 y1 x2 y2 | wait ms | shot name | install file | remove id
-#        set id name=value... | host id on|off | stream on fps | stream off | connect | disconnect
+#        set id name=value... | host id on|off|gone|starting | card in|out | stream on fps | stream off
+#        connect | disconnect
 # Taps wait 1 s and swipes 1.2 s of virtual time afterwards, so animations have finished.
 # The simulator starts connected to a pretend PC, with an empty store and default settings.
 wait 3000                                 # boot screen sweep
-install build/sample.fxp                  # gives Home a fourth tile
+install build/sample.fxp                  # gives Home a fourth tile; Home turns to its page
+swipe 40 182 300 182                      # back to the first page
 shot home
 # Landscape: Settings tree
 tap 58 200
@@ -73,16 +75,31 @@ stream on 10                              # as while `fenix shot` captures
 shot stream
 stream off
 tap 30 16
-# Host app (landscape): scroll the tiles, open the sample, set values like its PC half would.
-swipe 314 200 40 200
-tap 254 200
+# Host app (landscape): turn to the second page of tiles (P51), open the sample, set values like
+# its PC half would, then the PC half's states.
+swipe 300 182 40 182
+shot home_page2
+tap 58 182
 set io.github.tariqaq.sample cpu=42 "cpu_text=42 %" mem=63 "mem_text=5.1 GB" on=true level=80
 shot app
 host io.github.tariqaq.sample off
-shot app_host_off
+shot app_host_off                         # with Turn on
+host io.github.tariqaq.sample starting
+shot app_starting
+host io.github.tariqaq.sample gone
+shot app_not_here
 host io.github.tariqaq.sample on
 disconnect                                # 6a: only the simulator can show this one
 shot app_waiting
 connect
+tap 30 16
+host io.github.tariqaq.sample off
+shot home_faded                           # PC half off: the tile fades
+host io.github.tariqaq.sample on
+card out
+shot home_card_out                        # its SD card is out: faded, with a card badge
+tap 58 182
+shot app_card_missing
+card in                                   # the card comes back: the app opens
 tap 30 16
 remove io.github.tariqaq.sample

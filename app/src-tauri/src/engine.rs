@@ -12,7 +12,7 @@ use fenix_proto::Msg;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager};
 
-use crate::apps::{AppView, Apps, Cmd};
+use crate::apps::{AppView, Apps, Cmd, SyncItem};
 use crate::logs::{Logs, Source};
 use crate::registry::Manifest;
 
@@ -77,6 +77,8 @@ pub struct State {
     /// Board firmware equals this app's version (PLAN §3.8); false while searching.
     pub firmware_ok: bool,
     pub apps: Vec<AppView>,
+    /// Apps › Sync with board (P51): where this PC and the board differ.
+    pub sync: Vec<SyncItem>,
     /// Version of the firmware bundled with this app, if any (`resources/firmware`).
     pub bundled_firmware: Option<String>,
     /// A firmware update in progress or just finished (artboard 12).
@@ -157,6 +159,7 @@ impl Engine {
                 app_version: env!("CARGO_PKG_VERSION").into(),
                 firmware_ok: false,
                 apps: apps.views(),
+                sync: Vec::new(),
                 bundled_firmware,
                 update: None,
                 streaming: false,
@@ -212,8 +215,17 @@ impl Engine {
 
     /// Switch the board's radio; it saves the mode and restarts (P32).
     pub fn radio_set(&self, app: &AppHandle, mode: u8) {
-        let name = if mode == fenix_proto::radio::WIFI { "Wi-Fi" } else { "off" };
-        self.log(app, Source::Pc, false, format!("Asked the board to switch its radio to {name} (it restarts)"));
+        let name = if mode == fenix_proto::radio::WIFI {
+            "Wi-Fi"
+        } else {
+            "off"
+        };
+        self.log(
+            app,
+            Source::Pc,
+            false,
+            format!("Asked the board to switch its radio to {name} (it restarts)"),
+        );
         self.link.send(Msg::RadioSet(mode));
     }
 
@@ -222,7 +234,10 @@ impl Engine {
         let board_wifi = {
             let s = self.state.lock().unwrap();
             s.status == Status::Connected
-                && s.board.as_ref().and_then(|b| b.radio.as_ref()).is_some_and(|r| r.mode == fenix_proto::radio::WIFI)
+                && s.board
+                    .as_ref()
+                    .and_then(|b| b.radio.as_ref())
+                    .is_some_and(|r| r.mode == fenix_proto::radio::WIFI)
         };
         let mut w = self.wifi.lock().unwrap();
         if w.scanning {
@@ -253,13 +268,21 @@ impl Engine {
 
     /// Save a network on the board (plaintext, user choice) and connect; empty SSID forgets.
     pub fn wifi_join(&self, app: &AppHandle, ssid: String, password: String) {
-        let what = if ssid.is_empty() { "forget its network".to_string() } else { format!("join \"{ssid}\"") };
+        let what = if ssid.is_empty() {
+            "forget its network".to_string()
+        } else {
+            format!("join \"{ssid}\"")
+        };
         self.log(app, Source::Pc, false, format!("Asked the board to {what}"));
         self.link.send(Msg::WifiJoin { ssid, password });
     }
 
     /// Settings > Weather: save the place and send it to the board (None turns weather off).
-    pub fn weather_set(&self, app: &AppHandle, place: Option<crate::weather::Place>) -> Result<(), String> {
+    pub fn weather_set(
+        &self,
+        app: &AppHandle,
+        place: Option<crate::weather::Place>,
+    ) -> Result<(), String> {
         self.with_apps(|a| {
             a.cfg.weather = place.clone();
             a.cfg.save()
@@ -267,12 +290,21 @@ impl Engine {
         .map_err(|e| e.to_string())?;
         let msg = match &place {
             Some(p) => {
-                self.log(app, Source::Pc, false, format!("Weather place set to {}", p.name));
+                self.log(
+                    app,
+                    Source::Pc,
+                    false,
+                    format!("Weather place set to {}", p.name),
+                );
                 p.to_msg()
             }
             None => {
                 self.log(app, Source::Pc, false, "Weather turned off");
-                Msg::WeatherSet { lat_e4: 0, lon_e4: 0, name: String::new() }
+                Msg::WeatherSet {
+                    lat_e4: 0,
+                    lon_e4: 0,
+                    name: String::new(),
+                }
             }
         };
         self.link.send(msg);
@@ -291,8 +323,18 @@ impl Engine {
             return;
         }
         if on {
-            let wifi = self.state.lock().unwrap().board.as_ref().is_some_and(|b| b.port.starts_with("tcp:"));
-            let fps = if wifi { MIRROR_FPS_WIFI } else { MIRROR_FPS_USB };
+            let wifi = self
+                .state
+                .lock()
+                .unwrap()
+                .board
+                .as_ref()
+                .is_some_and(|b| b.port.starts_with("tcp:"));
+            let fps = if wifi {
+                MIRROR_FPS_WIFI
+            } else {
+                MIRROR_FPS_USB
+            };
             self.link.send(Msg::StreamStart { fps });
             self.link.send(Msg::StreamSync);
         } else {
@@ -513,8 +555,14 @@ impl Engine {
                 self.sync_time(&app);
             }
             if changed {
-                let views = self.apps.lock().unwrap().views();
-                self.state.lock().unwrap().apps = views;
+                let (views, sync) = {
+                    let a = self.apps.lock().unwrap();
+                    (a.views(), a.sync_items())
+                };
+                let mut st = self.state.lock().unwrap();
+                st.apps = views;
+                st.sync = sync;
+                drop(st);
                 self.emit_state(&app);
             }
         }
@@ -639,7 +687,11 @@ impl Engine {
                 // board shows a place set elsewhere (P37: `fenix weather` from the CLI).
                 self.link.send(match self.weather_place() {
                     Some(p) => p.to_msg(),
-                    None => Msg::WeatherSet { lat_e4: 0, lon_e4: 0, name: String::new() },
+                    None => Msg::WeatherSet {
+                        lat_e4: 0,
+                        lon_e4: 0,
+                        name: String::new(),
+                    },
                 });
                 true
             }

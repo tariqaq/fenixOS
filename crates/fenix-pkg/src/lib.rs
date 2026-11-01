@@ -12,9 +12,10 @@ pub const FORMAT: u8 = 1;
 pub const HEADER_LEN: usize = 32;
 pub const NONE: u16 = 0xFFFF;
 
-/// Package cap. Since P39 the board reads packages from flash in pieces (strings, props and the
-/// shown images in RAM, never the whole file); the RAM estimate below is the real limit.
-pub const MAX_SIZE: usize = 64 * 1024;
+// No cap on the package size since P51 (was 64 KB): the board reads packages in pieces (P39:
+// strings, props and the shown images in RAM, never the whole file), so the content limits and
+// the RAM estimate below are the real limits. The board's flash store takes ≤ 128 KB per package;
+// the SD card takes any size.
 pub const MAX_ELEMS: usize = 200;
 pub const MAX_STRING_BYTES: usize = 8 * 1024;
 pub const MAX_BINDS: usize = 64;
@@ -294,7 +295,7 @@ impl Package {
     }
 
     /// Check the limits of `docs/packages.md` (the board checks the same).
-    pub fn check_limits(&self, size: usize) -> Result<(), String> {
+    pub fn check_limits(&self) -> Result<(), String> {
         let strings: usize = self.strings.iter().map(|s| s.len()).sum();
         // Every asset except the two tile icons counts as image data.
         let image_bytes: usize = self
@@ -306,10 +307,6 @@ impl Package {
             .sum();
         let ram = self.elems.len() * RAM_PER_ELEM + strings + image_bytes;
         let checks = [
-            (
-                size <= MAX_SIZE,
-                format!("package is {size} B, limit {MAX_SIZE}"),
-            ),
             (
                 self.elems.len() <= MAX_ELEMS,
                 format!("{} elements, limit {MAX_ELEMS}", self.elems.len()),
@@ -441,7 +438,7 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
         return Err("bad app id".into());
     }
     p.check_refs()?;
-    p.check_limits(bytes.len())?;
+    p.check_limits()?;
     Ok(p)
 }
 
@@ -826,7 +823,7 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
         icon_large,
     };
     let bytes = p.to_bytes();
-    p.check_limits(bytes.len())?;
+    p.check_limits()?;
     Ok(bytes)
 }
 

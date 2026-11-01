@@ -32,7 +32,7 @@ Copied from fenixOS `docs/registry.md`, cut for app authors. The fenixOS PC app 
 | `color` | Tile token (`gray` `indigo` `blue` `teal` `green` `orange` `red` `purple` `pink`) or `#RRGGBB`. Use a token |
 | `icon` | A Phosphor icon name (fill weight) for the PC tile, e.g. `cpu`, `music-notes`. The board tile uses `app/board/icon.png` |
 | `repo` | `https://github.com/tariqaq/<repo>`, shown as Source |
-| `board` | Required: `url`, `sha256` (lowercase hex), `size` (≤ 64 KB) |
+| `board` | Required: `url`, `sha256` (lowercase hex), `size` (≤ 64 MB download cap) |
 | `pc` | Optional: `url`, `sha256`, `size`, `elevated` |
 | `permissions` | From `keys`, `media`, `system-stats`, `network`, `files`, `programs`; unique |
 | `settings` | Options fenixOS renders on the app's page (below) |

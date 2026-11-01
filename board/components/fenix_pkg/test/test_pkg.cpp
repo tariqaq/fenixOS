@@ -56,6 +56,10 @@ int main(int argc, char** argv) {
   std::string_view id, ver;
   expect(fpkg::peek(b.data(), 200, &id, &ver) && id == p.id && ver == "0.1.0", "peek");
   expect(!fpkg::peek(b.data(), 40, &id, &ver), "peek short");
+  std::string_view name;
+  uint32_t color = 0;
+  expect(fpkg::peek(b.data(), 300, &id, &ver, &name, &color) && name == p.name && color == p.head.tile_color,
+         "peek name and colour");
 
   expect(p.parse(b.data(), b.size() - 1) != nullptr, "truncated");
   std::vector<uint8_t> t = b;

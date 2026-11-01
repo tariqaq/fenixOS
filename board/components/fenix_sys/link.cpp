@@ -324,17 +324,43 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       send_with(fnx::ty::SYSINFO, [](fnx::Writer& w) { sysinfo_write(w); });
       return;
     case fnx::ty::APP_LIST_REQ: {
-      AppMeta apps[MAX_APPS];
-      int n = store_list(apps, MAX_APPS);
+      // Kept for a PC app before 0.1.21 (P51): the first 10 apps the board can open, as before.
+      static fnx::AppEntry list[10];  // link task only; 1.3 KB off its stack
+      int n = 0;
+      AppMeta m;
+      for (int i = 0; n < 10 && store_at(i, &m); i++) {
+        if (!store_sha(m.id, list[n].sha256)) continue;
+        strlcpy(list[n].id, m.id, sizeof list[n].id);
+        strlcpy(list[n].version, m.version, sizeof list[n].version);
+        n++;
+      }
       send_with(fnx::ty::APP_LIST, [&](fnx::Writer& w) {
         w.u8(n);
-        for (int i = 0; i < n; i++) {
-          fnx::AppEntry e{};
-          strlcpy(e.id, apps[i].id, sizeof e.id);
-          strlcpy(e.version, apps[i].version, sizeof e.version);
-          memcpy(e.sha256, apps[i].sha256, 32);
-          fnx::write_app_entry(w, e);
-        }
+        for (int i = 0; i < n; i++) fnx::write_app_entry(w, list[i]);
+      });
+      return;
+    }
+    case fnx::ty::APP_INDEX_REQ: {
+      uint8_t page = r.u8();
+      if (!r.done()) return send_error(fnx::err::BAD_BODY, "app_index_req");
+      static fnx::AppIndexEntry list[fnx::APP_INDEX_PAGE];  // link task only
+      int total = store_count();
+      int pages = total ? (total + fnx::APP_INDEX_PAGE - 1) / fnx::APP_INDEX_PAGE : 1;
+      int n = 0;
+      AppMeta m;
+      for (int i = page * fnx::APP_INDEX_PAGE; n < fnx::APP_INDEX_PAGE && store_at(i, &m); i++, n++) {
+        fnx::AppIndexEntry& e = list[n];
+        strlcpy(e.id, m.id, sizeof e.id);
+        strlcpy(e.version, m.version, sizeof e.version);
+        if (!store_sha(m.id, e.sha256)) memset(e.sha256, 0, 32);  // card out: unknown
+        e.where = m.where;
+        e.state = m.state;
+      }
+      send_with(fnx::ty::APP_INDEX, [&](fnx::Writer& w) {
+        w.u8(page);
+        w.u8(pages);
+        w.u8(n);
+        for (int i = 0; i < n; i++) fnx::write_app_index_entry(w, list[i]);
       });
       return;
     }
@@ -377,7 +403,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       r.str(id, sizeof id);
       if (!r.done()) return send_error(fnx::err::BAD_BODY, "remove");
       uint8_t code = store_remove(id);
-      send_app_result(fnx::app::OP_REMOVE, code, id, "");
+      send_app_result(fnx::app::OP_REMOVE, code, id, code == fnx::app::STORAGE ? "storage error, or its SD card is out" : "");
       if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, id);
       return;
     }
@@ -405,10 +431,10 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       return;
     }
     case fnx::ty::HOST_STATE: {
-      uint8_t running = r.u8();
+      uint8_t state = r.u8();  // fnx::host (a bool before P51)
       char id[64];
       r.str(id, sizeof id);
-      post(LinkEv::HOST_STATE, running, id);
+      post(LinkEv::HOST_STATE, state, id);
       return;
     }
     default:

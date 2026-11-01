@@ -98,6 +98,7 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       break;
     }
     case ty::RADIO_SET:
+    case ty::APP_INDEX_REQ:
       w.u8(r.u8());
       if (!r.done()) return false;
       break;
@@ -177,8 +178,22 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       w.bytes(t, len);
       break;
     }
+    case ty::APP_INDEX: {
+      w.u8(r.u8());
+      w.u8(r.u8());
+      uint8_t cnt = r.u8();
+      w.u8(cnt);
+      for (int i = 0; i < cnt; i++) {
+        AppIndexEntry e;
+        if (!read_app_index_entry(r, e)) return false;
+        write_app_index_entry(w, e);
+      }
+      if (!r.done()) return false;
+      break;
+    }
     case ty::APP_REMOVE:
     case ty::APP_OPENED:
+    case ty::APP_TURN_ON:
     case ty::APP_CLOSED: {
       char id[ID_LEN];
       r.str(id, sizeof id);
