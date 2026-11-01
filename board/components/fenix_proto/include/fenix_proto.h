@@ -27,6 +27,7 @@ constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, 
 constexpr uint8_t HOST_STATE = 0x2A, APP_INDEX_REQ = 0x2B, APP_INDEX = 0x2C, APP_TURN_ON = 0x2D;  // index, turn on: P51
 constexpr uint8_t BIND_SET = 0x30, EVENT = 0x31;
 constexpr uint8_t STREAM_START = 0x40, STREAM_STOP = 0x41, STREAM_RECT = 0x42, STREAM_SYNC = 0x43, STREAM_INFO = 0x44;
+constexpr uint8_t FW_BEGIN = 0x50, FW_CHUNK = 0x51, FW_ACK = 0x52, FW_END = 0x53, FW_RESULT = 0x54;  // P52
 }  // namespace ty
 
 namespace err {
@@ -38,6 +39,10 @@ constexpr uint8_t OP_INSTALL = 1, OP_REMOVE = 2;
 constexpr uint8_t OK = 0, NO_SPACE = 1, BAD_HASH = 2, BAD_PACKAGE = 3, BUSY = 4, STORAGE = 5, UNKNOWN_APP = 6,
                   TOO_BIG_FOR_FLASH = 7;  // P51: over the 128 KB flash cap and no SD card
 }  // namespace app
+// FW_RESULT (P52). OLDER: a downgrade is only offered on the board (Settings > About).
+namespace fw {
+constexpr uint8_t OK = 0, NO_SPACE = 1, BAD_HASH = 2, BAD_SIGNATURE = 3, BUSY = 4, STORAGE = 5, OLDER = 6;
+}
 // HOST_STATE: the app's PC half. Before P51 a bool (0 off or not ready, 1 running).
 namespace host {
 constexpr uint8_t OFF = 0, RUNNING = 1, NOT_HERE = 2, STARTING = 3;  // NOT_HERE: kept on the board only
@@ -259,6 +264,16 @@ struct AppInstallBegin {
 };
 bool read_app_install_begin(Reader& r, AppInstallBegin& b);
 void write_app_install_begin(Writer& w, const AppInstallBegin& b);
+
+// FW_BEGIN (P52): the .fwp header fields; the image follows in FW_CHUNKs.
+struct FwBegin {
+  char version[ID_LEN];
+  uint32_t size;
+  uint8_t sha256[32];
+  uint8_t signature[64];  // ECDSA P-256 over sha256, r || s
+};
+bool read_fw_begin(Reader& r, FwBegin& b);
+void write_fw_begin(Writer& w, const FwBegin& b);
 
 struct BindSet {
   uint16_t bind;

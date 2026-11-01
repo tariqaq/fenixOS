@@ -435,6 +435,22 @@ void write_app_install_begin(Writer& w, const AppInstallBegin& b) {
   w.bytes(b.sha256, 32);
 }
 
+bool read_fw_begin(Reader& r, FwBegin& b) {
+  r.str(b.version, sizeof b.version);
+  b.size = r.u32();
+  const uint8_t* h = r.take(32);
+  if (h) memcpy(b.sha256, h, 32);
+  const uint8_t* s = r.take(64);
+  if (s) memcpy(b.signature, s, 64);
+  return r.done();
+}
+void write_fw_begin(Writer& w, const FwBegin& b) {
+  w.str(b.version);
+  w.u32(b.size);
+  w.bytes(b.sha256, 32);
+  w.bytes(b.signature, 64);
+}
+
 bool read_bind_set(Reader& r, BindSet& b) {
   b.bind = r.u16();
   b.kind = r.u8();

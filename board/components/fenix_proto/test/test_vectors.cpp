@@ -41,6 +41,7 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
     case ty::PING:
     case ty::PONG:
     case ty::TIME_SET:
+    case ty::FW_ACK:
     case ty::APP_ACK: {
       uint32_t v = r.u32();
       if (!r.done()) return false;
@@ -57,6 +58,7 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       break;
     }
     case ty::LOG:
+    case ty::FW_RESULT:
     case ty::ERROR: {
       uint8_t c = r.u8();
       size_t len;
@@ -131,6 +133,7 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
     case ty::REBOOT:
     case ty::APP_LIST_REQ:
     case ty::APP_INSTALL_END:
+    case ty::FW_END:
     case ty::STREAM_STOP:
     case ty::STREAM_SYNC:
       if (!r.done()) return false;
@@ -158,6 +161,13 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       write_app_install_begin(w, b);
       break;
     }
+    case ty::FW_BEGIN: {
+      FwBegin b;
+      if (!read_fw_begin(r, b)) return false;
+      write_fw_begin(w, b);
+      break;
+    }
+    case ty::FW_CHUNK:
     case ty::APP_CHUNK: {
       uint32_t off = r.u32();
       size_t len;

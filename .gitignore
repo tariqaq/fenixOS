@@ -33,3 +33,6 @@ docs/tempcrashlogs/
 
 # Python bytecode
 __pycache__/
+
+# Firmware signing key: never in git (docs/ota.md)
+*.pem

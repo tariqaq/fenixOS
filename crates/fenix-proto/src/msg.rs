@@ -45,6 +45,11 @@ pub mod ty {
     pub const STREAM_RECT: u8 = 0x42;
     pub const STREAM_SYNC: u8 = 0x43;
     pub const STREAM_INFO: u8 = 0x44;
+    pub const FW_BEGIN: u8 = 0x50;
+    pub const FW_CHUNK: u8 = 0x51;
+    pub const FW_ACK: u8 = 0x52;
+    pub const FW_END: u8 = 0x53;
+    pub const FW_RESULT: u8 = 0x54;
 }
 
 /// `ERROR` codes.
@@ -72,6 +77,19 @@ pub mod app {
     pub const UNKNOWN_APP: u8 = 6;
     /// P51: the package is over the flash cap (128 KB) and there is no SD card.
     pub const TOO_BIG_FOR_FLASH: u8 = 7;
+}
+
+/// `FW_RESULT` codes (P52, firmware updates over the link).
+pub mod fw {
+    /// Checked and written; the board restarts into it.
+    pub const OK: u8 = 0;
+    pub const NO_SPACE: u8 = 1;
+    pub const BAD_HASH: u8 = 2;
+    pub const BAD_SIGNATURE: u8 = 3;
+    pub const BUSY: u8 = 4;
+    pub const STORAGE: u8 = 5;
+    /// Older than the running firmware: a downgrade is only offered on the board (Settings › About).
+    pub const OLDER: u8 = 6;
 }
 
 /// `HOST_STATE` states: how the app's PC half is doing. Before P51 the byte was a bool
@@ -442,6 +460,25 @@ pub enum Msg {
     AppTurnOn {
         id: String,
     },
+    /// Start a firmware update (P52): the `.fwp` header fields; the image follows in `FwChunk`s.
+    FwBegin {
+        version: String,
+        size: u32,
+        sha256: [u8; 32],
+        signature: [u8; 64],
+    },
+    FwChunk {
+        offset: u32,
+        data: Vec<u8>,
+    },
+    FwAck {
+        next_offset: u32,
+    },
+    FwEnd,
+    FwResult {
+        code: u8,
+        text: String,
+    },
     BindSet {
         bind: u16,
         id: String,
@@ -589,6 +626,11 @@ impl Msg {
             AppIndexReq { .. } => ty::APP_INDEX_REQ,
             AppIndex { .. } => ty::APP_INDEX,
             AppTurnOn { .. } => ty::APP_TURN_ON,
+            FwBegin { .. } => ty::FW_BEGIN,
+            FwChunk { .. } => ty::FW_CHUNK,
+            FwAck { .. } => ty::FW_ACK,
+            FwEnd => ty::FW_END,
+            FwResult { .. } => ty::FW_RESULT,
             BindSet { .. } => ty::BIND_SET,
             Event { .. } => ty::EVENT,
             StreamStart { .. } => ty::STREAM_START,
@@ -714,7 +756,7 @@ impl Msg {
                 w.i32(*lat_e4).i32(*lon_e4).str(name);
             }
             Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq
-            | WifiScanReq => {}
+            | WifiScanReq | FwEnd => {}
             Touch { x, y, down } => {
                 w.u16(*x).u16(*y).u8(*down as u8);
             }
@@ -740,11 +782,22 @@ impl Msg {
             } => {
                 w.str(id).str(version).u32(*size).bytes(sha256);
             }
-            AppChunk { offset, data } => {
+            AppChunk { offset, data } | FwChunk { offset, data } => {
                 w.u32(*offset).bytes(data);
             }
-            AppAck { next_offset } => {
+            AppAck { next_offset } | FwAck { next_offset } => {
                 w.u32(*next_offset);
+            }
+            FwBegin {
+                version,
+                size,
+                sha256,
+                signature,
+            } => {
+                w.str(version).u32(*size).bytes(sha256).bytes(signature);
+            }
+            FwResult { code, text } => {
+                w.u8(*code).bytes(text.as_bytes());
             }
             AppResult { op, code, id, text } => {
                 w.u8(*op).u8(*code).str(id).bytes(text.as_bytes());
@@ -1012,6 +1065,24 @@ impl Msg {
                 Msg::AppIndex { page, pages, apps }
             }
             ty::APP_TURN_ON => Msg::AppTurnOn { id: r.str()? },
+            ty::FW_BEGIN => Msg::FwBegin {
+                version: r.str()?,
+                size: r.u32()?,
+                sha256: r.arr()?,
+                signature: r.arr()?,
+            },
+            ty::FW_CHUNK => Msg::FwChunk {
+                offset: r.u32()?,
+                data: r.rest().to_vec(),
+            },
+            ty::FW_ACK => Msg::FwAck {
+                next_offset: r.u32()?,
+            },
+            ty::FW_END => Msg::FwEnd,
+            ty::FW_RESULT => Msg::FwResult {
+                code: r.u8()?,
+                text: r.text(),
+            },
             ty::BIND_SET => {
                 let bind = r.u16()?;
                 let kind = r.u8()?;

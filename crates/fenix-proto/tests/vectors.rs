@@ -334,6 +334,37 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 id: "a.b".into(),
             },
         ),
+        (
+            "fw_begin",
+            Msg::FwBegin {
+                version: "0.1.22".into(),
+                size: 1_166_464,
+                sha256: sha(9),
+                signature: {
+                    let mut s = [0u8; 64];
+                    for (i, b) in s.iter_mut().enumerate() {
+                        *b = 0xA0u8.wrapping_add(i as u8 * 3);
+                    }
+                    s
+                },
+            },
+        ),
+        (
+            "fw_chunk",
+            Msg::FwChunk {
+                offset: 4096,
+                data: vec![0xE9, 0x06, 0x02, 0x20],
+            },
+        ),
+        ("fw_ack", Msg::FwAck { next_offset: 5120 }),
+        ("fw_end", Msg::FwEnd),
+        (
+            "fw_result",
+            Msg::FwResult {
+                code: fw::BAD_SIGNATURE,
+                text: "bad signature".into(),
+            },
+        ),
     ]
 }
 

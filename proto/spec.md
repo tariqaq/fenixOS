@@ -116,6 +116,18 @@ Pixel data is RGB565 **big-endian** (the LCD's byte order). Codecs:
 - `0` raw.
 - `1` RLE16: a sequence of `count:u8 ‖ pixel:u16be`, where `count` is 1–255 repeats of the pixel.
 
+### Firmware (0x5_)
+
+Firmware updates over the link (P52, firmware 0.1.22 and later). Optional: an older board answers ERROR unknown type, and the PC flashes it over USB instead. The image is the app image of a signed `.fwp` package (`docs/ota.md`).
+
+| Type | Name | Dir | Body |
+|---|---|---|---|
+| 0x50 | FW_BEGIN | P→B | version:str ‖ size:u32 ‖ sha256:32 ‖ signature:64 (ECDSA P-256 over the sha256, r ‖ s). Answered with FW_ACK (the offset to send from) or FW_RESULT (refused). With an SD card the image is staged on the card, and a FW_BEGIN for the same sha256 resumes: the ACK gives the bytes already there |
+| 0x51 | FW_CHUNK | P→B | offset:u32 ‖ data:bytes (≤ 1024) |
+| 0x52 | FW_ACK | B→P | next_offset:u32. Flow control as APP_ACK. The board drops an update after 10 s without firmware messages, or when the link drops (a staged image stays on the card) |
+| 0x53 | FW_END | P→B | (empty). The board checks size, sha256 and signature, copies the image to the spare slot and answers; this can take 20 s |
+| 0x54 | FW_RESULT | B→P | code:u8 ‖ text:bytes. Codes: 0 ok (the board restarts into the new firmware), 1 no space, 2 bad hash, 3 bad signature, 4 busy, 5 storage error, 6 older than the running firmware (a downgrade is only offered on the board) |
+
 ## Versioning
 
 `PROTO_VERSION = 1`. Any change to a body layout or a new required message bumps it.
