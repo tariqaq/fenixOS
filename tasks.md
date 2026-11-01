@@ -59,7 +59,6 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 
 ## Open (needs the user)
 
-- Back up `%USERPROFILE%\.fenixos\fw-signing.pem` once P52 makes it (the user)
 
 ## Now
 
@@ -112,7 +111,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 - [ ] P52 OTA, two slots, signed firmware, v0.1.22 (design: `docs/plan-sd-ota.md`)
   - [ ] 1. Compare IDF v5.5.5's signed update option (`CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT`, its ESP32 rev 3.1 scheme) with an own ECDSA P-256 check; record the choice (default: own check, no bootloader or eFuse change)
   - [ ] 2. `partitions.csv`: nvs 0x9000 24 KB, otadata 0xF000, phy_init 0x11000, coredump 0x12000 56 KB, ota_0 0x20000 and ota_1 0x1F0000 at 0x1D0000 each, apps 0x3C0000 256 KB; `CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE`; `bundle_firmware.py` and `fenix flash` write `ota_data_initial`. Check the USB update path writes bootloader and table, NVS kept, the Sync card offers flash apps back
-  - [ ] 3. Signing key into `%USERPROFILE%\.fenixos\fw-signing.pem` (never in git), `gh secret set FENIX_FW_SIGNING_KEY`; `.fwp` format, `tools/sign_fw.py`, public key in the firmware, release workflow signs and publishes the `.fwp`, the PC app bundles it. Remind the user to back up the `.pem`
+  - [ ] 3. Signing key into `%USERPROFILE%\.fenixos\fw-signing.pem` (never in git), `gh secret set FENIX_FW_SIGNING_KEY`; `.fwp` format, `tools/sign_fw.py`, public key in the firmware, release workflow signs and publishes the `.fwp`, the PC app bundles it. Back up the `.pem` (and the updater key, `%USERPROFILE%\.tauri\fenixos-updater.key`) to `%USERPROFILE%\Documents\fenixOS-keys\` (outside the repo, same disk; user: "u only back it up somewhere and let me know") and tell the user where
   - [ ] 4. Board `ota.cpp`: stage on SD (resumable), verify sha and signature, copy to the spare slot (4 KB buffer); no card: write the slot directly; mark valid after Home plus 30 s; rollback report. `FW_BEGIN`..`FW_RESULT` 0x50 to 0x54 (codecs, vectors, spec). Host test for the check
   - [ ] 5. Settings › About: version, "Update to vX" from an SD package (checked at boot too), "Go back to vY" (last two `.fwp` kept), progress screen. PC `update.rs`: OTA over the current link for firmware ≥ 0.1.22, USB flash otherwise, "Plug in USB once" for an old board on Wi-Fi. `fenix ota <file.fwp>`
   - [ ] 6. On the board: migration over USB, OTA over USB, Wi-Fi and SD package, cable pulled mid-transfer (resume), forced crash in the new image (rollback), downgrade refused outside the menu, heap at the peak (≤ 12 KB while updating)
