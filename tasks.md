@@ -101,7 +101,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 4. Board Settings › Storage: SD card group; simulator stub and golden
   - [x] 5. PC: engine state, Board page row, Task manager meter, `fenix sd`
   - [x] 6. Docs (spec, board-info, PLAN, README, decisions, Morpheus refs), tests (checks ok, cargo 0 failed, proto host 41/41, svelte-check 0/0, sim 25/25), v0.1.20 built, installed (/S), flashed (`fenix hello`: v0.1.20; `fenix sd`: ready, 7671 MB free, 40 MHz), tagged. Touch on software SPI checked on the panel by the user ("it works")
-- [ ] P51 Apps on the SD card, on/off, sync, v0.1.21 (design: `docs/plan-sd-ota.md`; overnight run, no go needed between phases)
+- Overnight run (user /goal, 2026-11-02 night): P51, P52, P53, P54, P50-M, P51-M, then P55 audit and P56 docs sweep. Builds may use all cores (`FENIX_CORES=16`). Choices made for the user: `docs/decisions.md` "2026-11-03: overnight run". Resume: first item not `[x]` below
+- [~] P51 Apps on the SD card, on/off, sync, v0.1.21 (design: `docs/plan-sd-ota.md`; overnight run, no go needed between phases)
   - [ ] 1. Board store with two back ends: SD (`/sd/fenixos/apps/<id>.fxp|.sha|.tmp`, leftovers cleaned at mount) and LittleFS; SD first, flash only with no card and ≤ 128 KB; one app in one place. No fixed cap on the card (free space, 4 GB per file); 128 KB per package on flash (was 64 KB everywhere). Compact `AppMeta` (id 48, version 16, sha, where, state). Host tests
   - [ ] 2. `MAX_APPS` 32; `APP_INDEX_REQ`/`APP_INDEX` 0x2B/0x2C (paged), `APP_TURN_ON` 0x2D, `APP_RESULT` code 7; Rust and C++ codecs, vectors appended, spec. `APP_LIST` kept (first 10) for the update path
   - [ ] 3. PC `apps.rs`: Add installs both halves; switch off stops the sidecar and sends `HOST_STATE` off, no remove; Remove removes both halves; `reconcile()` becomes a sync diff (board-only: PC half from the registry by id and version, else keep board-only or remove; PC-only: board half; version skew: update the older side) applied only on the user's Sync click; `AppTurnOn` switches on and logs it; index pages read. Cargo tests per case
@@ -146,6 +147,14 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [ ] 3. Label `overflow` (`wrap`, `clip`, `ellipsis`, `scroll`) and `max_lines`
   - [ ] 4. `secret` setting type (user: yes): masked in App settings, DPAPI user scope in `config.json`, never logged, plain value to the sidecar; registry and template checks
   - [ ] 5. Docs (packages, registry, template copies, Morpheus answer), tests, release v0.1.26
+
+- [ ] P55 Full audit after the run (user: "go thru all files literally everything and audit for bugs", security excluded)
+  - [ ] 1. Board: every file under `board/components/fenix_*`, `board/main`, `board/sim` read whole; bugs fixed with host or sim tests where possible
+  - [ ] 2. Crates: every file under `crates/` read whole; fixes with cargo tests
+  - [ ] 3. PC app: `app/src-tauri/src/*`, `app/src/**` read whole; fixes, svelte-check, cargo tests
+  - [ ] 4. Tools, templates, registry, workflows (`tools/`, `templates/`, `registry/`, `.github/`) read whole
+  - [ ] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed
+- [ ] P56 Docs sweep: every current `.md` (root, `docs/` except `legacy/`, `vendor/`, `tempcrashlogs/`; `proto/`, `board/`, `app/`, `tools/`, `registry/`, `templates/`) checked against the code; stale facts fixed with Corrected notes; tasks.md Done list trimmed into the history file
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)

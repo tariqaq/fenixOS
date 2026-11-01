@@ -301,3 +301,10 @@ The user reviewed the plan, asked for these changes and set the whole plan (P51 
 | Morpheus: `view` or `show` | **Both** / view only | **Both**: `view` for screens, a bindable bool `show` on every element |
 | Morpheus: `secret` setting | **Yes** / no | **Yes**: masked, DPAPI user scope, never logged |
 | Morpheus: releases | **Two** / one | **Two** |
+
+## 2026-11-03: overnight run (choices made on the user's behalf; the user was asleep)
+
+Plan: `docs/plan-sd-ota.md`. Each row: the question, the options, what was chosen and why.
+
+| Question | Options | Choice |
+|---|---|---|
