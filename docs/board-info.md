@@ -253,14 +253,31 @@ The user put a microSD card in the slot. The spike mounts it over SPI3 on the VS
 |---|---|
 | Card | SDHC, 7,680 MB (CSD v2, 15,728,640 sectors of 512 B), SPI mode (1 bit). CID product name `asdfg`: a no-name card, so treat its speed and wear as unknown |
 | Layout | MBR, one partition type `0x0C` (FAT32 LBA) from sector 32, FAT32, 512 B sectors, 32 KB clusters, empty (7,678 MB free, 0 root entries) |
-| Mount | ~75 ms |
+| Mount | ~75 ms. Corrected (run 2): the card is now reformatted, partition at 4 MB (below) |
 | 20 MHz | raw 32 KB reads 1,754 KB/s, 4 KB random reads 1,468 KB/s (2.7 ms each); file write 1,504 KB/s, file read 809 KB/s |
 | 40 MHz | works: raw 32 KB reads 2,745 KB/s, 4 KB random reads 2,122 KB/s (1.9 ms each); file write 2,188 KB/s, file read 986 KB/s |
 
 - File reads are slower than raw ones because the spike reads through `fread` (newlib's small stdio buffer); reading with FatFs `f_read` straight into a large buffer should come near the raw rate. Not measured.
 - **FAT32, not exFAT.** exFAT is compiled out of IDF v5.5.5's FatFs (`FF_FS_EXFAT 0`, checked again in `ffconf.h`); turning it on means patching the IDF copy, plus long-file-name buffers and more flash. It would not be faster here: the 1-bit SPI bus (~2.7 MB/s) is the limit, not the file system. exFAT only matters for files over 4 GB, which fenixOS does not need. A card that comes as exFAT (most over 32 GB) has to be reformatted to FAT32.
-- **Long file names are off** in the IDF defaults (`CONFIG_FATFS_LFN_NONE`, 8.3 names only). fenixOS file names such as `io.github.tariqaq.morpheus.fxp` need `CONFIG_FATFS_LFN_HEAP` when the SD card comes into fenixOS.
-- **SPI bus clash:** the touch controller runs on SPI3 with its own pins (`fenix_lgfx.hpp`), and the SD slot's pins are also wired for SPI3 (VSPI). The ESP32 has only SPI2 (LCD) and SPI3 for this, so fenixOS cannot keep both on hardware SPI as they are. Options for later: touch on software SPI (the XPT2046 is slow anyway), or the SD card on SPI2 through the GPIO matrix next to the LCD (shared bus, caps it below 40 MHz). Not tried.
+- **Long file names are off** in the IDF defaults (`CONFIG_FATFS_LFN_NONE`, 8.3 names only). Fixed in run 2: `CONFIG_FATFS_LFN_HEAP`.
+- **SPI bus clash:** the ESP32 has two SPI controllers for devices, SPI2 (HSPI) and SPI3 (VSPI); SPI0/1 run the flash. One controller drives one set of clock and data pins (only chip selects can be added), and the board wires three devices to three different pin sets: LCD (SPI2, pins 12/13/14), touch (pins 25/32/39, on SPI3 in `fenix_lgfx.hpp`) and the SD slot (18/19/23, VSPI's own IO-MUX pins). So two of them can have hardware SPI and the third must not. Fix, tested in run 2: touch on software SPI. Corrected: run 1 also offered "the SD card on SPI2 next to the LCD"; that does not work, SPI2 would need the SD card on the LCD's pins.
+
+### Run 2 (same day): format, long file names, touch on software SPI
+
+The spike now checks the layout and formats only a card that is not in the SD Association layout (the user allowed the reformat; the card was empty). Then it tests at 40 MHz, long file names, and touch read by software SPI while the card streams on the other core.
+
+- **Format:** MBR with one FAT32 (LBA) partition from sector 8192 (4 MB), 2 FATs, 32 KB clusters, data area at sector 16384 (on a 4 MB boundary), hidden-sectors field set to 8192 in the boot sector and its backup; 1.3 s. This is the SD Association formatter's layout for an 8 GB SDHC card: flash erase blocks (allocation units) are 4 MB, so the file system's clusters never straddle one. Was: partition at sector 32. FatFs `f_mkfs` alone cannot do it (it puts an MBR partition at sector 63, and the IDF disk layer reports no erase block size); the spike gives FatFs a view of the card from sector 8192 with a 4 MB block size, formats with `FM_SFD`, then writes the MBR itself. The next boot found the layout and did not format again.
+- **Free after format:** 7,671 MB.
+- **40 MHz, after the format:** raw reads 2,755 KB/s; file write 2,190 KB/s (as before: this card's writes do not gain from the alignment, other cards may); file read 2,242 KB/s through stdio with `CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096` (run 1: 986 with newlib's 128 B buffer), 2,749 KB/s through `f_read` into 32 KB (the raw rate).
+- **Long file names:** `CONFIG_FATFS_LFN_HEAP=y`, `CONFIG_FATFS_MAX_LFN=255`: `apps/io.github.tariqaq.morpheus.fxp` (64 KB) written, listed by name, stat'd, deleted.
+- **Touch on software SPI:** XPT2046 bit-banged at ~2 MHz (the chip allows 2.5 MHz; LovyanGFX's driver only does hardware SPI, so fenixOS needs a small touch class of its own). The same 57-byte frame LovyanGFX sends per touch read takes 346 µs (326 to 406) against ~200 µs on hardware SPI at 2.5 MHz. A read happens only while the screen is pressed (the IRQ pin is checked first, as LovyanGFX does), every 16 ms (`LV_DEF_REFR_PERIOD`), so it costs ~2 % of core 1 while a finger is down and nothing otherwise. Temperature channel 730 to 830 raw across 1,001 reads (plausible values, so the bus works); IRQ high before conversions (the IRQ reads low just after a conversion, so it must be sampled first).
+- **Both at once:** 4 MB written and read back on core 0 at 2,244 KB/s (verified) while touch was read every 10 ms on core 1: no effect either way.
+- Stack and RAM: a FatFs `FIL` holds its own sector buffer (`CONFIG_FATFS_PER_FILE_CACHE=y`) of `FF_MAX_SS`, which is 4 KB because `CONFIG_WL_SECTOR_SIZE=4096` (FatFs on wear-levelled flash), so a `FIL` on a 4 KB task stack overflowed. fenixOS has no FAT on flash (its app store is LittleFS), so `CONFIG_WL_SECTOR_SIZE_512` should cut each open file and the volume buffer to 512 B. Not measured.
+- fenixOS v0.1.19 flashed back (`fenix hello`: v0.1.19, settings kept).
+
+### SD clock
+
+The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
 
 ## Task manager numbers (P27, 2026-10-30)
 

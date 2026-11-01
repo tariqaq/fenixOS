@@ -247,3 +247,13 @@ Consequences:
 | RAM case an app must fit | Worst case (Wi-Fi stream on while an app runs, ~24 KB low) / **Wi-Fi on and linked, no stream** | **No stream** (user: "im never gonna do always wifi screen stream and also run apps"). Apps are used with Wi-Fi on and the PC linked, or Wi-Fi off over USB; the Wi-Fi case (~82 KB free at boot) sets the budget, USB-only (~155 KB) has room to spare |
 | Image binding size | 80×80 under today's 40 KB estimate cap / **96×96 to 120×120, cap raised to ~56 KB after a board measurement** | **Measure first** (P50): a Morpheus-sized layout with 120×120 art in both modes; below ~20 KB lowest free heap with Wi-Fi on means 96×96 |
 | CJK and wide text | Fonts in flash now / **after the SD card** | **SD card** (user: "as soon as sdcard arrives then we can discuss further"): ~400 KB per CJK size and weight does not fit the 4 MB flash. Latin-1 and a transliteration helper come first (P51) |
+
+## 2026-11-02: SD card (`docs/board-info.md` "SD card check")
+
+| Question | Options | Choice |
+|---|---|---|
+| File system | exFAT (patch IDF FatFs) / **FAT32** | **FAT32** (user: "nvm about exfat"): exFAT is compiled out of IDF v5.5.5 and would not be faster over 1-bit SPI |
+| Card layout (user: "reformat ... with appropriate cluster sizes") | Keep (partition at sector 32) / IDF `f_mkfs` (partition at 63) / **SD Association layout** | **SD Association layout**: partition and data area on 4 MB boundaries, 32 KB clusters, 2 FATs; formatted once by the spike, which never formats a card already in that layout |
+| SD clock | 20 MHz (IDF default) / **40 MHz** | **40 MHz**: the highest ESP32 step (80 / 2) under the card's 50 MHz limit; worked on this card in both runs |
+| Long file names | Off (8.3) / **on, buffers on the heap** | **On** (user: "a no brainer"): app ids name files |
+| SPI clash (LCD, touch and SD on three pin sets, two SPI controllers) | Switch SPI3's pins between touch and SD / **touch on software SPI** | **Software SPI for touch**: 346 µs per read, only while pressed (~2 % of core 1), the SD card keeps hardware SPI at 40 MHz; tested together without effect on either |

@@ -92,7 +92,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 - [x] SD card check (user, 2026-11-02: card inserted; Morpheus work set aside)
   - [x] 1. Spike `board/spikes/sd`: SPI3 (CS 5, MOSI 23, CLK 18, MISO 19), card info, sector 0, mount (never formats), free space, raw and file speed at 20 and 40 MHz, a 1 MB temp file written, read and deleted
   - [x] 2. Flashed the spike (`fenix flash`), read UART0, flashed fenixOS v0.1.19 back (`fenix hello`: v0.1.19, settings kept)
-  - [x] 3. Results in `docs/board-info.md` "SD card check": 8 GB SDHC, FAT32, 40 MHz works (2.7 MB/s raw reads); FAT32 over exFAT; LFN and the SPI3 clash with touch are open for the SD phase
+  - [x] 3. Results in `docs/board-info.md` "SD card check": 8 GB SDHC, FAT32, 40 MHz works (2.7 MB/s raw reads); FAT32 over exFAT
+- [x] SD card run 2 (user, 2026-11-02: "reformat ... enable long file names ... find a fix" for the bus clash): spike formats only a card not in the SD Association layout (done once: partition and data area on 4 MB boundaries, 32 KB clusters), 40 MHz, LFN on, 4 KB stdio buffer, touch on bit-banged SPI while the card streams on the other core (346 µs per touch read, no effect on SD). fenixOS v0.1.19 flashed back. Results: `docs/board-info.md` "Run 2"
 - [ ] P50 App runtime for Morpheus, release v0.1.20 (not started; plan, waiting for the user)
   - [ ] 1. Reproduce the `opened` burst: 50 `BIND_SET` right after `APP_OPENED`, count what the board applies. Fix: PC keeps the latest value per binding and paces the burst; board queue with compact entries (text in a small ring), deeper than 16
   - [ ] 2. `view` element (kind 9): int `bind` picks the one child shown (`LV_OBJ_FLAG_HIDDEN` on the rest); compiler, both readers, host tests, sim screen
@@ -112,6 +113,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] Phone Web Bluetooth page: dropped, P38 removed Bluetooth (needs BLE on the board)
   - [ ] OTA over Wi-Fi after the SD card (user; 2026-10-31: not before the SD card, even if P38 makes two slots fit the 4 MB flash). A/B slots need ~2 x 1.6 MB; the 4 MB flash fits that only with the apps partition (1.94 MB) moved to the SD card
   - [ ] With the SD card (user, 2026-11-01): CJK fonts and text beyond Latin-1, app screens built only when shown (Morpheus requests)
+  - [ ] SD card in fenixOS (card in the slot since 2026-11-02, not planned yet), from the spike: touch on a bit-banged XPT2046 class (LovyanGFX has only hardware SPI), SD on SPI3 at 40 MHz, FAT32 with `CONFIG_FATFS_LFN_HEAP`, `CONFIG_FATFS_VFS_FSTAT_BLKSIZE=4096`, `CONFIG_WL_SECTOR_SIZE_512` (measure the RAM), a format in the SD Association layout (spike code), stacks over 4 KB for tasks that open files
   - Not planned: both radios at once (P29: ~40 KB free), LCD SPI at 80 MHz (garbles the panel, P10), fps caps for RAM (no gain), A2DP and HID (user)
 
 ## Decisions (current; superseded ones in the history file)
