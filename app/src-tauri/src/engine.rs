@@ -555,20 +555,16 @@ impl Engine {
         let Some(s) = g.as_mut() else {
             return false;
         };
-        let before = (s.stage(), s.percent());
+        let before = s.stage();
         match s.poll() {
             Ok(msgs) => {
                 for m in msgs {
                     self.link.send(m);
                 }
-                let now = (s.stage(), s.percent());
+                let now = s.stage();
                 drop(g);
-                if now != before {
-                    if now.0 == OtaStage::Installing {
-                        self.set_update(app, "installing", 100, "");
-                    } else {
-                        self.set_update(app, "writing", now.1, "");
-                    }
+                if now != before && now == OtaStage::Installing {
+                    self.set_update(app, "installing", 100, "");
                 }
                 true
             }
@@ -859,8 +855,14 @@ impl Engine {
                 true
             }
             Event::Msg(Msg::FwAck { next_offset }) => {
-                if let Some(s) = self.ota.lock().unwrap().as_mut() {
+                // Acks move the percent (the engine thread's tick only sees stage changes).
+                let shown = self.ota.lock().unwrap().as_mut().and_then(|s| {
+                    let before = s.percent();
                     s.on_ack(next_offset);
+                    (s.stage() == OtaStage::Sending && s.percent() != before).then(|| s.percent())
+                });
+                if let Some(pct) = shown {
+                    self.set_update(app, "writing", pct, "");
                 }
                 false
             }
