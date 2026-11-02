@@ -100,6 +100,11 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
   - [x] 6. All checks, commit, push
     - Done (2026-11-02): version, tokens, registry, template, licenses checks ok; `cargo test --workspace` 0 failed; `sim_shots.py --no-build --update` rewrote identical goldens and the docs copy, then 42 screens match
 
+- [~] P57 App open slide and SD pull detection (user, 2026-11-02, testing with the sample app: "why is sample app launching with a simple fade"; "removing sdcard did nothing")
+  - [ ] 1. Installed apps slide like Settings and Stream when RAM allows (user pick): slide when free heap minus the app's RAM estimate leaves a margin, else the P50-M fade-from-black guard; the pop back matches. Measure heap low point of a slide with the sample app and with `tools/view-app`
+  - [ ] 2. A pulled card is noticed with an app open: periodic card status check while mounted (user allowed a read-only look at the IDF sdspi driver in `C:\Espressif` for its locking); open SD app returns Home, tile faded with the badge
+  - [ ] 3. Sim shots, docs (DESIGN.md Motion, packages.md, sd-card.md, decisions, board-info), tests, build, flash, user check; release when it holds
+
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [x] Phone Web Bluetooth page: dropped, P38 removed Bluetooth (needs BLE on the board)
