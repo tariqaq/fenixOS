@@ -574,7 +574,7 @@ Board on a 4000 mAh USB-C powerbank, PC USB unplugged, Windows hotspot. The PC a
 | Wi-Fi 20 | 48.9 | 3.3 | 21.0 | 94 |
 | Wi-Fi 25 | 64.2 | 4.4 | 21.0 | 164 |
 
-  USB (460800 baud) is full at about 45 KB/s, so it stays at 10. Wi-Fi runs at 25. Lowest heap over the Wi-Fi runs: 27.3 KB. The PC mirror polled every 100 ms (a 10 fps ceiling of its own); now 40 ms.
+  USB (921600 baud; corrected in the P55 audit, this said 460800, the flash speed) is full at about 45 KB/s, so it stays at 10. Wi-Fi runs at 25. Lowest heap over the Wi-Fi runs: 27.3 KB. The PC mirror polled every 100 ms (a 10 fps ceiling of its own); now 40 ms.
 
 ## Wi-Fi link drops in a busy stream (P48, 2026-10-31)
 

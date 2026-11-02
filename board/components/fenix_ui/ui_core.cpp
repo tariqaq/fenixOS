@@ -81,6 +81,7 @@ static uint32_t tick_cb() { return esp_timer_get_time() / 1000; }
 static uint8_t s_level = 200, s_dim_pct = 20;
 static uint16_t s_dim_after_s = 60;
 static bool s_dimmed;
+static bool s_rest;  // burn-in protection's rest (below): backlight off, panel asleep
 static int s_bl_now = -1;
 
 static void bl_exec(void*, int32_t v) {
@@ -111,7 +112,8 @@ void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s) {
   s_level = level;
   s_dim_pct = dim_pct;
   s_dim_after_s = dim_after_s;
-  bl_fade(s_dimmed ? dim_target() : s_level, FX_MOTION_FAST_MS);
+  // Resting (burn-in guard), the panel sleeps dark; the next touch brings the new level.
+  if (!s_rest) bl_fade(s_dimmed ? dim_target() : s_level, FX_MOTION_FAST_MS);
 }
 
 // ---- Burn-in protection (P21) ----
@@ -121,7 +123,7 @@ void backlight_config(uint8_t level, uint8_t dim_pct, uint16_t dim_after_s) {
 // backlight fades out and the panel sleeps, so it stops driving the picture at all.
 static constexpr uint32_t SHIFT_S = 60, REST_S = 600;
 static constexpr int WALK = 25, WALK_CENTRE = 12;
-static bool s_guard, s_rest, s_panel_asleep;
+static bool s_guard, s_panel_asleep;
 static int s_walk = WALK_CENTRE;
 static int64_t s_shift_at;
 

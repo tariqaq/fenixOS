@@ -24,8 +24,8 @@ void update_screen(lv_obj_t* scr);  // firmware update progress (P52)
 void stream_screen(lv_obj_t* scr);
 void session_open();
 void backup_sheet();  // "Restore settings?" while sys::backup_offer() (P53; shown from tick)
-// Stream rate when started on the board (the PC asks for the same). USB's 460800 baud is full at
-// 10 fps in a busy screen; Wi-Fi at 25 shows 47% more pictures (P46, `fenix bench 15 <fps>`).
+// Stream rate when started on the board (the PC asks for the same). USB (921600 baud) is full at
+// 10 fps in a busy screen (about 45 KB/s); Wi-Fi at 25 shows 47% more pictures (P46, `fenix bench 15 <fps>`).
 constexpr uint8_t STREAM_FPS = 10;
 constexpr uint8_t STREAM_FPS_WIFI = 25;
 void stream_start_local();
@@ -33,7 +33,8 @@ void stream_stop_local();
 uint8_t current_screen();  // fnx::screen value
 void link_text(char* out, size_t cap);  // "USB, 921600 baud" or the session's radio
 
-// RGB LED status (PLAN §3: host connected = short green pulse, busy = dim blue, error = dim red).
+// RGB LED status (PLAN §3: host connected = short green pulse; a firmware update running = dim
+// blue, a failed one = dim red, both set from tick()).
 void led_pulse_connected();
 void led_busy(bool on);
 void led_error(bool on);

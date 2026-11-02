@@ -122,7 +122,7 @@ docs/, pics/
 - **Power:** Shut down fades out, turns the backlight off, sets ext0 wake on GPIO36 (touch IRQ, low) and enters light sleep (corrected, P19: deep sleep powers down the green LED pin's rail, so the LED glowed). Wake restarts the board, so it is a normal boot.
 - **RGB LED:**
   - Pins IO4/16/17, active low, LEDC.
-  - States: host connected (short green pulse, then off), installing or flashing (dim blue), error (dim red), otherwise off.
+  - States: host connected (short green pulse, then off), a firmware update running (dim blue), a failed update until it is dismissed (dim red), otherwise off. Corrected (P55 audit): blue and red were written but never called until then; app installs do not light it.
   - Brightness is tuned in S6.
 
 ### 3.2 Link protocol (proto v1 of fenixOS)

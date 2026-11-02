@@ -198,6 +198,14 @@ void tick() {
   if (nav_top() == home_screen && !sheet_is_open() && sys::backup_offer()) backup_sheet();
   settings_tick();
   app_tick();
+  // Status light (PLAN §3): dim blue while a firmware update runs, dim red after one failed.
+  static uint8_t s_led_phase = sys::OTA_IDLE;
+  uint8_t ph = sys::ota_status().phase;
+  if (ph != s_led_phase) {
+    s_led_phase = ph;
+    led_busy(ph != sys::OTA_IDLE && ph != sys::OTA_FAILED);
+    led_error(ph == sys::OTA_FAILED);
+  }
   if (s_shell.streaming && s_last_rot != rotation()) send_stream_info();
   s_last_rot = rotation();
   sys::BoardInfo b{};
