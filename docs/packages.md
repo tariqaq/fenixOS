@@ -31,7 +31,7 @@ A folder with:
 | `type` | What it is | Own props |
 |---|---|---|
 | `box` | Flex container | `flow` (`column` default, `row`, `row_wrap`), `gap`, `pad`, `main`, `cross` (`start` `center` `end` `space_between`), `bg`, `radius` |
-| `label` | Text. With `bind`, a value label | `text`, `font`, `color`, `align` (`left` `center` `right`) |
+| `label` | Text. With `bind`, a value label | `text`, `font`, `color`, `align` (`left` `center` `right`), `overflow` and `max_lines` (v0.1.26, below) |
 | `button` | Capsule button; with `icon` and no text, an icon button | `text`, `icon`, `bg`, `color`, `event` |
 | `switch` | On/off switch | `bind`, `event`, `value` |
 | `slider` | Horizontal slider | `min`, `max`, `value`, `bind`, `event` |
@@ -50,6 +50,7 @@ Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes defa
 
 - `bind: "cpu"` connects the element to binding `cpu`. The PC half sets it (`BIND_SET`, `proto/spec.md`): a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer. Corrected: the bool case on a label was missing. Since v0.1.25 (P50-M) a `button` takes text (its text) or an integer (its glyph, an index in the icon list; out of range: none), and an `icon` takes an integer (its glyph); `fenix-sdk` `set_icon(bind, "pause")` sends the index. Use one kind per button: after a rebuild only the last value is applied.
 - Since v0.1.25 (P50-M) a burst is safe: the PC app keeps the latest value per binding and sends at most 16 every 50 ms (`apps.rs`), and the board keeps values in a 4 KB ring (a 12 B header and the text each, `link.cpp`), so ~50 values on `opened` arrive whole. Measured: 120 values sent at once without the PC's pacing all arrived, the last one shown. If the ring ever fills, the oldest values go. Corrected: before v0.1.25 the board queued 16 values and dropped the newest.
+- **Long text (P51-M, v0.1.26):** a label with a width (`w` other than `"content"`, or `grow`) takes `overflow`: `wrap` (the default: every line, the label grows), `ellipsis` (at most `max_lines` lines, default 1, the last ends in `...`), `clip` (at most `max_lines` lines, the rest cut off at a line break) or `scroll` (one line that scrolls round when it is too long, for a song title). `max_lines` is 1 to 8, only with `clip` or `ellipsis`; the label is as tall as its text up to that. `fenix-pkg build` checks both orientations. Older boards ignore both props (the text wraps), so no `min_fenixos` is needed. Example: the title in `tools/view-app` (simulator shot `app_view`, two lines and `...`).
 - **Switching screens (P50-M, v0.1.25):** put each screen in a `view` and set its binding to the index of the one to show; `show` hides or shows any single element. A view builds only the child it shows: switching deletes the old one and builds the new one, which fades in (200 ms). Values for the screens not shown are kept (the per-binding cache) and applied when they are built. So the RAM estimate counts a view's largest child, not all of them; an element hidden by `show` or `hidden` is built and counts. Corrected (step 5, measured): first built every child, and a 147-element layout ran the board out of memory (`docs/board-info.md` "App RAM with views and album art"). A package with `view` or `show` must set `min_fenixos` to 0.1.25 or newer (`fenix-pkg build` checks): older boards refuse kind 9 and would ignore `show`. Example: `tools/view-app`, simulator shots `app_view` and `app_view_call`.
 - **Pictures from the PC (P50-M, v0.1.25):** one `image` per app may have a `bind`. The PC half calls `set_image(bind, w, h, &rgba)` with any picture (the SDK scales it to at most 120 × 120); fenixOS scales it to fill the element, crops the middle, converts it to RGB565 and sends it in `BIND_IMAGE` chunks, about 3 KB per 50 ms (a 96 × 96 picture took 253 ms over USB). The board writes them into the element's one buffer and redraws it once the picture is whole, so a redraw during the transfer can show the old and new picture mixed for that moment. Send it once per change (a new track), not per frame; a newer picture replaces one still on its way. Not kept on the card: after a restart or offline the element shows `src` again.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
@@ -136,6 +137,8 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
   | 22 | hidden | 0 / 1 |
   | 23 | align | 0 left, 1 center, 2 right |
   | 24 | show | bind id of the value that shows the element (v0.1.25) |
+  | 25 | overflow | label: 0 wrap, 1 clip, 2 ellipsis, 3 scroll (v0.1.26) |
+  | 26 | max_lines | label with clip or ellipsis: 1 to 8 (v0.1.26) |
 
 - **Sizes:** `≥ 0` pixels, `-1` content, `0x40000000 | pct` percent.
 - Assets are stored raw in format 1 (no compression). Compression is a later format version.

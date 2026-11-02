@@ -15,7 +15,7 @@
                   "type": "box", "gap": 2,
                   "children": [
                     { "type": "label", "text": "Media", "font": "label", "color": "label_2" },
-                    { "type": "label", "text": "--", "font": "title", "bind": "title" }
+                    { "type": "label", "text": "--", "font": "title", "bind": "title", "w": 200, "overflow": "ellipsis", "max_lines": 2, "portrait": { "w": 130 } }
                   ]
                 }
               ]

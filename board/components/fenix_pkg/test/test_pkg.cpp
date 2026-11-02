@@ -41,6 +41,10 @@ static void views(const char* path) {
          "show with hidden");
   // The bound image (P50-M): element 4, binding 1 ("art"), 48 x 48.
   expect(p.elems[4].kind == fpkg::kind::IMAGE && p.elems[4].prop(fpkg::key::BIND, &v) && v == 1, "bound image");
+  // The title (P51-M): ellipsis after 2 lines; 200 wide, 130 in portrait.
+  expect(p.elems[7].prop(fpkg::key::TEXT_OVERFLOW, &v) && v == 2 && p.elems[7].prop(fpkg::key::MAX_LINES, &v) &&
+             v == 2 && p.elems[7].prop(fpkg::key::W, &v, true) && v == 130,
+         "label overflow");
   // Point the first `show` at a binding that does not exist: refused.
   bool found = false;
   for (size_t i = 0; i + 5 <= b.size() && !found; i++) {

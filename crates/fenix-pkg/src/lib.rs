@@ -91,6 +91,11 @@ pub mod key {
     pub const ALIGN: u8 = 23;
     /// Bindable visibility: index of a bool binding (P50-M).
     pub const SHOW: u8 = 24;
+    /// A label's long text (P51-M, 0.1.26): 0 wrap, 1 clip, 2 ellipsis, 3 scroll. Older boards
+    /// ignore it (the text wraps).
+    pub const TEXT_OVERFLOW: u8 = 25;
+    /// Lines a clipped or ellipsized label shows, 1 to `MAX_LINES` (P51-M, 0.1.26).
+    pub const MAX_LINES: u8 = 26;
     pub const PORTRAIT: u8 = 0x80;
 }
 
@@ -98,6 +103,10 @@ pub mod asset_format {
     pub const A8: u8 = 1;
     pub const RGB565: u8 = 2;
 }
+
+/// `overflow` values, in key::TEXT_OVERFLOW order.
+pub const OVERFLOWS: [&str; 4] = ["wrap", "clip", "ellipsis", "scroll"];
+pub const MAX_LINES: i32 = 8;
 
 pub const SIZE_CONTENT: i32 = -1;
 pub const SIZE_PCT: i32 = 0x4000_0000;
@@ -834,11 +843,53 @@ impl<'a> Compiler<'a> {
                     key::HIDDEN,
                     v.as_bool().ok_or("hidden must be true or false")? as i32,
                 ),
+                "overflow" | "max_lines" if kind != kind::LABEL => {
+                    return Err(format!("{k} is for labels only"))
+                }
+                "overflow" => (
+                    key::TEXT_OVERFLOW,
+                    Self::pick(&OVERFLOWS, &str_of(v, k)?, "overflow")?,
+                ),
+                "max_lines" => {
+                    let n = int_of(v, k)?;
+                    if !(1..=MAX_LINES).contains(&n) {
+                        return Err(format!("max_lines must be 1 to {MAX_LINES}"));
+                    }
+                    (key::MAX_LINES, n)
+                }
                 other => return Err(format!("unknown prop {other}")),
             };
             out.push((kv.0 | flag, kv.1));
         }
         Ok(out)
+    }
+
+    /// In each orientation: `max_lines` only with `clip` or `ellipsis`, and a label that does not
+    /// wrap needs a width (`w` other than "content", or `grow`) to overflow.
+    fn check_overflow(props: &[(u8, i32)]) -> Result<(), String> {
+        for port in [false, true] {
+            let get = |k: u8| {
+                let land = props.iter().find(|p| p.0 == k).map(|p| p.1);
+                let port_v = props.iter().find(|p| p.0 == k | key::PORTRAIT).map(|p| p.1);
+                if port {
+                    port_v.or(land)
+                } else {
+                    land
+                }
+            };
+            let ov = get(key::TEXT_OVERFLOW).unwrap_or(0);
+            if get(key::MAX_LINES).is_some() && ov != 1 && ov != 2 {
+                return Err("max_lines needs overflow clip or ellipsis".into());
+            }
+            let sized = get(key::W).is_some_and(|w| w != SIZE_CONTENT) || get(key::GROW).is_some();
+            if ov != 0 && !sized {
+                return Err(format!(
+                    "overflow {} needs a width (w or grow)",
+                    OVERFLOWS[ov as usize]
+                ));
+            }
+        }
+        Ok(())
     }
 
     fn element(&mut self, v: &Value, parent: u16, depth: usize) -> Result<(), String> {
@@ -866,6 +917,9 @@ impl<'a> Compiler<'a> {
         if let Some(p) = o.get("portrait") {
             let po = p.as_object().ok_or("portrait must be an object")?;
             props.extend(self.props(k, po, true)?);
+        }
+        if k == kind::LABEL {
+            Self::check_overflow(&props)?;
         }
         let ix = self.elems.len();
         self.elems.push(Elem {
@@ -1061,6 +1115,37 @@ mod tests {
         assert_eq!(p.elems.len(), 12);
         assert_eq!(p.built_at_once(), 7);
         assert_eq!(parse(&sample()).unwrap().built_at_once(), 15);
+    }
+
+    #[test]
+    fn label_overflow() {
+        let lab = |props: &str| {
+            let layout = format!(
+                r#"{{"type": "box", "children": [{{"type": "label", "text": "x"{props}}}]}}"#
+            );
+            build_layout("overflow", &layout, "0.1.0").map(|p| p.elems[1].props.clone())
+        };
+        let p = lab(r#", "w": 120, "overflow": "ellipsis", "max_lines": 2"#).unwrap();
+        assert!(p.contains(&(key::TEXT_OVERFLOW, 2)) && p.contains(&(key::MAX_LINES, 2)));
+        let p = lab(
+            r#", "grow": 1, "overflow": "scroll", "portrait": {"overflow": "clip", "max_lines": 3}"#,
+        );
+        assert!(p
+            .unwrap()
+            .contains(&(key::TEXT_OVERFLOW | key::PORTRAIT, 1)));
+        for bad in [
+            r#", "w": 120, "max_lines": 2"#,                       // wrap
+            r#", "w": 120, "overflow": "scroll", "max_lines": 1"#, // scroll is one line
+            r#", "overflow": "ellipsis""#,                         // no width
+            r#", "w": "content", "overflow": "clip""#,
+            r#", "w": 120, "overflow": "clip", "max_lines": 9"#,
+            r#", "w": 120, "overflow": "fade""#,
+            r#", "w": 120, "overflow": "clip", "portrait": {"overflow": "wrap"}, "max_lines": 2"#,
+        ] {
+            assert!(lab(bad).is_err(), "{bad}");
+        }
+        let button = r#"{"type": "button", "text": "x", "w": 80, "overflow": "clip"}"#;
+        assert!(build_layout("overflow_btn", button, "0.1.0").is_err());
     }
 
     #[test]

@@ -37,7 +37,7 @@ Every element is an object with `type`, optional props and `children` (boxes and
 | `type` | What it is | Own props |
 |---|---|---|
 | `box` | Flex container | `flow` (`column` default, `row`, `row_wrap`), `gap`, `pad`, `main`, `cross` (`start` `center` `end` `space_between`), `bg`, `radius` |
-| `label` | Text; with `bind`, a value label | `text`, `font`, `color`, `align` (`left` `center` `right`) |
+| `label` | Text; with `bind`, a value label | `text`, `font`, `color`, `align` (`left` `center` `right`), `overflow`, `max_lines` |
 | `button` | Capsule button; with `icon` and no text, an icon button | `text`, `icon`, `bg`, `color`, `event` |
 | `switch` | On/off switch | `bind`, `event`, `value` |
 | `slider` | Horizontal slider | `min`, `max`, `value`, `bind`, `event` |
@@ -52,6 +52,7 @@ Props every element takes:
 - `grow`: share of the parent's free space along its flow. Applies only when the parent has a set `h` (column) or `w` (row).
 - `bind`: a binding name. `event`: an event name. `hidden`: true hides it.
 - `show` (fenixOS v0.1.25): a binding name; the element shows while that value is true or non-zero, and follows `hidden` until the PC half sets it.
+- `overflow` (labels, fenixOS v0.1.26; older boards wrap): `wrap` (default), `ellipsis` or `clip` after `max_lines` lines (1 to 8, default 1), or `scroll` (one line scrolling round, for titles). Needs a width: `w` (not `"content"`) or `grow`.
 - `portrait`: an object with any of these props, used instead when the board is in portrait (for example `{ "flow": "column", "w": "100%" }`).
 
 Defaults: buttons 40 px tall (icon buttons 40 × 40), button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`.

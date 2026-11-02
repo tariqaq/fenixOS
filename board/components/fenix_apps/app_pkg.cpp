@@ -567,6 +567,19 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
       int32_t al = get(fpkg::key::ALIGN, 0);
       lv_obj_set_style_text_align(o, al == 1 ? LV_TEXT_ALIGN_CENTER : al == 2 ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_LEFT,
                                   0);
+      // Long text (P51-M): wrap (default), clip or ellipsis after max_lines (default 1; the height
+      // stays the text's up to that), or one line scrolling round (marquee). Needs a set width.
+      static const lv_label_long_mode_t MODES[] = {LV_LABEL_LONG_MODE_WRAP, LV_LABEL_LONG_MODE_CLIP,
+                                                   LV_LABEL_LONG_MODE_DOTS, LV_LABEL_LONG_MODE_SCROLL_CIRCULAR};
+      int32_t ov = get(fpkg::key::TEXT_OVERFLOW, 0);
+      if (ov > 0 && ov < 4) {
+        lv_label_set_long_mode(o, MODES[ov]);
+        if (ov != 3) {
+          int32_t n = LV_CLAMP(1, get(fpkg::key::MAX_LINES, 1), 8);
+          int32_t lh = lv_font_get_line_height(FONTS[get(fpkg::key::FONT, 0)]);
+          lv_obj_set_style_max_height(o, n * lh + (n - 1) * lv_obj_get_style_text_line_space(o, LV_PART_MAIN), 0);
+        }
+      }
       break;
     }
     case fpkg::kind::BUTTON: {
@@ -661,9 +674,6 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   return o;
 }
 
-// Whether element `i` shows (P50-M): its `show` binding once set, else not `hidden`; and inside
-// a view, only the child the view's binding (or `value`, else 0) picks. Hidden elements stay
-// built, so values bound inside them are applied and kept.
 // The child a view shows: its binding once set, else `value`, else 0.
 static int32_t view_pick(size_t view, bool port) {
   const fpkg::Elem& p = s_app.pkg.elems[view];
