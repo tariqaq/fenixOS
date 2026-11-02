@@ -101,8 +101,10 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
     - Done (2026-11-02): version, tokens, registry, template, licenses checks ok; `cargo test --workspace` 0 failed; `sim_shots.py --no-build --update` rewrote identical goldens and the docs copy, then 42 screens match
 
 - [~] P57 App open slide and SD pull detection (user, 2026-11-02, testing with the sample app: "why is sample app launching with a simple fade"; "removing sdcard did nothing")
-  - [ ] 1. Installed apps slide like Settings and Stream when RAM allows (user pick): slide when free heap minus the app's RAM estimate leaves a margin, else the P50-M fade-from-black guard; the pop back matches. Measure heap low point of a slide with the sample app and with `tools/view-app`
-  - [ ] 2. A pulled card is noticed with an app open: periodic card status check while mounted (user allowed a read-only look at the IDF sdspi driver in `C:\Espressif` for its locking); open SD app returns Home, tile faded with the badge
+  - [x] 1. Installed apps slide like Settings and Stream when RAM allows (user pick): slide when free heap minus the app's RAM estimate leaves a margin, else the P50-M fade-from-black guard; the pop back matches. Measure heap low point of a slide with the sample app and with `tools/view-app`
+    - Done (dev build, flashed over USB): `slide_fits` in `app_pkg.cpp` (free heap > built × 160 B + 28 KB; `fpkg::Package::built` from the reader). Sample (15 elements, on the card): "app open: slide (52476 B free)", lowest heap 39.6 KB over two opens and closes in Wi-Fi mode. view-app not measured (20 elements, slides the same way); the fade path stays for big layouts. Sim 42/42, pkg host test passes
+  - [~] 2. A pulled card is noticed with an app open: periodic card status check while mounted (user allowed a read-only look at the IDF sdspi driver in `C:\Espressif` for its locking); open SD app returns Home, tile faded with the badge
+    - Built: `sd_tick` (link task, every 2 s, CMD13 under a mutex shared with the probe task, made on first use since a HELLO can probe before `sd_start`). IDF check: `sdspi_host_do_transaction` holds `spi_device_acquire_bus` for each whole command, so CMD13 cannot split another task's transfer. Waiting: the user pulls the card with the sample open
   - [ ] 3. Sim shots, docs (DESIGN.md Motion, packages.md, sd-card.md, decisions, board-info), tests, build, flash, user check; release when it holds
 
 - [ ] P36 Later

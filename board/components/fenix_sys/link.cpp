@@ -643,6 +643,7 @@ static void link_task(void*) {
     if (ota_receiving() && now - s_fw_rx > INSTALL_TIMEOUT_US) ota_abort();
     files_tick(now);
     logs_tick(now);
+    sd_tick(now);
     backup_tick(now);
     if (now >= next_stats) {
       next_stats = now + STATS_PERIOD_US;

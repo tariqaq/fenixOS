@@ -1,7 +1,8 @@
 // Screen stack. Only builders are stored; a screen is rebuilt when it becomes visible again,
-// so at most two screens exist (only during a slide). A faded push (an app) and the pop back from
-// it delete the old screen before the new one is built (P50-M): a big app and Home never need RAM
-// at the same time; the new screen fades in from black.
+// so at most two screens exist (only during a slide). A faded push (an app when the heap is short,
+// app_pkg.cpp slide_fits, P57) and the pop back from it delete the old screen before the new one is
+// built (P50-M): a big app and Home never need RAM at the same time; the new screen fades in from
+// black.
 #include "fenix_ui.h"
 
 namespace fx::ui {

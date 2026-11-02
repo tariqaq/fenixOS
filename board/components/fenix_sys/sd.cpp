@@ -12,6 +12,7 @@
 #include "fenix_sys.h"
 #include "ff.h"
 #include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
 #include "freertos/task.h"
 #include "sdmmc_cmd.h"
 
@@ -25,6 +26,12 @@ static fnx::SdState s_st;  // under s_mux
 static sdmmc_card_t* s_card;
 static bool s_bus;
 static volatile bool s_busy;  // a probe task is running
+// Held while s_card may change (probe task) or is checked (sd_tick). Made on first use: the link
+// task can probe (HELLO) before sd_start runs.
+static SemaphoreHandle_t lock() {
+  static SemaphoreHandle_t m = xSemaphoreCreateMutex();
+  return m;
+}
 
 static void report(const fnx::SdState& s) {
   if (!link_connected()) return;
@@ -123,6 +130,7 @@ static void mount() {
 }
 
 static void probe_task(void*) {
+  xSemaphoreTake(lock(), portMAX_DELAY);
   if (s_card && sdmmc_get_status(s_card) != ESP_OK) {  // pulled out
     unmount();
     set(fnx::sd_state::NONE);
@@ -131,6 +139,7 @@ static void probe_task(void*) {
     ota_scan_sd();
   }
   if (!s_card) mount();
+  xSemaphoreGive(lock());
   s_busy = false;
   vTaskDelete(nullptr);
 }
@@ -144,6 +153,22 @@ void sd_probe() {
 }
 
 void sd_start() { sd_probe(); }
+
+// A pulled card is noticed within CHECK_US (P57). There is no card-detect pin, and an open app
+// reads nothing from the card, so before this nothing touched it until Settings › Storage or an
+// install. CMD13 is one short command; the SPI driver takes the bus for each whole command
+// (sdspi_host.c, spi_device_acquire_bus), so it cannot cut into another task's read or write.
+static constexpr int64_t CHECK_US = 2 * 1000000;
+
+void sd_tick(int64_t now) {
+  static int64_t next;
+  if (now < next) return;
+  next = now + CHECK_US;
+  if (s_busy || xSemaphoreTake(lock(), 0) != pdTRUE) return;
+  bool gone = s_card && sdmmc_get_status(s_card) != ESP_OK;
+  xSemaphoreGive(lock());
+  if (gone) sd_probe();  // unmounts, SD_CHANGED, the store marks the card's apps missing
+}
 
 SdInfo sd_info() {
   portENTER_CRITICAL(&s_mux);

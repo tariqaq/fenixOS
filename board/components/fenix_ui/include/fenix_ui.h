@@ -40,7 +40,7 @@ void stream_full_refresh();
 // A builder fills a fresh screen. Screens are rebuilt on pop, so they keep no hidden state.
 using Builder = void (*)(lv_obj_t* scr);
 void nav_root(Builder b, bool animate);  // replace the whole stack
-void nav_push(Builder b, bool fade = false);  // slide in, or fade in from black (app open)
+void nav_push(Builder b, bool fade = false);  // slide in, or fade in from black (a big app, P57)
 void nav_pop();  // slide back, or fade back after a faded push
 void nav_rebuild();  // rebuild the top screen in place (rotation, setting changes)
 

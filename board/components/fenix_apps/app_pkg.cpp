@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include "esp_heap_caps.h"
 #include "esp_timer.h"
 #include "fenix_pkg.h"
 #include "fenix_proto.h"
@@ -362,6 +363,21 @@ static bool load_app(const char* id) {
   return true;
 }
 
+// App open slides like Settings and Stream when the heap allows (P57, user): Home stays until
+// the slide ends, so the app's objects are built next to it. With less than SLIDE_MARGIN left
+// after them (a big layout with album art), it falls back to the P50-M fade from black, which
+// deletes Home first. The pop back goes the same way (nav.cpp). The package, its strings and the
+// art buffer are already in RAM here, so only the objects are estimated.
+static constexpr size_t SLIDE_MARGIN = 28 * 1024;
+
+static bool slide_fits(size_t built) {
+  size_t free = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+  bool slide = free > built * fpkg::RAM_PER_ELEM + SLIDE_MARGIN;
+  sys::link_log(4, "app open: %s (%u B free, %u elements)", slide ? "slide" : "fade", (unsigned)free,
+                (unsigned)built);
+  return slide;
+}
+
 void app_open(const char* id) {
   close_app();
   sys::AppMeta m;
@@ -373,11 +389,11 @@ void app_open(const char* id) {
     strlcpy(s_app.id, m.id, sizeof s_app.id);
     strlcpy(s_app.name, m.name, sizeof s_app.name);
     sys::sd_probe();
-    nav_push(app_screen, true);
+    nav_push(app_screen, !slide_fits(0));
     return;
   }
   if (!load_app(id)) return;
-  nav_push(app_screen, true);
+  nav_push(app_screen, !slide_fits(s_app.pkg.built));
   if (sys::link_connected()) send_id(fnx::ty::APP_OPENED, s_app.id);
 }
 

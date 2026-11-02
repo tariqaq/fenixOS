@@ -296,6 +296,7 @@ const char* Package::check() {
   }
   if (built * RAM_PER_ELEM + elems.size() * RAM_PER_PKG_ELEM + string_bytes + image_bytes + art_bytes > MAX_RAM)
     return "too much RAM";
+  this->built = built;
   return nullptr;
 }
 

@@ -123,6 +123,7 @@ class Package {
   std::vector<Elem> elems;
   std::vector<Asset> assets;
   std::string_view id, name, version;
+  size_t built = 0;  // elements built at once (a view counts its largest child), set by parse
 
  private:
   const char* read(Source& src, size_t n);

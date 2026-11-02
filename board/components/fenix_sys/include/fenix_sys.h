@@ -179,6 +179,7 @@ void sd_start();   // boot: mounts in a short-lived background task
 void sd_probe();   // checks a mounted card is still there, or mounts one; async, SD_CHANGED on a change
 SdInfo sd_info();
 void sd_report();  // SD_STATE to the PC; without a ready card it also probes again
+void sd_tick(int64_t now);  // link task: a mounted card that stops answering is probed (P57)
 void sd_update_free();  // after a write to the card: new free space, SD_STATE on a change
 
 // ---- Firmware updates (P52, ota.cpp; docs/ota.md) ----
