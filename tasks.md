@@ -206,7 +206,13 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
     - Done: no bug found (log in `docs/audit-2026-11.md`)
   - [x] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed
     - Done: v0.1.27. VERSION, template pins, README status; all checks, `cargo test --workspace`, C++ host test, 42 sim shots, svelte-check pass. Firmware 0x13afd0, signed `fenixOS_0.1.27.fwp` (1260 KB), installer built and installed (/S), board flashed over USB: v0.1.27, 52.6 KB free at boot. Tag v0.1.27 (annotated)
-- [ ] P56 Docs sweep: every current `.md` (root, `docs/` except `legacy/`, `vendor/`, `tempcrashlogs/`; `proto/`, `board/`, `app/`, `tools/`, `registry/`, `templates/`) checked against the code; stale facts fixed with Corrected notes; tasks.md Done list trimmed into the history file
+- [~] P56 Docs sweep: every current `.md` (root, `docs/` except `legacy/`, `vendor/`, `tempcrashlogs/`; `proto/`, `board/`, `app/`, `tools/`, `registry/`, `templates/`) checked against the code; stale facts fixed with Corrected notes; tasks.md Done list trimmed into the history file. History docs (`docs/POC-WRITEUP.md` if marked, `docs/legacy/`) stay frozen
+  - [ ] 1. Scripted checks over every current `.md`: paths that do not exist, message ids in `proto/spec.md` against `fenix-proto`, constants named in docs (sizes, baud, caps) against the code, old version strings
+  - [ ] 2. Root and small docs read whole: `README.md`, `DESIGN.md`, `AGENTS.md`, `ideas.md`, `pics/ANALYSIS.md`, `app/src-tauri/resources/firmware/README.md`, `third_party/serialport/NOTES.md` and `PATCH.md`
+  - [ ] 3. `docs/` read whole: `PLAN.md`, `board-info.md`, `decisions.md`, `packages.md`, `ota.md`, `plan-sd-ota.md`, `sd-card.md`, `fonts.md`, `sidecars.md`, `registry.md`, `toolchain.md`, `tooling.md`, `mockups.md`, `requests/morpheus.md`, `audit-2026-11.md`
+  - [ ] 4. `proto/spec.md` and `templates/app` docs (AGENTS, README, `docs/fenixos/*`) read whole against the code; zip regenerated if the template changes
+  - [ ] 5. `tasks.md`: P45 to P55 detail moved verbatim into `docs/legacy/tasks-history.md`, one line each left under Done; Releases line; Open list (tests that need the user)
+  - [ ] 6. All checks, commit, push
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
