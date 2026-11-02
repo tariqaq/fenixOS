@@ -281,7 +281,21 @@ const char* Package::check() {
   for (auto s : strings) string_bytes += s.size();
   if (string_bytes > MAX_STRING_BYTES) return "too many string bytes";
   if (image_bytes > MAX_IMAGE_BYTES) return "too many image bytes";
-  if (elems.size() * RAM_PER_ELEM + string_bytes + image_bytes + art_bytes > MAX_RAM) return "too much RAM";
+  // Elements built at once: a view builds only the child it shows, so it counts its largest.
+  uint16_t sum[MAX_ELEMS] = {}, mx[MAX_ELEMS] = {};
+  size_t built = 0;
+  for (size_t i = elems.size(); i-- > 0;) {
+    uint16_t own = 1 + (elems[i].kind == kind::VIEW ? mx[i] : sum[i]);
+    uint16_t p = elems[i].parent;
+    if (p == NONE) {
+      built += own;
+    } else {
+      sum[p] += own;
+      if (own > mx[p]) mx[p] = own;
+    }
+  }
+  if (built * RAM_PER_ELEM + elems.size() * RAM_PER_PKG_ELEM + string_bytes + image_bytes + art_bytes > MAX_RAM)
+    return "too much RAM";
   return nullptr;
 }
 

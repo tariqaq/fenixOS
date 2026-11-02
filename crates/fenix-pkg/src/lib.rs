@@ -20,12 +20,17 @@ pub const MAX_ELEMS: usize = 200;
 pub const MAX_STRING_BYTES: usize = 8 * 1024;
 pub const MAX_BINDS: usize = 64;
 pub const MAX_IMAGE_BYTES: usize = 24 * 1024;
-pub const MAX_RAM: usize = 40 * 1024;
+/// The RAM estimate's cap. Corrected (P50-M step 5, measured on the board): was 40 KB, which with
+/// Wi-Fi on, the CJK font and the PC on Wi-Fi left about nothing at the lowest point.
+pub const MAX_RAM: usize = 32 * 1024;
+/// Per element built at once (LVGL objects and styles; measured ~150 B).
 pub const RAM_PER_ELEM: usize = 160;
+/// Per element in the package (its props and bookkeeping stay in RAM while the app is open).
+pub const RAM_PER_PKG_ELEM: usize = 32;
 pub const MAX_DEPTH: usize = 8;
 /// Largest side of the bound image (album art, P50-M), in pixels. Its RGB565 buffer counts in
-/// the RAM estimate.
-pub const MAX_ART: i32 = 120;
+/// the RAM estimate. Measured: 120 x 120 left 0.9 KB at the lowest point (Wi-Fi on, CJK font).
+pub const MAX_ART: i32 = 96;
 /// App ids name files on the board (`/apps/<id>.fxp`); LittleFS names are ≤ 63 bytes.
 pub const MAX_ID: usize = 48;
 
@@ -346,6 +351,25 @@ impl Package {
         Ok(())
     }
 
+    /// Elements the board builds at once: a `view` builds only the child it shows (P50-M), so
+    /// it counts its largest child.
+    pub fn built_at_once(&self) -> usize {
+        let n = self.elems.len();
+        let (mut sum, mut max, mut built) = (vec![0; n], vec![0; n], 0);
+        for i in (0..n).rev() {
+            let e = &self.elems[i];
+            let own = 1 + if e.kind == kind::VIEW { max[i] } else { sum[i] };
+            match e.parent {
+                NONE => built += own,
+                p => {
+                    sum[p as usize] += own;
+                    max[p as usize] = max[p as usize].max(own);
+                }
+            }
+        }
+        built
+    }
+
     /// Check the limits of `docs/packages.md` (the board checks the same).
     pub fn check_limits(&self) -> Result<(), String> {
         let strings: usize = self.strings.iter().map(|s| s.len()).sum();
@@ -386,7 +410,11 @@ impl Package {
             }
             art_bytes = (w * h * 2) as usize;
         }
-        let ram = self.elems.len() * RAM_PER_ELEM + strings + image_bytes + art_bytes;
+        let ram = self.built_at_once() * RAM_PER_ELEM
+            + self.elems.len() * RAM_PER_PKG_ELEM
+            + strings
+            + image_bytes
+            + art_bytes;
         let checks = [
             (
                 self.elems.len() <= MAX_ELEMS,
@@ -996,7 +1024,7 @@ mod tests {
         assert_eq!((art.elem, art.bind, art.w, art.h), (1, 0, 80, 80));
         assert!(build_layout("art-old", ok, "0.1.24").is_err());
         let refused = [
-            r#"{ "type": "image", "bind": "art", "w": 121, "h": 80 }"#,
+            r#"{ "type": "image", "bind": "art", "w": 97, "h": 80 }"#,
             r#"{ "type": "image", "bind": "art", "w": "50%", "h": 80 }"#,
             r#"{ "type": "image", "bind": "art", "h": 80 }"#,
             r#"{ "type": "image", "bind": "art", "w": 80, "h": 80, "portrait": { "w": 60 } }"#,
@@ -1010,9 +1038,29 @@ mod tests {
                 "{l}"
             );
         }
-        // The buffer counts: 120 x 120 x 2 = 28.8 KB of the 40 KB estimate.
-        let big = r#"{ "type": "image", "bind": "art", "w": 120, "h": 120 }"#;
+        // The buffer counts: 96 x 96 x 2 = 18.4 KB of the 32 KB estimate.
+        let big = r#"{ "type": "image", "bind": "art", "w": 96, "h": 96 }"#;
         assert!(build_layout("art-big", big, "0.1.25").is_ok());
+    }
+
+    #[test]
+    fn view_counts_its_largest_child() {
+        // A view of three screens (3, 5 and 2 elements) built once: root + view + 5.
+        let leaf = r#"{ "type": "label", "text": "x" }"#;
+        let screen = |n: usize| {
+            let kids = vec![leaf; n - 1].join(",");
+            format!(r#"{{ "type": "box", "children": [{kids}] }}"#)
+        };
+        let layout = format!(
+            r#"{{ "type": "box", "children": [ {{ "type": "view", "bind": "m", "children": [{}, {}, {}] }} ] }}"#,
+            screen(3),
+            screen(5),
+            screen(2)
+        );
+        let p = build_layout("built", &layout, "0.1.25").unwrap();
+        assert_eq!(p.elems.len(), 12);
+        assert_eq!(p.built_at_once(), 7);
+        assert_eq!(parse(&sample()).unwrap().built_at_once(), 15);
     }
 
     #[test]

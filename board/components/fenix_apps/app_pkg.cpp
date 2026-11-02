@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <algorithm>
 #include <memory>
 #include <new>
 #include <string>
@@ -118,7 +119,8 @@ struct Bound {
   uint16_t bind;
   uint8_t kind;  // element kind
   lv_obj_t* obj;
-  bool show;  // the element's `show` binding, not its `bind`
+  bool show;      // the element's `show` binding, not its `bind`
+  uint16_t elem;  // the element's index
 };
 
 static struct {
@@ -642,8 +644,8 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   if (e.prop(fpkg::key::W, &v, port)) lv_obj_set_width(o, lv_size(v));
   if (e.prop(fpkg::key::H, &v, port)) lv_obj_set_height(o, lv_size(v));
   if (e.prop(fpkg::key::GROW, &v, port) && grow_applies(e, port)) lv_obj_set_flex_grow(o, v);
-  if (e.prop(fpkg::key::BIND, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o, false});
-  if (e.prop(fpkg::key::SHOW, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o, true});
+  if (e.prop(fpkg::key::BIND, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o, false, idx});
+  if (e.prop(fpkg::key::SHOW, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o, true, idx});
   if (e.prop(fpkg::key::EVENT, &v, port)) {
     void* ud = (void*)(uintptr_t)idx;
     if (e.kind == fpkg::kind::SWITCH)
@@ -662,26 +664,46 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
 // Whether element `i` shows (P50-M): its `show` binding once set, else not `hidden`; and inside
 // a view, only the child the view's binding (or `value`, else 0) picks. Hidden elements stay
 // built, so values bound inside them are applied and kept.
+// The child a view shows: its binding once set, else `value`, else 0.
+static int32_t view_pick(size_t view, bool port) {
+  const fpkg::Elem& p = s_app.pkg.elems[view];
+  int32_t b, pick = 0;
+  if (p.prop(fpkg::key::BIND, &b, port) && s_app.vals[b].set) pick = s_app.vals[b].i;
+  else p.prop(fpkg::key::VALUE, &pick, port);
+  return pick;
+}
+
+// A view's child that is not picked is not built (only the picked one is in RAM, P50-M step 5).
+static bool picked(size_t i, bool port) {
+  const fpkg::Elem& e = s_app.pkg.elems[i];
+  if (e.parent == fpkg::NONE || s_app.pkg.elems[e.parent].kind != fpkg::kind::VIEW) return true;
+  return view_pick(e.parent, port) == s_app.pos[i];
+}
+
+// Whether element `i` shows (P50-M): its `show` binding once set, else not `hidden`.
 static bool shown(size_t i, bool port) {
   const fpkg::Elem& e = s_app.pkg.elems[i];
   int32_t b, v = 0;
-  bool on;
   if (e.prop(fpkg::key::SHOW, &b, port) && s_app.vals[b].set) {
     const Val& s = s_app.vals[b];
-    on = s.kind == 2 ? !s.text.empty() : s.i != 0;
-  } else {
-    on = !(e.prop(fpkg::key::HIDDEN, &v, port) && v);
+    return s.kind == 2 ? !s.text.empty() : s.i != 0;
   }
-  if (!on || e.parent == fpkg::NONE) return on;
-  const fpkg::Elem& p = s_app.pkg.elems[e.parent];
-  if (p.kind != fpkg::kind::VIEW) return on;
-  int32_t pick = 0;
-  if (p.prop(fpkg::key::BIND, &b, port) && s_app.vals[b].set) pick = s_app.vals[b].i;
-  else p.prop(fpkg::key::VALUE, &pick, port);
-  return pick == s_app.pos[i];
+  return !(e.prop(fpkg::key::HIDDEN, &v, port) && v);
 }
 
 static void fade_exec(void* o, int32_t v) { lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
+
+static void fade_in(lv_obj_t* o) {
+  lv_anim_t a;
+  lv_anim_init(&a);
+  lv_anim_set_var(&a, o);
+  lv_anim_set_exec_cb(&a, fade_exec);
+  lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
+  lv_anim_set_duration(&a, FX_MOTION_FAST_MS);
+  lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+  fade_exec(o, LV_OPA_TRANSP);
+  lv_anim_start(&a);
+}
 
 // Hide and show elements to match the values; with `animate`, what appears fades in (DESIGN.md:
 // apps have no motion props, the board animates). Fade only: a scale would draw through a
@@ -691,24 +713,63 @@ static void refresh_shown(bool animate) {
   for (size_t i = 0; i < s_app.objs.size(); i++) {
     lv_obj_t* o = s_app.objs[i];
     if (!o) continue;
-    bool on = shown(i, port), was = !lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN);
+    bool on = shown(i, port) && picked(i, port), was = !lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN);
     if (on == was) continue;
     if (!on) {
       lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
       continue;
     }
     lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
-    if (!animate) continue;
-    lv_anim_t a;
-    lv_anim_init(&a);
-    lv_anim_set_var(&a, o);
-    lv_anim_set_exec_cb(&a, fade_exec);
-    lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
-    lv_anim_set_duration(&a, FX_MOTION_FAST_MS);
-    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
-    fade_exec(o, LV_OPA_TRANSP);
-    lv_anim_start(&a);
+    if (animate) fade_in(o);
   }
+}
+
+// Build every element not built yet whose parent is built, except a view's children it does not
+// pick; then apply the cached values to what was built. With nothing built, the whole layout.
+static void build_missing(lv_obj_t* body, bool port) {
+  const fpkg::Package& p = s_app.pkg;
+  size_t first = s_app.bound.size();
+  for (size_t i = 0; i < p.elems.size(); i++) {
+    const fpkg::Elem& e = p.elems[i];
+    if (s_app.objs[i] || !picked(i, port)) continue;
+    lv_obj_t* parent = e.parent == fpkg::NONE ? body : s_app.objs[e.parent];
+    if (parent) s_app.objs[i] = make(e, i, parent, port);
+  }
+  for (size_t k = first; k < s_app.bound.size(); k++) {
+    const Bound& b = s_app.bound[k];
+    if (!b.show && s_app.vals[b.bind].set) apply(b, s_app.vals[b.bind]);
+  }
+}
+
+static bool under(size_t i, size_t root) {
+  for (uint16_t p = s_app.pkg.elems[i].parent; p != fpkg::NONE; p = s_app.pkg.elems[p].parent)
+    if (p == root) return true;
+  return false;
+}
+
+// A view's binding changed: when it picks another child, delete the built one (its LVGL objects
+// and bindings) and build the new one, which fades in. Its values come from the cache.
+static void switch_view(size_t view, bool port) {
+  int32_t pick = view_pick(view, port);
+  size_t n = s_app.pkg.elems.size(), now = n;
+  for (size_t i = view + 1; i < n; i++)
+    if (s_app.objs[i] && s_app.pkg.elems[i].parent == view) now = i;
+  if (now < n && s_app.pos[now] == pick) return;
+  if (now < n) {
+    lv_obj_delete(s_app.objs[now]);  // and its children
+    for (size_t i = now; i < n; i++) {
+      if (i != now && !under(i, now)) continue;
+      if (s_app.objs[i] == s_app.art_obj) s_app.art_obj = nullptr;
+      s_app.objs[i] = nullptr;
+    }
+    auto gone = [&](const Bound& b) { return b.elem == now || under(b.elem, now); };
+    s_app.bound.erase(std::remove_if(s_app.bound.begin(), s_app.bound.end(), gone), s_app.bound.end());
+  }
+  build_missing(nullptr, port);  // the root exists, so `body` is never needed here
+  refresh_shown(false);
+  for (size_t i = view + 1; i < n; i++)
+    if (s_app.objs[i] && s_app.pkg.elems[i].parent == view && !lv_obj_has_flag(s_app.objs[i], LV_OBJ_FLAG_HIDDEN))
+      fade_in(s_app.objs[i]);
 }
 
 static void build_layout(lv_obj_t* body) {
@@ -717,16 +778,9 @@ static void build_layout(lv_obj_t* body) {
   s_app.objs.assign(p.elems.size(), nullptr);
   s_app.pos.assign(p.elems.size(), 0);
   std::vector<uint16_t> kids(p.elems.size(), 0);  // children seen so far, per element
-  for (size_t i = 0; i < p.elems.size(); i++) {
-    const fpkg::Elem& e = p.elems[i];
-    if (e.parent != fpkg::NONE) s_app.pos[i] = kids[e.parent]++;
-    lv_obj_t* parent = e.parent == fpkg::NONE ? body : s_app.objs[e.parent];
-    if (!parent) continue;
-    s_app.objs[i] = make(e, i, parent, port);
-  }
-  for (const Bound& b : s_app.bound) {
-    if (!b.show && s_app.vals[b.bind].set) apply(b, s_app.vals[b.bind]);
-  }
+  for (size_t i = 0; i < p.elems.size(); i++)
+    if (p.elems[i].parent != fpkg::NONE) s_app.pos[i] = kids[p.elems[i].parent]++;
+  build_missing(body, port);
   refresh_shown(false);
 }
 
@@ -797,11 +851,19 @@ static void host_state(lv_obj_t* body, Why why) {
   }
 }
 
+// The app screen is going. Left for another screen (the pop deletes it before building the next,
+// P50-M): close the app now and free what it read, so Home is built with that RAM back. A rebuild
+// (rotation, host state) keeps the app open.
+static void screen_deleted(lv_event_t*) {
+  if (s_app.open && nav_top() != app_screen) close_app();
+  free_retired();
+}
+
 void app_screen(lv_obj_t* scr) {
   s_app.bound.clear();
   s_app.art_obj = nullptr;
   s_app.objs.clear();  // rebuilt by build_layout; a host-state screen has none
-  lv_obj_add_event_cb(scr, free_retired, LV_EVENT_DELETE, nullptr);
+  lv_obj_add_event_cb(scr, screen_deleted, LV_EVENT_DELETE, nullptr);
   navbar(scr, "Home", s_app.open ? s_app.name : "");
   lv_obj_t* body = column(scr, 0);
   lv_obj_set_width(body, LV_PCT(100));
@@ -976,11 +1038,14 @@ void app_tick() {
     if (v.kind == 2) val.text = v.text;
     s_app.dirty = true;
     bool shows = false;
+    std::vector<uint16_t> views;  // views bound to it (switching changes `bound`, so not in the loop)
     for (const Bound& b : s_app.bound) {
       if (b.bind != v.bind) continue;
-      if (b.show || b.kind == fpkg::kind::VIEW) shows = true;
+      if (b.kind == fpkg::kind::VIEW && !b.show) views.push_back(b.elem);
+      else if (b.show) shows = true;
       else apply(b, val);
     }
+    for (uint16_t view : views) switch_view(view, portrait());
     if (shows) refresh_shown(true);
   }
 }

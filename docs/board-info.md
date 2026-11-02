@@ -308,6 +308,46 @@ Wi-Fi joined, card mounted, PC on USB. Idle: 63.9 KB free (low point 58.5 KB sin
 | App data (SDK) | as a file write | 49.4 KB |
 | Home wallpaper | dropped: 321 ms full redraw (step 7 below) | |
 
+## App RAM with views and album art (P50-M, 2026-11-02)
+
+Firmware 0.1.25 (dev build), COM9, Wi-Fi mode joined to the hotspot, the CJK font on the card (it
+takes ~10 KB), one STATS read 1 to 6 s after the values (`fenix set` prints them since P50-M).
+Free heap on Home: **~54 KB** (corrected: `docs/PLAN.md` and `docs/decisions.md` sized apps for
+"about 82 KB free at boot in Wi-Fi mode", the v0.1.12 number; the SD card, OTA, logs, the value ring
+and the font have taken the rest since). A Morpheus-sized test package (generated: a `view` of 6
+screens, 147 elements, 57 bindings, one bound image):
+
+| Build | Art | PC link | Free with the app open | Lowest |
+|---|---|---|---|---|
+| Every element built (first 0.1.25 build) | 120 × 120 | USB | | out of memory: LVGL aborted in `lv_label_create`, 3 panics |
+| Every element built, 74 elements (3 screens) | none | USB | 32.1 KB | 22.1 KB |
+| Only the shown screen built (26 elements) | none | USB | 39.2 KB | 31.0 KB |
+| Shown screen only | 80 × 80 | USB | 27.5 KB | 17.8 KB |
+| Shown screen only | 96 × 96 | USB | 21.9 KB | 12.2 KB |
+| Shown screen only | 120 × 120 | USB | 10.5 KB | **0.9 KB** |
+| Shown screen only, Home deleted before the app is built | 80 × 80 | USB | 27.5 KB | 26.1 KB |
+| same | 96 × 96 | USB | 21.9 KB | 20.4 KB (20.0 KB after switching all 6 screens) |
+| same | 80 × 80 | Wi-Fi | 26.4 KB | 10 to 14 KB |
+| same | 96 × 96 | Wi-Fi | 20.7 KB | 12.5 KB |
+
+- **Per element:** ~150 B per LVGL element built (74 vs 26 built: 7.1 KB for 48), plus ~10 KB that
+  any open app costs (screen, nav bar, the package's props and strings, the value cache). The
+  estimate's 160 B per element holds; the package's props were not counted (now 32 B per element).
+- **Opening** used to hold Home and the app at once (the fade ran over Home): ~10 KB below the steady
+  value. Now the old screen is deleted first and the app fades in from black (`nav.cpp`), and closing
+  frees the app before Home is built (`app_pkg.cpp`): the lowest point is within ~1.5 KB of steady.
+  Five opens and closes: Home back at 50.0 KB each time (no leak; 4 KB below boot once, Home's second
+  page).
+- **Wi-Fi link:** each burst the board receives (a CLI connect, the picture) takes up to ~16 KB more
+  for a moment (10 dynamic RX buffers of 1.6 KB, `sdkconfig.defaults`), whatever the art size.
+- **Chosen:** the art cap is **96 × 96** (120 × 120 left 0.9 KB); the RAM estimate counts only what is
+  built at once (a view counts its largest child) plus 32 B per element in the package, and its cap
+  is **32 KB** (was 40 KB: at the cap, Wi-Fi on, the CJK font and the PC on Wi-Fi left about nothing).
+  A Morpheus layout with 80 × 80 art estimates ~23 KB. Without the CJK font there is 10 KB more;
+  with the radio off ~70 KB more.
+- Screen switching (`set mode=n`): the old screen's objects are deleted and the new one built and
+  faded in; heap the same on every screen. A 96 × 96 picture: 18,432 B in 253 ms (USB).
+
 ## CJK font from the card (P54, 2026-11-02)
 
 Details and numbers: `docs/fonts.md` "Measured on the board". In short: a glyph read is ~3.1 ms

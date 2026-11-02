@@ -245,7 +245,7 @@ Consequences:
 | Question | Options | Choice |
 |---|---|---|
 | RAM case an app must fit | Worst case (Wi-Fi stream on while an app runs, ~24 KB low) / **Wi-Fi on and linked, no stream** | **No stream** (user: "im never gonna do always wifi screen stream and also run apps"). Apps are used with Wi-Fi on and the PC linked, or Wi-Fi off over USB; the Wi-Fi case (~82 KB free at boot) sets the budget, USB-only (~155 KB) has room to spare |
-| Image binding size | 80×80 under today's 40 KB estimate cap / **96×96 to 120×120, cap raised to ~56 KB after a board measurement** | **Measure first** (P50): a Morpheus-sized layout with 120×120 art in both modes; below ~20 KB lowest free heap with Wi-Fi on means 96×96 |
+| Image binding size | 80×80 under today's 40 KB estimate cap / **96×96 to 120×120, cap raised to ~56 KB after a board measurement** | **Measure first** (P50): a Morpheus-sized layout with 120×120 art in both modes; below ~20 KB lowest free heap with Wi-Fi on means 96×96. Measured (P50-M step 5, overnight run, `docs/board-info.md` "App RAM with views and album art"): Home has ~54 KB free with Wi-Fi on and the CJK font, not 82 KB; 120×120 left 0.9 KB. Chosen: art cap **96×96**, a view builds only the child it shows, Home and the app are never built at once, and the RAM estimate cap is **lowered to 32 KB** (counting what is built at once plus 32 B per package element) instead of raised |
 | CJK and wide text | Fonts in flash now / **after the SD card** | **SD card** (user: "as soon as sdcard arrives then we can discuss further"): ~400 KB per CJK size and weight does not fit the 4 MB flash. Latin-1 and a transliteration helper come first (P51) |
 
 ## 2026-11-02: SD card (`docs/board-info.md` "SD card check")

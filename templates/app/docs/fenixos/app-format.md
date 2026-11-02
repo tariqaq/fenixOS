@@ -42,7 +42,7 @@ Every element is an object with `type`, optional props and `children` (boxes and
 | `switch` | On/off switch | `bind`, `event`, `value` |
 | `slider` | Horizontal slider | `min`, `max`, `value`, `bind`, `event` |
 | `bar` | Progress or meter bar | `min`, `max`, `value`, `bind`, `color` |
-| `image` | A8 (tinted with `color`) or RGB565 image. Since v0.1.25 one `image` may have a `bind`: the PC half sends its pixels (album art); it needs `w` and `h` in pixels (1 to 120, the same in portrait), shows `src` or a `surface_2` square until the first picture arrives, and its buffer (w × h × 2 B) counts in the RAM estimate | `src`, `color` (A8 only), `bind` |
+| `image` | A8 (tinted with `color`) or RGB565 image. Since v0.1.25 one `image` may have a `bind`: the PC half sends its pixels (album art); it needs `w` and `h` in pixels (1 to 96, the same in portrait), shows `src` or a `surface_2` square until the first picture arrives, and its buffer (w × h × 2 B) counts in the RAM estimate | `src`, `color` (A8 only), `bind` |
 | `icon` | Built-in glyph | `icon`, `size` (12 14 15 16 18 20 26 28 40), `color` |
 | `view` | Since v0.1.25: a container that shows one child, picked by its int `bind` (0 = first child; out of range shows none), or by `value` until the PC sets it. Lays out like a `box` | `bind`, `value`, and the `box` props |
 
@@ -72,8 +72,8 @@ The built-in glyphs (the last 14, from `play`, need fenixOS v0.1.25): `gear-six`
 
 - `"bind": "cpu"` connects the element to binding `cpu`. The PC half sets it: a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer. Since v0.1.25 (P50-M) a `button` takes text (its text) or an integer (its glyph, an index in the icon list; out of range: none), and an `icon` takes an integer (its glyph); `fenix-sdk` `set_icon(bind, "pause")` sends the index. Use one kind per button: after a rebuild only the last value is applied.
 - Sending every value on `opened` (~50) is fine from fenixOS v0.1.25: the PC app sends the latest value per binding, paced, and the board keeps them in order. Before v0.1.25 the board kept only 16 at a time.
-- **Several screens in one app** (fenixOS v0.1.25): put each screen in a `view` and set its binding to the index of the one to show (`app.set("mode", 2)`). Every screen is built when the app opens, so all of them count in the RAM estimate; values bound inside a hidden screen are applied and kept. What appears fades in; no motion props. `view` or `show` needs `min_fenixos = "0.1.25"` in `app.toml` (`fenix-pkg build` says so).
-- **Pictures from the PC half (fenixOS v0.1.25):** one `image` per app may have a `bind`. The PC half calls `set_image(bind, w, h, &rgba)` with any picture up to 120 × 120 (the SDK scales larger ones down); fenixOS scales it to fill the element, crops the middle, converts it to RGB565 and sends it in `BIND_IMAGE` chunks, about 3 KB per 50 ms (a 120 × 120 picture takes ~0.5 s). The board writes them into the element's one buffer and redraws it once the picture is whole, so a redraw during the transfer can show the old and new picture mixed for that moment. Send it once per change (a new track), not per frame; a newer picture replaces one still on its way. Not kept on the card: after a restart or offline the element shows `src` again.
+- **Several screens in one app** (fenixOS v0.1.25): put each screen in a `view` and set its binding to the index of the one to show (`app.set("mode", 2)`). Only the screen shown is built (switching builds the next one), so the RAM estimate counts the largest screen; values for the other screens are kept and applied when they show. What appears fades in; no motion props. `view` or `show` needs `min_fenixos = "0.1.25"` in `app.toml` (`fenix-pkg build` says so).
+- **Pictures from the PC half (fenixOS v0.1.25):** one `image` per app may have a `bind`. The PC half calls `set_image(bind, w, h, &rgba)` with any picture (the SDK scales it to at most 120 × 120); fenixOS scales it to fill the element, crops the middle, converts it to RGB565 and sends it in `BIND_IMAGE` chunks, about 3 KB per 50 ms (a 96 × 96 picture takes ~0.25 s over USB). The board writes them into the element's one buffer and redraws it once the picture is whole, so a redraw during the transfer can show the old and new picture mixed for that moment. Send it once per change (a new track), not per frame; a newer picture replaces one still on its way. Not kept on the card: after a restart or offline the element shows `src` again.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `"event": "mute"` makes the element report: a button sends `tap` (and `long` on a long press), a switch sends `change` with 0/1, a slider sends `change` with its value on release. The board updates its own copy of a bound control the user changed.
 - The board keeps no values while the app is closed. When the app opens, the PC half gets `opened` and must send its current values.
@@ -96,7 +96,7 @@ Checked by `fenix-pkg build` and again by the board before it installs.
 | Strings (all, bytes) | 8 KB |
 | Bindings | 64 |
 | Image data (all images except the two tile icons) | 24 KB |
-| RAM estimate (`elements × 160 B + strings + images + the bound image's w × h × 2`) | 40 KB |
+| RAM estimate (`elements built at once × 160 B + elements × 32 B + strings + images + the bound image's w × h × 2`; a `view` counts its largest child) | 32 KB (40 KB before fenixOS v0.1.25) |
 | Tree depth | 8 |
 
 Images are stored raw: a 100 × 60 RGB565 image is 12 KB. Prefer A8 (1 byte a pixel, tinted with `color`) for icons and line art. The board holds up to 32 apps, on its SD card when one is in.

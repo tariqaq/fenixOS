@@ -31,7 +31,9 @@
 //!                                  data/ or web/ (resumes a cut upload); files rm <path>
 //! fenix font make <font.otf> <out.fxf> [--chars <text>]   draw a CJK font into the board's bitmap
 //!                                  format (docs/fonts.md); then files put <out.fxf> fonts/cjk.fxf
-//! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
+//! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half; for the bound
+//!                                  image, <bind>=@<file.png> or @test (colour ramps), paced as
+//!                                  the PC app sends it (P50-M)
 //! fenix host <id> on|off|gone|starting   tell the board the state of an app's PC half
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
 //! fenix flash [dir] [--erase]      write firmware: a bundle (default app/src-tauri/resources/
@@ -80,7 +82,11 @@ fn font(args: &[String]) -> i32 {
         eprint!("\r{p:3}%");
     });
     eprintln!();
-    match built.and_then(|f| std::fs::write(out, &f).map(|_| f.len()).map_err(|e| e.to_string())) {
+    match built.and_then(|f| {
+        std::fs::write(out, &f)
+            .map(|_| f.len())
+            .map_err(|e| e.to_string())
+    }) {
         Ok(n) => {
             println!("{out}: {n} B in {:.1} s", t.elapsed().as_secs_f64());
             0
@@ -1425,6 +1431,7 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
         }
     };
     let mut msgs = Vec::new();
+    let mut image = None;
     for pair in pairs {
         let Some((name, v)) = pair.split_once('=') else {
             eprintln!("expected <bind>=<value>, got {pair}");
@@ -1434,6 +1441,20 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
             eprintln!("no binding {name:?}; bindings: {:?}", pkg.bind_names());
             return 2;
         };
+        if let Some(src) = v.strip_prefix('@') {
+            let Some(art) = pkg.art().filter(|a| a.bind == bind) else {
+                eprintln!("{name} is not the package's bound image");
+                return 2;
+            };
+            match art_pixels(src, art.w as usize, art.h as usize) {
+                Ok(px) => image = Some((art, px)),
+                Err(e) => {
+                    eprintln!("{src}: {e}");
+                    return 1;
+                }
+            }
+            continue;
+        }
         let value = match (v.parse::<i32>(), v) {
             (Ok(n), _) => BindValue::Int(n),
             (_, "true") => BindValue::Bool(true),
@@ -1453,7 +1474,33 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
     for m in msgs {
         link.send(m);
     }
-    let end = Instant::now() + Duration::from_secs(3);
+    if let Some((art, px)) = image {
+        // As apps.rs paces it: 3 chunks of 1 KB per 50 ms.
+        let t = Instant::now();
+        for (n, c) in px.chunks(1024).enumerate() {
+            if n > 0 && n % 3 == 0 {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            link.send(Msg::BindImage {
+                bind: art.bind,
+                w: art.w,
+                h: art.h,
+                total: px.len() as u32,
+                offset: (n * 1024) as u32,
+                id: pkg.id().into(),
+                data: c.to_vec(),
+            });
+        }
+        println!(
+            "image {} x {} ({} B) sent in {} ms",
+            art.w,
+            art.h,
+            px.len(),
+            t.elapsed().as_millis()
+        );
+    }
+    // Long enough for one STATS (every 5 s): the heap after the values (P50-M measurements).
+    let end = Instant::now() + Duration::from_secs(6);
     while Instant::now() < end {
         if let Some(e) = link.recv_event(Duration::from_millis(100)) {
             match e {
@@ -1464,12 +1511,51 @@ fn set(opts: LinkOptions, file: &Path, pairs: &[String]) -> i32 {
                     ts(),
                     pkg.event_name(elem).unwrap_or("?")
                 ),
-                Event::Msg(Msg::Stats(_)) | Event::Connected { .. } => {}
+                Event::Msg(Msg::Stats(s)) => println!(
+                    "{} heap {} B free, {} B lowest since boot",
+                    ts(),
+                    s.free_heap,
+                    s.min_heap
+                ),
+                Event::Connected { .. } => {}
                 e => print_event(&e),
             }
         }
     }
     0
+}
+
+/// RGB565 LE pixels for a `w` x `h` bound image: a PNG fitted like the PC app does, or "test".
+fn art_pixels(src: &str, w: usize, h: usize) -> Result<Vec<u8>, String> {
+    use fenix_sdk::image::{fit, rgb565_le};
+    let rgb = if src == "test" {
+        (0..h)
+            .flat_map(|y| (0..w).flat_map(move |x| [(x * 255 / w) as u8, (y * 255 / h) as u8, 96]))
+            .collect()
+    } else {
+        let f = std::fs::File::open(src).map_err(|e| e.to_string())?;
+        let mut d = png::Decoder::new(f);
+        d.set_transformations(png::Transformations::normalize_to_color8());
+        let mut r = d.read_info().map_err(|e| e.to_string())?;
+        let mut buf = vec![0; r.output_buffer_size()];
+        let info = r.next_frame(&mut buf).map_err(|e| e.to_string())?;
+        let n = info.color_type.samples();
+        let rgb: Vec<u8> = buf[..info.buffer_size()]
+            .chunks(n)
+            .flat_map(|p| match n {
+                1 | 2 => {
+                    let a = if n == 2 { p[1] as u32 } else { 255 };
+                    [(p[0] as u32 * a / 255) as u8; 3]
+                }
+                _ => {
+                    let a = if n == 4 { p[3] as u32 } else { 255 };
+                    [0, 1, 2].map(|c| (p[c] as u32 * a / 255) as u8)
+                }
+            })
+            .collect();
+        fit(&rgb, info.width as usize, info.height as usize, w, h)
+    };
+    Ok(rgb565_le(&rgb))
 }
 
 fn remove(opts: LinkOptions, id: &str) -> i32 {

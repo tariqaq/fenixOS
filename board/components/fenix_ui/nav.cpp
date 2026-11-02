@@ -1,15 +1,21 @@
 // Screen stack. Only builders are stored; a screen is rebuilt when it becomes visible again,
-// so at most two screens exist (only during a slide).
+// so at most two screens exist (only during a slide). A faded push (an app) and the pop back from
+// it delete the old screen before the new one is built (P50-M): a big app and Home never need RAM
+// at the same time; the new screen fades in from black.
 #include "fenix_ui.h"
 
 namespace fx::ui {
 
 static constexpr int MAX_DEPTH = 8;
 static Builder s_stack[MAX_DEPTH];
+static bool s_faded[MAX_DEPTH];  // pushed with a fade: the pop back fades too
 static int s_depth;
 
-static void show(Builder b, lv_screen_load_anim_t anim) {
+static void show(Builder b, lv_screen_load_anim_t anim, bool free_first = false) {
   sheet_close();
+  // A blank screen in between: loading it with no animation deletes the old one at once (and
+  // ends a slide still running); the new screen's fade then deletes the blank.
+  if (free_first) lv_screen_load_anim(screen_new(), LV_SCREEN_LOAD_ANIM_NONE, 0, 0, true);
   lv_obj_t* scr = screen_new();
   b(scr);
   // Lay out now: a press read before the next refresh would hit-test rows still at 0,0 with
@@ -30,14 +36,15 @@ void nav_root(Builder b, bool animate) {
 
 void nav_push(Builder b, bool fade) {
   if (s_depth >= MAX_DEPTH) return;
+  s_faded[s_depth] = fade;
   s_stack[s_depth++] = b;
-  show(b, fade ? LV_SCREEN_LOAD_ANIM_FADE_IN : LV_SCREEN_LOAD_ANIM_MOVE_LEFT);
+  show(b, fade ? LV_SCREEN_LOAD_ANIM_FADE_IN : LV_SCREEN_LOAD_ANIM_MOVE_LEFT, fade);
 }
 
 void nav_pop() {
   if (s_depth <= 1) return;
-  s_depth--;
-  show(s_stack[s_depth - 1], LV_SCREEN_LOAD_ANIM_MOVE_RIGHT);
+  bool fade = s_faded[--s_depth];
+  show(s_stack[s_depth - 1], fade ? LV_SCREEN_LOAD_ANIM_FADE_IN : LV_SCREEN_LOAD_ANIM_MOVE_RIGHT, fade);
 }
 
 void nav_rebuild() {

@@ -39,6 +39,8 @@ static void views(const char* path) {
   expect(p.elems[15].prop(fpkg::key::SHOW, &v) && v == 7, "show bind");
   expect(p.elems[19].prop(fpkg::key::SHOW, &v) && v == 9 && p.elems[19].prop(fpkg::key::HIDDEN, &v) && v == 1,
          "show with hidden");
+  // The bound image (P50-M): element 4, binding 1 ("art"), 48 x 48.
+  expect(p.elems[4].kind == fpkg::kind::IMAGE && p.elems[4].prop(fpkg::key::BIND, &v) && v == 1, "bound image");
   // Point the first `show` at a binding that does not exist: refused.
   bool found = false;
   for (size_t i = 0; i + 5 <= b.size() && !found; i++) {
@@ -49,8 +51,6 @@ static void views(const char* path) {
     found = true;
   }
   expect(found, "show prop found");
-  // The bound image (P50-M): element 4, binding 1 ("art"), 48 x 48.
-  expect(p.elems[4].kind == fpkg::kind::IMAGE && p.elems[4].prop(fpkg::key::BIND, &v) && v == 1, "bound image");
   printf("fenix_pkg: views ok\n");
 }
 
