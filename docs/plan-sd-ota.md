@@ -136,7 +136,8 @@ Signature host test (good, bad signature, bad hash, wrong key), updates over USB
 - **Settings backup:** every settings change also writes `/sd/fenixos/backup/settings.bin` (all NVS settings, **Wi-Fi password included, plaintext**, user). A board with empty settings and a card holding a backup offers "Restore settings from the SD card" at boot. Built: `docs/sd-card.md` "Settings backup" (the backup also holds the weather place; "empty" means no settings and no Wi-Fi network).
 - **Status page from the card:** `web.cpp` serves `/sd/fenixos/web/` when present (a richer page without flash cost; the built-in page stays the fallback).
 - **Home wallpaper:** an image in `/sd/fenixos/wallpaper/` (LVGL binary RGB565, 320×240), set from the PC; drawn from the card in rows (LVGL file image decoder), never held whole. Measured first: draw time of a full redraw and the burn-in shift with it. Dropped if it slows Home. **Dropped (measured 2026-11-02):** a full Home redraw took 321 ms with it against 30 ms without (LVGL's file decoder, 2 KB read cache; 361 ms with 8 KB). The burn-in shift redraws Home every minute, and any change under the clock reads its rows again. `docs/decisions.md`.
-- **Per-app data folder:** `/sd/fenixos/data/<id>/`, written and read by the app's PC half through the SDK (`app.put_file(name, bytes)`, `app.get_file(name)`), for history and offline data. Removed with the app.
+- **Per-app data folder:** `/sd/fenixos/data/<id>/`, written and read by the app's PC half through the SDK (`app.put_file(name, bytes)`, `app.get_file(name)`), for history and offline data. Removed with the app. Built: `docs/sd-card.md` "App data" (also `delete_file`; 32 KB a file).
+- **Status (2026-11-02):** built and released as v0.1.23, except the wallpaper (dropped above). Heap per feature: `docs/board-info.md` "P53 heap per feature".
 
 ## P54: fonts from the card (v0.1.24)
 

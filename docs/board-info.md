@@ -293,6 +293,21 @@ fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MH
 
 The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
 
+## P53 heap per feature (v0.1.23, 2026-11-02)
+
+Wi-Fi joined, card mounted, PC on USB. Idle: 63.9 KB free (low point 58.5 KB since boot), against 66.2 KB before P53; the 2.9 KB went to the board log and core dumps (step 2 below). Nothing else stays resident.
+
+| Feature | Held while it runs | Low point seen |
+|---|---|---|
+| Board log to the card | 512 B line buffer (resident) | |
+| Files over the link | 8 KB check task while a write is checked; 1 frame per read | 49.4 KB (an app install, an SDK write and read) |
+| Screenshot to the card | 5 KB band (8 rows) on the UI task | 50.6 to 52.2 KB |
+| Last app values | up to 4 KB while saved or loaded | |
+| Settings backup | 512 B on the link task | |
+| Status page from the card | 1 KB send buffer, plus lwIP per socket | 44.6 KB (one download), 35.9 KB (three at once) |
+| App data (SDK) | as a file write | 49.4 KB |
+| Home wallpaper | dropped: 321 ms full redraw (step 7 below) | |
+
 ## Files over the link, board log, crash records (P53, 2026-11-02)
 
 The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, messages in `proto/spec.md` "Files (0x6_)", board side `fenix_sys/files.cpp`.
@@ -317,6 +332,7 @@ The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, me
   - The image grew to 0x124770 (+5.1 KB over step 2).
 - **Settings backup (step 5):**
   - Found: a sheet posted at the mount (0.55 s after boot) never showed. The boot screen was still up, and `nav.cpp` closes any sheet when a screen changes; Home also rebuilds when the card's apps arrive. The offer is now a state that the shell's tick shows on Home until it is answered.
+  - (Step 8) App data: the sample's PC half wrote `data/io.github.tariqaq.sample/hello.txt` (21 B) through the PC app and read it back; `fenix remove` of the app then left `data/` empty.
   - (Step 7) Reading the card through LVGL's file driver (`LV_USE_FS_STDIO`) runs at about 1 MB/s: a 320 x 240 RGB565 image (150 KB) drawn from the card by the bin decoder, one 640 B row per read, made a full Home redraw 321 ms (30 ms without it). A 2 KB LVGL read cache gave 321 ms, 8 KB gave 361 ms, so the cost is the card and FAT, not the number of reads. Matters for P54: glyphs read from a font on the card must be cached. The wallpaper was dropped.
   - (Step 6) Three phones downloading a 405 KB file from the card's web folder at once took the heap low point to 35.9 KB, the lowest seen in P53; one download, 44.6 KB. The cost is lwIP's per-socket buffers, not the 1 KB send buffer (the server sends from one task). `max_open_sockets` stays 3.
   - Erasing NVS also clears the `ota` `layout` key, so the next boot erases the flash `apps` partition (`ota_boot`) and rebuilds the card's app index. Nothing is lost while apps live on the card.
