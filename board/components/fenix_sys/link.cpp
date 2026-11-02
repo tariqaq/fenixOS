@@ -31,7 +31,23 @@ static constexpr int64_t INSTALL_TIMEOUT_US = 10000000;
 
 static SemaphoreHandle_t s_tx_lock;
 static QueueHandle_t s_events;
-static QueueHandle_t s_binds;
+
+// Binding values for the UI (BIND_SET), oldest first, in a byte ring (P50-M): an entry is a 12 B
+// header and its text, so the ~50 values an app sends when it is opened fit (a queue of 16 whole
+// BindValues, 5.3 KB, dropped the newest). When full the oldest go: a newer value wins. The PC
+// paces bursts too (apps.rs).
+struct BindHdr {
+  uint16_t bind;
+  uint8_t kind;
+  uint8_t len;  // text bytes after the header
+  int32_t i;
+  uint32_t app;
+};
+static constexpr size_t BIND_RING = 4096;
+static uint8_t s_ring[BIND_RING];
+static size_t s_ring_head, s_ring_used;  // under s_ring_mux
+static portMUX_TYPE s_ring_mux = portMUX_INITIALIZER_UNLOCKED;
+static volatile uint32_t s_binds_dropped;
 static uint8_t s_seq;
 static volatile bool s_connected;
 static volatile uint32_t s_rx_bytes, s_tx_bytes;  // for SYSINFO; wrap at 2^32
@@ -147,7 +163,50 @@ static void post(LinkEv t, int32_t v = 0, const char* text = nullptr) {
 bool link_poll(LinkEvent* e) { return s_events && xQueueReceive(s_events, e, 0) == pdTRUE; }
 void link_post(LinkEv t, int32_t v, const char* text) { post(t, v, text); }
 bool link_connected() { return s_connected; }
-bool bind_poll(BindValue* v) { return s_binds && xQueueReceive(s_binds, v, 0) == pdTRUE; }
+static void ring_copy(size_t at, void* out, const void* in, size_t n) {
+  for (size_t k = 0; k < n; k++) {
+    size_t p = (at + k) % BIND_RING;
+    if (out) ((uint8_t*)out)[k] = s_ring[p];
+    else s_ring[p] = ((const uint8_t*)in)[k];
+  }
+}
+
+static void bind_push(const BindHdr& h, const char* text) {
+  size_t need = sizeof h + h.len;
+  portENTER_CRITICAL(&s_ring_mux);
+  while (BIND_RING - s_ring_used < need) {  // drop the oldest
+    BindHdr o;
+    ring_copy(s_ring_head, &o, nullptr, sizeof o);
+    s_ring_head = (s_ring_head + sizeof o + o.len) % BIND_RING;
+    s_ring_used -= sizeof o + o.len;
+    s_binds_dropped++;
+  }
+  size_t at = s_ring_head + s_ring_used;
+  ring_copy(at, nullptr, &h, sizeof h);
+  ring_copy(at + sizeof h, nullptr, text, h.len);
+  s_ring_used += need;
+  portEXIT_CRITICAL(&s_ring_mux);
+}
+
+bool bind_poll(BindValue* v) {
+  BindHdr h;
+  portENTER_CRITICAL(&s_ring_mux);
+  if (!s_ring_used) {
+    portEXIT_CRITICAL(&s_ring_mux);
+    return false;
+  }
+  ring_copy(s_ring_head, &h, nullptr, sizeof h);
+  ring_copy(s_ring_head + sizeof h, v->text, nullptr, h.len);
+  s_ring_head = (s_ring_head + sizeof h + h.len) % BIND_RING;
+  s_ring_used -= sizeof h + h.len;
+  portEXIT_CRITICAL(&s_ring_mux);
+  v->text[h.len] = 0;
+  v->bind = h.bind;
+  v->kind = h.kind;
+  v->i = h.i;
+  v->app = h.app;
+  return true;
+}
 
 static volatile uint32_t s_remote;  // x:12 | y:12 | down:1, one word so reads are atomic
 
@@ -478,13 +537,12 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
     case fnx::ty::BIND_SET: {
       fnx::BindSet b{};
       if (!fnx::read_bind_set(r, b)) return send_error(fnx::err::BAD_BODY, "bind");
-      BindValue v{};
-      v.bind = b.bind;
-      v.kind = b.kind;
-      v.i = b.i;
-      strlcpy(v.id, b.id, sizeof v.id);
-      strlcpy(v.text, b.text, sizeof v.text);
-      xQueueSend(s_binds, &v, 0);  // full queue: drop, the PC sends again on change
+      BindHdr h{b.bind, b.kind, 0, b.i, app_hash(b.id)};
+      if (b.kind == 2) h.len = (uint8_t)strnlen(b.text, 255);
+      uint32_t dropped = s_binds_dropped;
+      bind_push(h, b.text);
+      if (s_binds_dropped != dropped && !(dropped % 64))
+        link_log(2, "app values: the oldest dropped, the UI fell behind (%u so far)", (unsigned)s_binds_dropped);
       return;
     }
     case fnx::ty::HOST_STATE: {
@@ -576,7 +634,6 @@ void link_start() {
   heap_caps_register_failed_alloc_callback(on_alloc_failed);
   s_tx_lock = xSemaphoreCreateMutex();
   s_events = xQueueCreate(16, sizeof(LinkEvent));
-  s_binds = xQueueCreate(16, sizeof(BindValue));
   uart_config_t c = {};
   c.baud_rate = fnx::BAUD;
   c.data_bits = UART_DATA_8_BITS;

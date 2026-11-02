@@ -121,10 +121,16 @@ struct BindValue {
   uint16_t bind;
   uint8_t kind;  // 0 int, 1 bool, 2 text
   int32_t i;
-  char id[64];
+  uint32_t app;  // app_hash of the app id (P50-M: the queue keeps 4 B, not the id)
   char text[256];
 };
-bool bind_poll(BindValue* v);
+// FNV-1a of an app id, for BindValue::app.
+inline uint32_t app_hash(const char* id) {
+  uint32_t h = 2166136261u;
+  for (; *id; id++) h = (h ^ (uint8_t)*id) * 16777619u;
+  return h;
+}
+bool bind_poll(BindValue* v);  // oldest first; text is empty unless kind is 2
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
 // Remote transport (P34 TCP; SPP until P38): at most one exists. The transport moves bytes; the

@@ -48,7 +48,7 @@ Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes defa
 ### Bindings and events
 
 - `bind: "cpu"` connects the element to binding `cpu`. The PC half sets it (`BIND_SET`, `proto/spec.md`): a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer. Corrected: the bool case on a label was missing.
-- The board queues at most 16 values between the link and the UI and drops the rest (`link.cpp`); a dropped value shows only when the PC sends it again. A burst of more than 16 (an app sending every value on `opened`) can lose values; fix planned in P50-M (`tasks.md`).
+- Since v0.1.25 (P50-M) a burst is safe: the PC app keeps the latest value per binding and sends at most 16 every 50 ms (`apps.rs`), and the board keeps values in a 4 KB ring (a 12 B header and the text each, `link.cpp`), so ~50 values on `opened` arrive whole. Measured: 120 values sent at once without the PC's pacing all arrived, the last one shown. If the ring ever fills, the oldest values go. Corrected: before v0.1.25 the board queued 16 values and dropped the newest.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `event: "mute"` makes the element report: a button sends a tap (and a long press), a switch or slider sends its new value (sliders on release). The board sends `EVENT` with the element's index; the PC maps the index back to the name through the package.
 - The board keeps no values while an app is closed. When an app opens the board sends `APP_OPENED`, and the PC half sends its current values.

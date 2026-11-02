@@ -821,7 +821,7 @@ void app_tick() {
   }
   if (s_app.dirty && esp_timer_get_time() - s_app.saved_at > STATE_EVERY_US) state_save();
   while (sys::bind_poll(&v)) {
-    if (strcmp(v.id, s_app.id) != 0 || v.bind >= s_app.vals.size()) continue;
+    if (v.app != sys::app_hash(s_app.id) || v.bind >= s_app.vals.size()) continue;
     Val& val = s_app.vals[v.bind];
     val.set = true;
     val.kind = v.kind;

@@ -35,6 +35,10 @@ const USB_BYTES_PER_S: usize = 42 * 1024;
 const SLOW_INSTALL: Duration = Duration::from_secs(120);
 /// An APP_INDEX page that does not come is asked for again.
 const INDEX_RETRY: Duration = Duration::from_secs(3);
+/// Binding values go out at most BIND_BURST per BIND_WINDOW (P50-M): an app sends ~50 when it is
+/// opened, and the board's UI takes them between frames. Values waiting are kept latest per binding.
+const BIND_BURST: u32 = 16;
+const BIND_WINDOW: Duration = Duration::from_millis(50);
 const RESTART_AFTER: [u64; 3] = [1, 5, 15];
 const FAIL_WINDOW: Duration = Duration::from_secs(120);
 
@@ -254,6 +258,10 @@ pub struct Apps {
     ops: VecDeque<Op>,
     current: Option<Current>,
     open_app: Option<String>,
+    /// BIND_SETs not sent yet (app id, binding, value), oldest first; one per binding.
+    binds: VecDeque<(String, u16, BindValue)>,
+    /// Start of the current pacing window and the values sent in it.
+    bind_window: (Instant, u32),
     /// Lines for the log, flushed by the engine (it owns the AppHandle).
     pub logs: Vec<(Source, bool, String)>,
 }
@@ -343,6 +351,8 @@ impl Apps {
             ops: VecDeque::new(),
             current: None,
             open_app: None,
+            binds: VecDeque::new(),
+            bind_window: (Instant::now(), 0),
             logs: Vec::new(),
         };
         let ids: Vec<(String, String)> = a
@@ -679,6 +689,7 @@ impl Apps {
         self.ops.clear();
         self.current = None;
         self.open_app = None;
+        self.binds.clear();
         if firmware_ok {
             self.ask_index();
         }
@@ -760,6 +771,7 @@ impl Apps {
             } => self.op_result(*op, *rc, id, text),
             Msg::AppOpened { id } => {
                 self.open_app = Some(id.clone());
+                self.binds.retain(|(app, ..)| app == id); // the board ignores other apps' values
                 self.to_sidecar(id, Down::Opened);
                 false
             }
@@ -854,6 +866,7 @@ impl Apps {
 
     /// Drive the board queue: one install or remove at a time. True when the UI changed.
     pub fn tick(&mut self) -> bool {
+        self.flush_binds();
         let mut changed = self.restart_due();
         if let Some((page, at)) = self.index_page {
             if at.elapsed() > INDEX_RETRY && self.connected {
@@ -946,7 +959,23 @@ impl Apps {
 
     /// True while an install or remove is running (the engine polls faster then).
     pub fn busy(&self) -> bool {
-        self.current.is_some() || (self.board_ready && !self.ops.is_empty())
+        self.current.is_some()
+            || (self.board_ready && !self.ops.is_empty())
+            || !self.binds.is_empty()
+    }
+
+    /// Send waiting binding values, up to BIND_BURST in each BIND_WINDOW.
+    fn flush_binds(&mut self) {
+        if self.bind_window.0.elapsed() >= BIND_WINDOW {
+            self.bind_window = (Instant::now(), 0);
+        }
+        while self.bind_window.1 < BIND_BURST {
+            let Some((id, bind, value)) = self.binds.pop_front() else {
+                break;
+            };
+            self.bind_window.1 += 1;
+            let _ = self.link.send(Msg::BindSet { bind, id, value });
+        }
     }
 
     fn op_result(&mut self, op: u8, rc: u8, id: &str, text: &str) -> bool {
@@ -1121,11 +1150,8 @@ impl Apps {
                     }
                     _ => return false,
                 };
-                let _ = self.link.send(Msg::BindSet {
-                    bind: b,
-                    id: id.into(),
-                    value,
-                });
+                queue_bind(&mut self.binds, id, b, value);
+                self.flush_binds();
                 false
             }
             Note::Up(Up::Log { level, text }) => {
@@ -1196,9 +1222,42 @@ impl Apps {
     }
 }
 
+/// Add a binding value to the waiting ones: a value for a binding already waiting replaces it in
+/// its place, so a burst sends each binding once, with its latest value.
+fn queue_bind(q: &mut VecDeque<(String, u16, BindValue)>, id: &str, bind: u16, value: BindValue) {
+    match q.iter_mut().find(|(a, k, _)| a == id && *k == bind) {
+        Some(waiting) => waiting.2 = value,
+        None => q.push_back((id.into(), bind, value)),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bind_burst_keeps_the_latest_value_per_binding() {
+        let mut q = VecDeque::new();
+        for i in 0..50 {
+            queue_bind(&mut q, "a", (i % 5) as u16, BindValue::Int(i));
+        }
+        queue_bind(&mut q, "b", 0, BindValue::Bool(true));
+        let got: Vec<_> = q
+            .iter()
+            .map(|(a, k, v)| (a.as_str(), *k, v.clone()))
+            .collect();
+        assert_eq!(
+            got,
+            [
+                ("a", 0, BindValue::Int(45)),
+                ("a", 1, BindValue::Int(46)),
+                ("a", 2, BindValue::Int(47)),
+                ("a", 3, BindValue::Int(48)),
+                ("a", 4, BindValue::Int(49)),
+                ("b", 0, BindValue::Bool(true)),
+            ]
+        );
+    }
 
     fn pc(list: &[(&str, &str, u8)]) -> BTreeMap<String, PcApp> {
         list.iter()

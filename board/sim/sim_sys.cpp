@@ -73,7 +73,7 @@ bool set_binds(const std::string& id, const std::vector<std::string>& pairs, std
     }
     sys::BindValue v{};
     v.bind = (uint16_t)bind;
-    strlcpy(v.id, id.c_str(), sizeof v.id);
+    v.app = sys::app_hash(id.c_str());
     char* end = nullptr;
     long n = strtol(val.c_str(), &end, 10);
     if (val == "true" || val == "false") {
