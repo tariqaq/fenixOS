@@ -82,5 +82,7 @@ Little-endian. Made by `crates/fenix-font` (`build`; `read` reads a glyph back a
 - `ofs y` is LVGL's: the box's bottom above the base line (negative: below).
 - Sizes are em sizes (as lv_font_conv draws Inter), so a 16 px CJK glyph is about 16 px wide.
 - A range skips at most 64 codepoints the font lacks; a bigger gap starts a new range. The board
-  reads up to 16 ranges a size.
+  reads up to 16 ranges a size and skips a size with more, so `fenix-font` joins the ranges with
+  the smallest gaps until 16 remain (P55 audit: a `--chars` subset of scattered characters could
+  make more, and the board then had no glyphs at that size).
 - The board uses only 13, 16 and 20 px, 4 bpp. Other sizes in a file are skipped.

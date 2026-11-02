@@ -29,6 +29,9 @@ pub const RANGES: &[(u32, u32)] = &[
 ];
 /// Codepoints a range may skip before it is split in two (index entries are 4 B).
 const MAX_GAP: u32 = 64;
+/// Ranges a size may have: the board reads at most this many (`MAX_RANGES` in
+/// `fenix_ui/cjk.cpp`) and skips a size with more.
+pub const MAX_RANGES: usize = 16;
 
 /// The font the PC app downloads (OFL): Noto Sans CJK SC Regular, release Sans2.004. Its glyph set
 /// covers Chinese, Japanese kana and Korean Hangul.
@@ -126,6 +129,16 @@ fn plan(font: &FontRef, chars: Option<&str>) -> Vec<(u32, u32)> {
             Some((first, count)) if cp - (*first + *count) <= MAX_GAP => *count = cp - *first + 1,
             _ => out.push((cp, 1)),
         }
+    }
+    // Over the board's limit (scattered characters in a subset): join the two ranges with the
+    // smallest gap until it fits; the gap costs 4 B of index a codepoint.
+    while out.len() > MAX_RANGES {
+        let i = (0..out.len() - 1)
+            .min_by_key(|&i| out[i + 1].0 - (out[i].0 + out[i].1))
+            .unwrap();
+        let (first, next) = (out[i].0, out[i + 1]);
+        out[i].1 = next.0 + next.1 - first;
+        out.remove(i + 1);
     }
     out
 }
@@ -330,5 +343,16 @@ mod tests {
             r,
             vec![(0xB0, 0xD7 - 0xB0 + 1), (0x2013, 0x2026 - 0x2013 + 1)]
         );
+        // Characters far apart: never more ranges than the board reads, and all still covered.
+        let spread: String = (0..40)
+            .filter_map(|i| char::from_u32(0x41 + 0x80 + i * 100))
+            .filter(|&c| font.glyph_id(c).0 != 0)
+            .collect();
+        let r = plan(&font, Some(&spread));
+        assert!(r.len() <= MAX_RANGES, "{}", r.len());
+        for c in spread.chars() {
+            let cp = c as u32;
+            assert!(r.iter().any(|&(f, n)| cp >= f && cp < f + n), "{c}");
+        }
     }
 }

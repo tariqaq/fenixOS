@@ -198,7 +198,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
 - [~] P55 Full audit after the run (user: "go thru all files literally everything and audit for bugs", security excluded)
   - [x] 1. Board: every file under `board/components/fenix_*`, `board/main`, `board/sim` read whole; bugs fixed with host or sim tests where possible
     - Log: `docs/audit-2026-11.md` (started 2026-11-02 after v0.1.26). Done: all board files read. Fixed B1 update screen timer (sim shot `update_closed`, 42 goldens), B4 status light for updates, B5 backlight guard, B2/B3/B6/B7 stale comments and the 460800 baud slip. Firmware 0x13afd0 builds, 42 sim screens match
-  - [ ] 2. Crates: every file under `crates/` read whole; fixes with cargo tests
+  - [x] 2. Crates: every file under `crates/` read whole; fixes with cargo tests
+    - Done: C1 font ranges capped at the board's 16, C2 stream rect bounds, C3 kept (CLI timestamps in UTC+8). `cargo test --workspace` passes
   - [ ] 3. PC app: `app/src-tauri/src/*`, `app/src/**` read whole; fixes, svelte-check, cargo tests
   - [ ] 4. Tools, templates, registry, workflows (`tools/`, `templates/`, `registry/`, `.github/`) read whole
   - [ ] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed

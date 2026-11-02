@@ -654,8 +654,9 @@ impl StreamCanvas {
             }
             Msg::StreamRect(r) => {
                 if r.offset == 0 {
-                    self.pending = Some((r.clone(), Vec::with_capacity(r.total as usize)));
-                    self.pending.as_mut()?.1.clear();
+                    // `total` comes off the wire: a bad one must not reserve gigabytes up front.
+                    let cap = (r.total as usize).min(1 << 18);
+                    self.pending = Some((r.clone(), Vec::with_capacity(cap)));
                 }
                 let (head, data) = self.pending.as_mut()?;
                 if head.rect_id != r.rect_id || data.len() != r.offset as usize {
@@ -685,9 +686,10 @@ impl StreamCanvas {
             fenix_proto::codec_id::RLE16 => fenix_proto::rle16_decode(data, &mut pix).ok()?,
             _ => return None,
         }
+        // u32 sums: x + w past 65535 must fail the check, not overflow it.
         if pix.len() != h.w as usize * h.h as usize
-            || h.x + h.w > self.width
-            || h.y + h.h > self.height
+            || h.x as u32 + h.w as u32 > self.width as u32
+            || h.y as u32 + h.h as u32 > self.height as u32
         {
             return None;
         }
