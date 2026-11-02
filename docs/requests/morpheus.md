@@ -111,7 +111,7 @@ Discussed with the user; nothing is built yet. Plan: `tasks.md` P50-M (v0.1.25) 
 | 2 | Image binding | Yes: a new chunked message `BIND_IMAGE` (0x32, optional, no proto bump), one per app, RGB565, 96×96 to 120×120, buffer counted in the RAM estimate | P50-M |
 | 3 | Bindable button text and icon, 14 new glyphs | Yes: string `bind` on a button sets its text; int `bind` on an `icon` (or icon button) picks the glyph; all 14 glyphs exist in Phosphor fill | P50-M |
 | 4 | `screen` permission | Yes: "See your screen and the window in front" (covers the foreground window too) | P50-M |
-| 5 | Wider text | Latin-1 Supplement (0xA0–0xFF) in the text fonts, plus an SDK helper that transliterates the rest (`?` for unknown). CJK: not on the 4 MB flash; with the SD card, fonts from the card are planned (`tasks.md`) | P51-M |
+| 5 | Wider text | Latin-1 Supplement (0xA0–0xFF) in the text fonts, plus an SDK helper that transliterates the rest (`?` for unknown). CJK: not on the 4 MB flash; **from the SD card since v0.1.24**: Chinese, kana and Hangul show in any label once the PC app's Board page installs the font (`docs/fonts.md`); no change for apps | P51-M (CJK: P54, done) |
 | 6 | Bindable `min`/`max` | Not planned: scaling to 0–1000 works | — |
 | 6 | 50 values on `opened` | Must fix: the board queues 16 binding values and drops the rest (`link.cpp`), and an unchanged value is never resent. PC sends the latest value per binding and paces the burst; the board's queue gets smaller entries and more of them | P50-M |
 | 6 | Label overflow | Today: a label without `w` grows and is cut off at the screen edge; with `w` it wraps on as many lines as needed. Planned: `overflow` (`wrap`, `clip`, `ellipsis`, `scroll`) and `max_lines` | P51-M |
@@ -129,4 +129,4 @@ Questions:
 2. **Elevated helper:** stop is the `stop` message plus the closed pipe; `TerminateProcess` fails on an elevated process, so a helper that hangs without reading its pipe keeps running. If fenixOS dies, the pipe breaks and `fenix-sdk` exits. Every crash restart (1 s, 5 s, 15 s) goes through UAC again, and a declined prompt ends the retries. Better: no elevation. ETW frame timing (PresentMon) works for members of the Performance Log Users group; add the user once (sign out after), no prompt per start.
 3. **Permissions:** `media`, `keys`, `system-stats`, `network`, `screen` fits. `keys` covers the simulated Discord keybinds. Screen capture and ETW next to games with kernel anti-cheat: unverified, say so in Morpheus's README.
 
-Waited for the SD card (in fenixOS since v0.1.20): CJK fonts and text beyond Latin-1 (fonts loaded from the card, planned), building screens only when shown.
+Waited for the SD card (in fenixOS since v0.1.20): CJK fonts and text beyond Latin-1 (CJK from the card: done in v0.1.24, `docs/fonts.md`), building screens only when shown.

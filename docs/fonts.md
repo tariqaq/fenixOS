@@ -18,8 +18,11 @@ card (P54, v0.1.24): `/sd/fenixos/fonts/cjk.fxf`.
 
 - LVGL asks the fallback only for characters Inter lacks. A glyph is two small reads: its index
   entry, then its record (box, offsets, advance, 4-bit bitmap). The board never rasterizes outlines.
-- The file stays open (one of the card's 6 file slots, with FatFs's own 4 KB sector cache). The
-  last 32 glyphs stay in RAM (~8 KB). Nothing is allocated when there is no font.
+- The file stays open (one of the card's 6 file slots). The last 32 glyphs used stay in RAM
+  (32 slots of 240 B, least recently used goes first). LVGL draws the screen in bands and asks for
+  every glyph of a label in each band, so a direct-mapped cache missed 90 times for 20 glyphs; the
+  LRU cache reads each glyph once while the screen shows at most 32 of them. Nothing is allocated
+  when there is no font.
 - The UI opens it when the card is mounted (`SD_CHANGED`) and again after the PC writes or deletes
   a file in `fonts/` (`FONTS`, posted by files.cpp). Before files.cpp replaces or deletes a file
   there, and before the card is unmounted, it calls `sys::fonts_release()`, which closes the font
@@ -27,7 +30,7 @@ card (P54, v0.1.24): `/sd/fenixos/fonts/cjk.fxf`.
 - No card or no font: the fallback finds nothing, and text looks as before (missing characters
   draw nothing).
 - FatFs fast seek is on (`CONFIG_FATFS_USE_FASTSEEK`): a file opened for reading gets a cluster
-  map, so a seek in the 13 MB file does not walk the FAT.
+  map, so a seek in the 12.5 MB file does not walk the FAT.
 
 ## Making and installing it
 
@@ -49,7 +52,18 @@ fenix files put cjk.fxf fonts/cjk.fxf
 - Ranges: U+3000 to U+30FF (CJK punctuation, hiragana, katakana), U+3130 to U+318F (Hangul
   jamo), U+31F0 to U+31FF, U+4E00 to U+9FFF (CJK ideographs), U+AC00 to U+D7A3 (Hangul
   syllables), U+FF00 to U+FFEF (full-width forms).
-- Measured (2026-11-02): 98,337 glyphs in 13,154,755 B, made in 0.5 s on the PC.
+- Measured (2026-11-02): 98,337 glyphs in 13,154,755 B (12.5 MB), made in 0.5 s on the PC.
+
+## Measured on the board (v0.1.24, 2026-11-02)
+
+| What | Result |
+|---|---|
+| Firmware | +6.8 KB (`cjk.cpp`, fast seek) |
+| Free heap at idle | 62.9 KB without a font, 52.8 KB with it open (the 32 slots, the open file and its FatFs buffers, the fast-seek map) |
+| A glyph read from the card | ~3.1 ms (index entry, then record), once per glyph while it stays among the last 32 |
+| 20-character title, first draw | ~62 ms more than Latin text; redraws come from RAM |
+| `fenix files put` of the 12.5 MB file over USB | 184 s (~71 KB/s), sha256 read-back included |
+| PC app Install (download cached, drawn, sent) | download 16 MB < 8 s here; sending as above |
 
 ## File format FXF1
 

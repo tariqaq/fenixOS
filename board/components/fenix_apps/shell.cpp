@@ -137,6 +137,7 @@ void on_link(const sys::LinkEvent& e) {
       break;
     case sys::LinkEv::FONTS:
       cjk_load();
+      settings_on_sd();  // Storage shows the font
       break;
     case sys::LinkEv::OTA:  // an update from the PC started, or one failed: show its progress
       if (nav_top() == update_screen) nav_rebuild();

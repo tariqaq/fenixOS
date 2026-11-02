@@ -15,7 +15,6 @@
     openShotFolder,
     rebootBoard,
     sdText,
-    sizeText,
     uptime,
     versionAtLeast,
     type Board,
@@ -76,7 +75,7 @@
         ? "…"
         : font === null
           ? "Not installed"
-          : `Installed (${sizeText(Math.round(font / 1024))})`,
+          : `Installed (${(font / 1048576).toFixed(1)} MB)`,
   );
   async function fontAction() {
     fontError = "";
@@ -153,7 +152,7 @@
           {#if fontError}
             <span>{fontError}</span>
           {:else}
-            <span>Noto Sans CJK, drawn for the board: 13 MB on its card. Installing downloads 16 MB once and takes about 4 minutes over USB.</span>
+            <span>Noto Sans CJK, drawn for the board: 12.5 MB on its card. Installing downloads 16 MB once, then takes about 3 minutes over USB.</span>
           {/if}
         </p>
       {/if}

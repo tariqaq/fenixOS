@@ -290,6 +290,10 @@ static void storage_screen(lv_obj_t* scr) {
       break;
   }
   info_row(sdg, "SD card", v);
+  if (sd.state == fnx::sd_state::READY) {  // P54: the PC app's Board page installs it
+    separator(sdg, 10);
+    info_row(sdg, "CJK text", cjk_ready() ? "Font installed" : "No font");
+  }
   if (sd.state == fnx::sd_state::NO_FS) note(c, "Format the card as FAT32 on a PC to use it here.");
   sys::sd_probe();
   lv_obj_t* g = group(c);

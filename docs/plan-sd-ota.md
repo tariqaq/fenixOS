@@ -1,6 +1,6 @@
 # Plan: apps on the SD card, sync, OTA, SD extras, fonts, then Morpheus (P51 to P54, P50-M, P51-M)
 
-Status: P51 done (v0.1.21); P52 built and tested on the board (`docs/ota.md`, v0.1.22); P53 on: **planned**, not built (2026-11-02). Ahead of the code on purpose (AGENTS.md rule 7). The checklists are in `tasks.md`; the user's picks are in `docs/decisions.md` "2026-11-02: SD, apps, OTA" and "2026-11-02 (evening): plan changes before the overnight run". The SD base (P50, v0.1.20) is done: card at `/sd`, `SD_STATE`, Storage rows.
+Status: P51 done (v0.1.21); P52 built and tested on the board (`docs/ota.md`, v0.1.22); P53 done (v0.1.23); P54 done (v0.1.24, `docs/fonts.md`); P50-M on: **planned**, not built (2026-11-02). Corrected: this line said P53 on was planned after P53 shipped. Ahead of the code on purpose (AGENTS.md rule 7). The checklists are in `tasks.md`; the user's picks are in `docs/decisions.md` "2026-11-02: SD, apps, OTA" and "2026-11-02 (evening): plan changes before the overnight run". The SD base (P50, v0.1.20) is done: card at `/sd`, `SD_STATE`, Storage rows.
 
 **Overnight run (user: "/goal the entire plan"):** the phases run one after another without waiting for a go: P51, P52, P53, P54, P50-M, P51-M. Each ends with docs, all tests, a release, a flash over USB and a tag. A choice the plan does not settle is made by the agent and logged in `docs/decisions.md` (section "2026-11-02: overnight run") with the options not taken. A step that cannot be done (needs the user's hands or eyes, or keeps failing) is marked blocked in `tasks.md` with notes, and the run goes on with the next step that does not depend on it.
 
@@ -18,7 +18,7 @@ Rules for every phase:
 | OTA (P52) | 0 at idle; ≤ 12 KB while an update runs (4 KB copy buffer, SHA-256, ECDSA verify) |
 | Logs to SD (P53) | ≤ 1 KB (512 B line buffer, flushed every 5 s and on errors) |
 | Wallpaper (P53) | 0: drawn from the card in rows, never held whole (a full screen is 150 KB). Corrected: dropped, too slow (step 7, below) |
-| Fonts from SD (P54) | 0 until a screen uses one; glyph cache ≤ 12 KB while it shows (measured) |
+| Fonts from SD (P54) | ~10 KB while the font is installed and the card is in (measured: 62.9 KB idle without, 52.8 KB with; `docs/fonts.md`). Corrected: planned as 0 until a screen uses one; the cache is made when the font opens |
 
 ## P51: apps on the SD card, on/off, sync (v0.1.21)
 
@@ -143,9 +143,10 @@ Signature host test (good, bad signature, bad hash, wrong key), updates over USB
 
 - **Scripts:** Chinese, Japanese, Korean (user). One CJK font on the card: Noto Sans CJK (OFL), its language OTF (~16 MB). Step 1 checks LVGL 9.5 Tiny TTF and its `stb_truetype` with a CFF-outline OTF; if CFF does not work, a TrueType-outline CJK font (OFL) instead. If one big font is too slow, it is split per script.
 - **Engine:** LVGL Tiny TTF (`LV_USE_TINY_TTF`, `LV_TINY_TTF_FILE_SUPPORT`) with an LVGL file system driver on `/sd`; `tools/sim_config.py` after the LVGL change. Measured first: flash added, glyph cache RAM, time to draw a 20-character title. Corrected (step 1, measured): Tiny TTF needs about 60 separate card reads a glyph with the CFF OTF and 16 with the TrueType build (whose default weight is the thinnest); at the card's ~1 MB/s that is up to 2 s for a title. Instead the PC draws the glyphs into a bitmap font file on the card (`docs/fonts.md`), 2 reads a glyph.
-- **Delivery:** the PC app downloads the font (pinned URL and sha256) and installs it with `FILE_WRITE` to `/sd/fenixos/fonts/`; Settings › Storage shows it.
+- **Delivery:** the PC app downloads the font (pinned URL and sha256) and installs it with `FILE_WRITE` to `/sd/fenixos/fonts/`; Settings › Storage shows it. Built: Board page "Chinese, Japanese and Korean text" (Install, Remove, progress); Storage row "CJK text".
 - **Use:** labels fall back to the CJK font for characters the built-in fonts lack (no change for app makers); with no card or no font they show as now. Covers the Morpheus "wider text" request beyond Latin-1.
 - **UI sounds: dropped** (user, 2026-11-02: no speaker planned).
+- **Status (2026-11-02):** built and released as v0.1.24 with the bitmap font (`docs/fonts.md`), not Tiny TTF.
 
 ## P50-M and P51-M: Morpheus (v0.1.25, v0.1.26)
 

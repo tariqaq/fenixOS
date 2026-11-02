@@ -47,6 +47,7 @@ void nav_rebuild();  // rebuild the top screen in place (rotation, setting chang
 // CJK text from the SD card (P54, cjk.cpp): fonts/cjk.fxf as the text fonts' fallback. UI task.
 void cjk_load(const char* path = nullptr);  // (re)open it: FONTS event; `path`: the simulator's
 void cjk_sd_changed();                      // SD_CHANGED: open it when a card came, close when gone
+bool cjk_ready();                           // the font is open (Settings > Storage)
 Builder nav_top();
 int nav_depth();
 

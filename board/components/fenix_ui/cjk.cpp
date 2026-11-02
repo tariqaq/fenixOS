@@ -37,6 +37,7 @@ struct Size {
 };
 struct Slot {
   uint32_t cp;  // 0: empty
+  uint32_t used;  // s_tick at the last lookup: the least recent goes first
   uint32_t off;  // record offset; 0: the font has no glyph for cp
   uint8_t size, w, h, adv;
   int8_t ox, oy;
@@ -48,6 +49,7 @@ std::mutex s_mu;
 FILE* s_f;
 Size s_sz[SIZES];
 Slot* s_slots;
+uint32_t s_tick;
 const char* s_path = CARD_PATH;
 
 uint32_t le32(const uint8_t* b) { return b[0] | b[1] << 8 | b[2] << 16 | (uint32_t)b[3] << 24; }
@@ -117,12 +119,29 @@ void hook() {
 
 int size_of(const lv_font_t* f) { return (int)(intptr_t)f->user_data; }
 
-Slot& slot_for(uint32_t cp, int s) { return s_slots[(cp * 3 + s) % SLOTS]; }
+// LVGL draws the screen in bands and asks for every glyph of a label in each band, so the cache
+// holds the last SLOTS glyphs by use (a direct-mapped cache missed 90 times for 20 glyphs).
+Slot* cached(uint32_t cp, int s) {
+  for (int i = 0; i < SLOTS; i++)
+    if (s_slots[i].cp == cp && s_slots[i].size == s) {
+      s_slots[i].used = ++s_tick;
+      return &s_slots[i];
+    }
+  return nullptr;
+}
+
+Slot& victim() {
+  Slot* v = &s_slots[0];
+  for (int i = 0; i < SLOTS; i++) {
+    if (!s_slots[i].cp) return s_slots[i];
+    if (s_slots[i].used < v->used) v = &s_slots[i];
+  }
+  return *v;
+}
 
 // The glyph's slot, read from the card on a miss; nullptr on a read error.
 Slot* find_locked(uint32_t cp, int s) {
-  Slot& sl = slot_for(cp, s);
-  if (sl.cp == cp && sl.size == s) return &sl;
+  if (Slot* c = cached(cp, s)) return c;
   const Size& z = s_sz[s];
   uint32_t idx = 0;
   for (int k = 0; k < z.nr; k++)
@@ -133,7 +152,9 @@ Slot* find_locked(uint32_t cp, int s) {
     if (!read_at(idx, b, 4)) return nullptr;
     off = le32(b);
   }
+  Slot& sl = victim();
   sl = Slot{};
+  sl.used = ++s_tick;
   sl.cp = cp;
   sl.size = (uint8_t)s;
   sl.off = off;
@@ -221,6 +242,11 @@ void cjk_load(const char* path) {
   }
   sys::link_log(3, on ? "fonts: CJK font loaded" : "fonts: no CJK font");
   lv_obj_report_style_change(nullptr);  // labels measure their text again, with or without it
+}
+
+bool cjk_ready() {
+  std::lock_guard<std::mutex> l(s_mu);
+  return s_f != nullptr;
 }
 
 void cjk_sd_changed() {

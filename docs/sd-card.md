@@ -8,7 +8,7 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `firmware/` | Kept firmware packages `<v>.fwp`, a staged `<v>.part` | Firmware updates (`docs/ota.md`) | P52, v0.1.22 |
 | `logs/` | The board log, `<n>.txt` per boot | The board | P53, v0.1.23 |
 | `crash/` | Crash records `<n>.elf` and `<n>.txt` | The board, at the next mount after a crash | P53 |
-| `fonts/` `web/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
+| `fonts/` `web/` | Files the PC puts there; `fonts/cjk.fxf`: the CJK font the board's text falls back to (`docs/fonts.md`) | The PC (`fenix files put`, the app's Board page for the font) | P53, P54 |
 | `data/` | `<id>/`: each app's own files | The app's PC half (`put_file`, `docs/sidecars.md`), or `fenix files put` | P53 |
 | `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
 | `state/` | Last bound values per app, `<id>.bin` | The board | P53 |

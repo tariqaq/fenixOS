@@ -308,6 +308,13 @@ Wi-Fi joined, card mounted, PC on USB. Idle: 63.9 KB free (low point 58.5 KB sin
 | App data (SDK) | as a file write | 49.4 KB |
 | Home wallpaper | dropped: 321 ms full redraw (step 7 below) | |
 
+## CJK font from the card (P54, 2026-11-02)
+
+Details and numbers: `docs/fonts.md` "Measured on the board". In short: a glyph read is ~3.1 ms
+(two reads at random offsets in a 12.5 MB file, fast seek on), the font costs ~10 KB of heap while
+installed (52.8 KB idle, against 62.9 KB without), and LVGL asks for every glyph of a label once
+per band it draws, so the glyph cache must be LRU, not direct-mapped.
+
 ## Files over the link, board log, crash records (P53, 2026-11-02)
 
 The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, messages in `proto/spec.md` "Files (0x6_)", board side `fenix_sys/files.cpp`.

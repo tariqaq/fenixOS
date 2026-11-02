@@ -41,7 +41,7 @@ export function sdText(sd: SdState | null): string {
   return ["No card", "", "Not FAT32", "Not readable"][sd.state] ?? "Unknown";
 }
 
-export function sizeText(kb: number): string {
+function sizeText(kb: number): string {
   if (kb < 1024 * 1024) return `${Math.floor(kb / 1024)} MB`;
   const gb = kb / (1024 * 1024);
   return gb < 10 ? `${(Math.floor(gb * 10) / 10).toFixed(1)} GB` : `${Math.floor(gb)} GB`;

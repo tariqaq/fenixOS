@@ -2,11 +2,11 @@
 
 A small operating system for the ESP32-2432S028R ("Cheap Yellow Display", 2.8" 320×240 touch screen), plus its companion app for Windows. Both share one version number.
 
-- **Board:** C++17 on ESP-IDF v5.5.5, LVGL 9 + LovyanGFX. Boot screen, a home screen with time and date, three system apps (Settings, Session, Stream), apps installed from the PC, Wi-Fi (PC link, network time, weather, a status page at http://fenixos.local/) a microSD card (FAT32, shown in Settings › Storage: apps, firmware packages, the board's log and crash records, screenshots, app values while the PC is off, a settings backup, a status page from the card, apps' own files; `docs/sd-card.md`) and burn-in protection for the LCD.
+- **Board:** C++17 on ESP-IDF v5.5.5, LVGL 9 + LovyanGFX. Boot screen, a home screen with time and date, three system apps (Settings, Session, Stream), apps installed from the PC, Wi-Fi (PC link, network time, weather, a status page at http://fenixos.local/) a microSD card (FAT32, shown in Settings › Storage: apps, firmware packages, the board's log and crash records, screenshots, app values while the PC is off, a settings backup, a status page from the card, apps' own files, Chinese, Japanese and Korean text from a font the PC app puts there; `docs/sd-card.md`, `docs/fonts.md`) and burn-in protection for the LCD.
 - **PC app:** Rust + Tauri 2 + Svelte 5. Lives in the tray, finds the board over USB (or Wi-Fi at fenixos.local), installs and switches apps, mirrors the board's screen, shows the board's load live (Task manager: CPU per core, memory, storage, the link, threads), keeps the board's firmware and time in step.
 - **Design:** Apple-style dark theme (`DESIGN.md`), Inter and Phosphor icons.
 
-Status: **v0.1.23.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress: `tasks.md`.
+Status: **v0.1.24.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress: `tasks.md`.
 
 <p>
   <img src="docs/screens/board/home.png" width="320" alt="Home screen with the time, date and app tiles">
