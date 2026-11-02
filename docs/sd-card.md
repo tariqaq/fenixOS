@@ -8,11 +8,10 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `firmware/` | Kept firmware packages `<v>.fwp`, a staged `<v>.part` | Firmware updates (`docs/ota.md`) | P52, v0.1.22 |
 | `logs/` | The board log, `<n>.txt` per boot | The board | P53, v0.1.23 |
 | `crash/` | Crash records `<n>.elf` and `<n>.txt` | The board, at the next mount after a crash | P53 |
-| `fonts/` `data/` `wallpaper/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
+| `fonts/` `data/` `wallpaper/` `web/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
 | `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
 | `state/` | Last bound values per app, `<id>.bin` | The board | P53 |
 | `backup/` | `settings.bin`: settings, the Wi-Fi network, the weather place | The board | P53 |
-| `web/` | Status page | Planned (P53 step 6, `tasks.md`) | |
 
 ## Files over the link (P53 step 1)
 
@@ -20,8 +19,8 @@ Messages: `proto/spec.md` "Files (0x6_)". Board: `board/components/fenix_sys/fil
 
 - **What the PC may do.**
   - List and read: anything under `/sd/fenixos`.
-  - Delete: inside `fonts/ data/ wallpaper/ logs/ crash/ shots/`; a folder only when it is empty.
-  - Write: inside `fonts/ data/ wallpaper/`. Folders on the way are made.
+  - Delete: inside `fonts/ data/ wallpaper/ web/ logs/ crash/ shots/`; a folder only when it is empty.
+  - Write: inside `fonts/ data/ wallpaper/ web/`. Folders on the way are made.
 - **Paths** are relative to `/sd/fenixos`, split by `/`, shorter than 128 bytes. No part may be empty, `.` or `..`, or end in a dot or a space (FAT drops those, so two names would mean one file). `\ : * ? " < > |` are refused.
 - **A write** goes to `<path>.part`, with `<path>.pin` (size and sha256) beside it. After `FILE_END` the board reads the part back in a short task, checks the sha256, then puts it in place of any old file. A cut write goes on from where it stopped when the same file (same size and sha256) is sent again. A damaged one is deleted.
 - **Timeouts.** A write or read with no message for 10 s is closed, and so is one whose link dropped. The part stays on the card.
@@ -60,6 +59,16 @@ Board: `board/components/fenix_sys/backup.cpp`; the sheet is in `fenix_apps/sess
 - **An empty board with no backup on its card** saves its settings at the mount, so a later boot does not take it for an erased one.
 - **Tested** (2026-11-02): NVS erased with `fenix erase 0x9000 0x6000`; the next boot offered the backup (network "theworld"); Restore restarted the board, Wi-Fi came up with the restored network, and the backup on the card stayed byte-identical.
 - **Cost:** 2.9 KB of firmware; nothing kept in RAM but a few flags.
+
+## Status page from the card (P53 step 6)
+
+Board: `board/components/fenix_sys/web.cpp`. In Wi-Fi mode the board serves `http://fenixos.local/`.
+
+- **Files in `web/` come first.** `/` is `web/index.html`, `/a/b.css` is `web/a/b.css`, a path ending in `/` means its `index.html`. With no card, or no such file, `/` is the built-in page and anything else is 404.
+- **`/status.json` stays built in**, so a page on the card shows live state the way the built-in one does. Fields: `version`, `uptime` (s), `heap` (B), `apps` (KB used in flash), `pc` (bool), `time` (`HH:MM`, empty before the clock is set), `date`, `weather`, `ssid`, `rssi`, `ip`.
+- **Putting a page there:** `fenix files put index.html web/index.html`. Paths with `..`, `\` or `%` are refused (no decoding: names on the card are plain). Types follow the extension (html, css, js, json, svg, png, jpg, gif, ico, webp, woff2, txt). Files go out in 1 KB chunks with `Cache-Control: no-cache`.
+- **Still status only:** the server takes GET only, so a page on the card can show things but change nothing on the board.
+- **Measured** (2026-11-02): a 405 KB file in 1.4 to 1.9 s (about 210 KB/s); `..` (sent as is), `%` and missing files get 404; a query string is ignored. Heap low point with a link session over Wi-Fi: 44.6 KB with one download, 35.9 KB with three at once (lwIP buffers per socket; the server allows 3). Cost: 1.5 KB of firmware.
 
 ## Board log (P53 step 2)
 

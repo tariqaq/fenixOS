@@ -1,6 +1,6 @@
 // Files under /sd/fenixos over the link (P53; proto/spec.md "Files (0x6_)").
 // The PC lists and reads anything there, deletes in the folders it may change, and writes only to
-// fonts/, data/ and wallpaper/. A write goes to <path>.part with <path>.pin (size and sha256)
+// fonts/, data/, wallpaper/ and web/. A write goes to <path>.part with <path>.pin (size and sha256)
 // beside it, so a cut transfer goes on from where it stopped, as firmware staging does. FILE_END
 // checks the sha256 in a short-lived task (a big font takes seconds to read back), then renames
 // the part into place. Link task only, except that check and shot_save (the UI task, which owns
@@ -31,8 +31,8 @@ static constexpr size_t FULL = 160;            // ROOT + "/" + a path + ".part"
 static constexpr int64_t IDLE_US = 10000000;   // a write or read with no message for this long is closed
 static constexpr size_t CHECK_BUF = 4096;
 
-static const char* const WRITE_DIRS[] = {"fonts", "data", "wallpaper"};
-static const char* const DELETE_DIRS[] = {"fonts", "data", "wallpaper", "logs", "crash", "shots"};
+static const char* const WRITE_DIRS[] = {"fonts", "data", "wallpaper", "web"};
+static const char* const DELETE_DIRS[] = {"fonts", "data", "wallpaper", "web", "logs", "crash", "shots"};
 
 // ---- Paths ----
 

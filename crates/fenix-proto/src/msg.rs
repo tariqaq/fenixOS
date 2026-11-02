@@ -543,7 +543,7 @@ pub enum Msg {
     FileDelete {
         path: String,
     },
-    /// Write a file (P53): only under `fonts/`, `data/` and `wallpaper/`. Resumes like `FW_BEGIN`.
+    /// Write a file (P53): only under `fonts/`, `data/`, `wallpaper/` and `web/`. Resumes like `FW_BEGIN`.
     FileWriteBegin {
         size: u32,
         sha256: [u8; 32],

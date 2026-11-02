@@ -317,6 +317,7 @@ The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, me
   - The image grew to 0x124770 (+5.1 KB over step 2).
 - **Settings backup (step 5):**
   - Found: a sheet posted at the mount (0.55 s after boot) never showed. The boot screen was still up, and `nav.cpp` closes any sheet when a screen changes; Home also rebuilds when the card's apps arrive. The offer is now a state that the shell's tick shows on Home until it is answered.
+  - (Step 6) Three phones downloading a 405 KB file from the card's web folder at once took the heap low point to 35.9 KB, the lowest seen in P53; one download, 44.6 KB. The cost is lwIP's per-socket buffers, not the 1 KB send buffer (the server sends from one task). `max_open_sockets` stays 3.
   - Erasing NVS also clears the `ota` `layout` key, so the next boot erases the flash `apps` partition (`ota_boot`) and rebuilds the card's app index. Nothing is lost while apps live on the card.
 
 ## Two OTA slots and updates (P52, 2026-11-02)

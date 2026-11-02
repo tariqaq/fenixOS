@@ -28,7 +28,7 @@
 //!                                  and later): a signed package from tools/sign_fw.py
 //! fenix files ls [path]           files on the board's SD card under /sd/fenixos (0.1.23 and later)
 //! fenix files get <path> [out]     download one; files put <local> <path> uploads into fonts/,
-//!                                  data/ or wallpaper/ (resumes a cut upload); files rm <path>
+//!                                  data/, wallpaper/ or web/ (resumes a cut upload); files rm <path>
 //! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
 //! fenix host <id> on|off|gone|starting   tell the board the state of an app's PC half
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects

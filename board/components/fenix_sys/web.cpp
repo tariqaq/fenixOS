@@ -1,10 +1,15 @@
 // Phone web page (P34): http://fenixos.local/ in Wi-Fi mode. Status only: the page is reachable
 // by anyone on the network without a password (user choice: no encryption), so it changes
 // nothing on the board. One small page in the design language (tokens from design/tokens.json),
-// refreshed from /status.json every 2 s.
+// refreshed from /status.json every 2 s. Files in /sd/fenixos/web/ come first (P53): a page put
+// there replaces the built-in one, and can read /status.json the same way.
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <time.h>
+
+#include <memory>
+#include <new>
 
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
@@ -46,7 +51,63 @@ document.getElementById("date").textContent="Board not answering"}}
 tick();setInterval(tick,2000);
 </script></body></html>)html";
 
+static constexpr const char* WEB = "/sd/fenixos/web";
+static constexpr size_t SEND_BUF = 1024;
+
+static const char* mime(const char* path) {
+  static const char* const TYPES[][2] = {
+      {".html", "text/html; charset=utf-8"}, {".htm", "text/html; charset=utf-8"},
+      {".css", "text/css"},                  {".js", "text/javascript"},
+      {".json", "application/json"},         {".svg", "image/svg+xml"},
+      {".png", "image/png"},                 {".jpg", "image/jpeg"},
+      {".jpeg", "image/jpeg"},               {".gif", "image/gif"},
+      {".ico", "image/x-icon"},              {".webp", "image/webp"},
+      {".woff2", "font/woff2"},              {".txt", "text/plain; charset=utf-8"},
+  };
+  const char* dot = strrchr(path, '.');
+  if (dot)
+    for (const auto& t : TYPES)
+      if (!strcasecmp(dot, t[0])) return t[1];
+  return "application/octet-stream";
+}
+
+// The request's path without its query, or false when it is not one the card may serve: no "..",
+// "\\" or "%" (no decoding; names on the card are plain). "/" and "dir/" mean their index.html.
+static bool card_path(const char* uri, char* full, size_t cap) {
+  size_t n = strcspn(uri, "?#");
+  if (!n || uri[0] != '/' || n > 96) return false;
+  char rel[112];
+  memcpy(rel, uri, n);
+  rel[n] = 0;
+  if (strstr(rel, "..") || strchr(rel, '\\') || strchr(rel, '%')) return false;
+  if (rel[n - 1] == '/') strlcat(rel, "index.html", sizeof rel);
+  return (size_t)snprintf(full, cap, "%s%s", WEB, rel) < cap;
+}
+
+// A file from the card's web folder, sent in 1 KB chunks. False when there is none (or no card).
+static bool from_card(httpd_req_t* r) {
+  char full[160];
+  if (sd_info().state != fnx::sd_state::READY || !card_path(r->uri, full, sizeof full)) return false;
+  FILE* f = fopen(full, "rb");
+  if (!f) return false;
+  std::unique_ptr<char[]> b(new (std::nothrow) char[SEND_BUF]);
+  if (!b) {
+    fclose(f);
+    return false;
+  }
+  httpd_resp_set_type(r, mime(full));
+  httpd_resp_set_hdr(r, "Cache-Control", "no-cache");
+  esp_err_t e = ESP_OK;
+  for (size_t k; e == ESP_OK && (k = fread(b.get(), 1, SEND_BUF, f)) > 0;) e = httpd_resp_send_chunk(r, b.get(), k);
+  fclose(f);
+  if (e == ESP_OK) httpd_resp_send_chunk(r, nullptr, 0);
+  return true;
+}
+
 static esp_err_t page(httpd_req_t* r) {
+  if (from_card(r)) return ESP_OK;
+  size_t n = strcspn(r->uri, "?#");
+  if (n != 1 || r->uri[0] != '/') return httpd_resp_send_404(r);
   httpd_resp_set_type(r, "text/html; charset=utf-8");
   return httpd_resp_send(r, PAGE, sizeof PAGE - 1);
 }
@@ -109,15 +170,16 @@ void web_start() {
   c.lru_purge_enable = true;
   c.core_id = 0;           // the UI keeps core 1
   c.stack_size = 3072;     // P37: the status handler peaks at 1.3 KB
+  c.uri_match_fn = httpd_uri_match_wildcard;  // "/*" serves the card's web folder (P53)
   httpd_handle_t h = nullptr;
   if (httpd_start(&h, &c) != ESP_OK) return;
   httpd_uri_t u = {};
   u.method = HTTP_GET;
-  u.uri = "/";
-  u.handler = page;
-  httpd_register_uri_handler(h, &u);
-  u.uri = "/status.json";
+  u.uri = "/status.json";  // before "/*": handlers match in the order they were registered
   u.handler = status;
+  httpd_register_uri_handler(h, &u);
+  u.uri = "/*";
+  u.handler = page;
   httpd_register_uri_handler(h, &u);
 }
 

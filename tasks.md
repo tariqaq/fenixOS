@@ -148,7 +148,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
     - Found (2026-11-02): the simulator had not built since step 1: `winbase.h` defines `FILE_END` (fixed with an `#undef` in `sim_platform.cpp`), and `shot_save` needed a stub. `docs/toolchain.md` said 25 goldens (corrected: 36)
   - [x] 5. Settings backup `/sd/fenixos/backup/settings.bin` on every change (Wi-Fi password included, plaintext); restore offered at boot when settings are empty
     - Done (2026-11-02): `fenix_sys/backup.cpp` (written 3 s after a change and at a mount; offered when NVS has no settings and no network), `settings_blob/restore`, `radio_creds(_restore)`, `weather_place`, sheet "Restore settings?" in `session.cpp` shown from the shell tick. Tested on the board: NVS erased, offer shown, Restore restarted with Wi-Fi back, backup unchanged. Sim goldens `backup_offer`, `backup_fresh` (38 in all). Found: a sheet posted at mount time was closed by the boot-to-Home screen change (now tick-driven)
-  - [ ] 6. Status page served from `/sd/fenixos/web/` when present (built-in page as fallback)
+  - [x] 6. Status page served from `/sd/fenixos/web/` when present (built-in page as fallback)
+    - Done (2026-11-02): `web.cpp` serves `/*` from `web/` (wildcard match, `/status.json` registered first), MIME by extension, 1 KB chunks; the PC may write and delete in `web/` (files.cpp, spec, CLI, sd-card). Tested over Wi-Fi: card page and CSS served, 405 KB in 1.4 to 1.9 s byte-equal, `..`/`%`/missing 404, built-in page back once the files were removed. Heap low 44.6 KB (one download), 35.9 KB (three at once)
   - [ ] 7. Home wallpaper from `/sd/fenixos/wallpaper/` drawn in rows, set from the PC; measure redraw time and burn-in shift first, drop it if Home slows
   - [ ] 8. Per-app data folder `/sd/fenixos/data/<id>/` through the SDK (`put_file`, `get_file`), removed with the app; template and SDK docs
   - [ ] 9. Heap per feature, docs, all tests, release v0.1.23
