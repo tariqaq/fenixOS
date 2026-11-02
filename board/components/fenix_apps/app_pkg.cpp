@@ -268,8 +268,9 @@ static void close_app() {
   if (s_app.dirty && !s_app.missing) state_save();
   if (sys::link_connected() && !s_app.missing) send_id(fnx::ty::APP_CLOSED, s_app.id);
   s_app.open = false;
-  // At most one app screen outlives the app (nav keeps two screens, only during a slide), and
-  // opening another app loads a new screen first, which deletes it: the older leftovers are free.
+  // The app's screen may outlive this call (app_tick closes the app once another screen is on
+  // top, and a slide still draws it); its delete event frees what is retired here
+  // (screen_deleted). At most one app screen exists at a time, so older leftovers are free.
   free_retired();
   s_retired.pkg = std::move(s_app.pkg);  // moves keep the buffers, so the screen's pointers stay valid
   s_retired.images = std::move(s_app.images);

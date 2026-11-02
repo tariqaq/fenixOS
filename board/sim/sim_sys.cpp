@@ -393,10 +393,11 @@ void backup_offer(const std::string& ssid) {
 void ota_failed(const std::string& version) { sys::s_ota_failed = version == "-" ? "" : version; }
 void ota_phase(uint8_t phase, uint8_t pct, const std::string& version) {
   sys::OtaStatus& s = sys::s_ota;
+  bool started = s.phase == sys::OTA_IDLE && phase != sys::OTA_IDLE;  // as ota.cpp status() posts
   s.phase = phase;
   s.pct = pct;
   if (!version.empty()) strlcpy(s.version, version.c_str(), sizeof s.version);
   strlcpy(s.text, phase == sys::OTA_FAILED ? "The package is not signed by fenixOS" : "", sizeof s.text);
-  post(sys::LinkEv::OTA);
+  if (started || phase == sys::OTA_FAILED) post(sys::LinkEv::OTA);
 }
 }  // namespace sim

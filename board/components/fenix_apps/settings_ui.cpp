@@ -544,7 +544,12 @@ static const char* phase_text(uint8_t p) {
   }
 }
 
-static void up_refresh(lv_timer_t*) {
+// Each update screen has its own timer (the screen's delete event frees it). A rebuild makes the
+// new screen before the old one is deleted, and a pop slides the old one out, so a shared timer
+// was freed by the old screen under the new one (P55 audit B1: the screen froze after its first
+// phase change and never closed), and a leftover still sliding out could pop a second time.
+static void up_refresh(lv_timer_t* t) {
+  if (t != s_up_timer || nav_top() != update_screen) return;  // a screen on its way out
   sys::OtaStatus st = sys::ota_status();
   if (st.phase != s_up_phase) {
     if (st.phase == sys::OTA_IDLE) nav_pop();
@@ -556,8 +561,10 @@ static void up_refresh(lv_timer_t*) {
   lv_label_set_text_fmt(s_up_text, "%s, %d%%", phase_text(st.phase), st.pct);
 }
 
-static void up_gone(lv_event_t*) {
-  if (s_up_timer) lv_timer_delete(s_up_timer);
+static void up_gone(lv_event_t* e) {
+  lv_timer_t* t = (lv_timer_t*)lv_event_get_user_data(e);
+  lv_timer_delete(t);
+  if (t != s_up_timer) return;  // a newer update screen owns the globals now
   s_up_timer = nullptr;
   s_up_bar = s_up_text = nullptr;
 }
@@ -571,8 +578,8 @@ void update_screen(lv_obj_t* scr) {
   sys::OtaStatus st = sys::ota_status();
   s_up_phase = st.phase;
   s_up_bar = s_up_text = nullptr;
-  lv_obj_add_event_cb(scr, up_gone, LV_EVENT_DELETE, nullptr);
-  if (!s_up_timer) s_up_timer = lv_timer_create(up_refresh, 200, nullptr);
+  s_up_timer = lv_timer_create(up_refresh, 200, nullptr);
+  lv_obj_add_event_cb(scr, up_gone, LV_EVENT_DELETE, s_up_timer);
   bool failed = st.phase == sys::OTA_FAILED;
   lv_obj_t* body = column(scr, 6);
   lv_obj_set_size(body, LV_PCT(100), LV_PCT(100));

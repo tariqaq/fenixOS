@@ -141,5 +141,6 @@ shot update_progress
 ota failed 0 0.1.99
 shot update_failed
 ota idle
+shot update_closed                         # the progress screen closes itself (P55 audit B1)
 tap 30 16
 tap 30 16

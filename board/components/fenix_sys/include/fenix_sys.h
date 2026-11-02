@@ -1,5 +1,7 @@
-// System services: settings (NVS), clock (MYT), PC link (UART0), stream encoder, app storage.
-// Threads: the link task owns UART RX. Everything else runs on the UI task.
+// System services: settings (NVS), clock (MYT), PC link (UART0 or Wi-Fi), radio, microSD, app
+// storage, firmware updates, files and logs on the card, settings backup, stream encoder.
+// Threads: the link task owns the link's RX (and the card's log, backup and file timers); sd, ota,
+// files and the Wi-Fi link and weather have short-lived or own tasks; the rest runs on the UI task.
 // Link events reach the UI through link_poll(); nothing here calls LVGL.
 #pragma once
 #include <stddef.h>
@@ -225,12 +227,12 @@ void app_state_forget(const char* id);
 
 // ---- Board log and crash records on the card (P53, logs.cpp) ----
 void logs_line(uint8_t level, const char* text, size_t n);  // any task (link_log calls it)
-// A line for the card only, for what the PC logs on its side anyway (sessions, installs).
 // The UI keeps fonts/cjk.fxf open (P54, fenix_ui/cjk.cpp) and registers how to close it. A task
 // about to replace or delete a file in fonts/, or unmount the card, calls fonts_release() first; it
 // waits while a glyph is read. The UI opens the font again at SD_CHANGED or FONTS.
 void fonts_hook(void (*release)());
 void fonts_release();
+// A line for the card only, for what the PC logs on its side anyway (sessions, installs).
 void logs_note(uint8_t level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 void logs_tick(int64_t now_us);  // link task: writes waiting lines to /sd/fenixos/logs/<boot>.txt
 void logs_mounted();             // sd task, after a mount: this boot's file; copies a core dump
