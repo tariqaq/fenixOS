@@ -41,7 +41,7 @@ An app has two halves:
 
 Apps come from the registry (`registry/`, rules in `docs/registry.md`). Adding an app installs its package on the board (on the SD card when one is in) and starts its PC half; switching it off stops the PC half and fades its tile on the board, which offers Turn on; Remove app removes both. When the board and the PC differ, the Apps page lists it under Sync with board. `tools/sample-app` is a complete example.
 
-**Make an app:** unzip `fenixos-app-template.zip` (source: `templates/app/`) into a new repo under `github.com/tariqaq/`, open Claude Code there and describe the app. The zip holds the agent rules, the format, design, PC-half and registry guides, a working starter app (board screen, Rust PC half, manifest) and the build, test and release tools.
+**Make an app:** read `docs/app-dev-guide.md` (the board, the PC app, the `fenix` CLI and the app format in one file), unzip `fenixos-app-template.zip` (source: `templates/app/`) into a new repo under `github.com/tariqaq/`, open Claude Code there and describe the app. The zip holds the agent rules, the format, design, PC-half and registry guides, a working starter app (board screen, Rust PC half, manifest) and the build, test and release tools.
 
 ## Build from source
 

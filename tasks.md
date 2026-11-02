@@ -69,6 +69,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P51-M Text and labels for Morpheus (Latin-1, `text::fit`, label overflow, `secret` settings); release v0.1.26
 - P55 Full audit (`docs/audit-2026-11.md`); release v0.1.27
 - P57 Apps slide open when RAM allows, SD card noticed when pulled or put back; release v0.1.28
+- P58 `docs/app-dev-guide.md`: one file for app authors (board specs and pins, PC app, `fenix` CLI, app format, PC half, manifest, dev loop), user request 2026-11-03; linked from README and toolchain
 
 Releases: v0.1.0 (P10) to v0.1.28 (P57); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
 
