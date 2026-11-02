@@ -25,7 +25,9 @@ APP_TOML = ROOT / "app" / "board" / "app.toml"
 FILES = {"board": "app.fxp", "pc": "app.exe"}
 
 TILES = {"gray", "indigo", "blue", "teal", "green", "orange", "red", "purple", "pink"}
-PERMISSIONS = {"keys", "media", "system-stats", "network", "files", "programs"}
+PERMISSIONS = {"keys", "media", "system-stats", "network", "files", "programs", "screen"}
+# Permissions an older fenixOS PC app does not know (it would refuse the manifest): need min_fenixos.
+PERMISSION_SINCE = {"screen": (0, 1, 25)}
 SETTING_TYPES = {"toggle", "slider", "choice", "text", "button"}
 ALLOWED_URL = "https://github.com/tariqaq/"
 MAX_BOARD = 64 * 1024 * 1024  # P51: no package cap; the board checks its content limits
@@ -85,6 +87,10 @@ def check(m, local=False):
     perms = m.get("permissions", [])
     need(isinstance(perms, list) and all(p in PERMISSIONS for p in perms) and len(set(perms)) == len(perms),
          f"permissions: unique, from {sorted(PERMISSIONS)}")
+    if isinstance(perms, list) and isinstance(m.get("min_fenixos"), str) and VER_RE.match(m["min_fenixos"]):
+        have = tuple(int(x) for x in m["min_fenixos"].split("."))
+        for p, since in PERMISSION_SINCE.items():
+            need(p not in perms or have >= since, f"permissions: {p} needs min_fenixos {'.'.join(map(str, since))}")
     settings = m.get("settings", [])
     if not isinstance(settings, list):
         errs.append("settings: list")

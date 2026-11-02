@@ -34,7 +34,7 @@ Copied from fenixOS `docs/registry.md`, cut for app authors. The fenixOS PC app 
 | `repo` | `https://github.com/tariqaq/<repo>`, shown as Source |
 | `board` | Required: `url`, `sha256` (lowercase hex), `size` (≤ 64 MB download cap) |
 | `pc` | Optional: `url`, `sha256`, `size`, `elevated` |
-| `permissions` | From `keys`, `media`, `system-stats`, `network`, `files`, `programs`; unique |
+| `permissions` | From `keys`, `media`, `system-stats`, `network`, `files`, `programs`, `screen` (fenixOS 0.1.25: "See your screen and the window in front"; needs `min_fenixos` 0.1.25); unique |
 | `settings` | Options fenixOS renders on the app's page (below) |
 
 **Allowed sources.** Download URLs must start with `https://github.com/tariqaq/`. On install the PC app checks size and sha256, then that the package's id and version match the manifest; any mismatch stops the install.

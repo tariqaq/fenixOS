@@ -14,13 +14,14 @@ const ALLOWED_URL: &str = "https://github.com/tariqaq/";
 /// Download cap only (P51: packages have no size cap; their content limits are checked).
 const MAX_BOARD: u64 = 64 * 1024 * 1024;
 const MAX_PC: u64 = 64 * 1024 * 1024;
-const PERMISSIONS: [&str; 6] = [
+const PERMISSIONS: [&str; 7] = [
     "keys",
     "media",
     "system-stats",
     "network",
     "files",
     "programs",
+    "screen", // P50-M, 0.1.25
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

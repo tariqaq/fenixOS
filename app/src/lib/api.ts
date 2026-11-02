@@ -331,6 +331,7 @@ const permissionText: Record<string, { text: string; icon: string }> = {
   network: { text: "Use the network", icon: "globe" },
   files: { text: "Read and write files", icon: "folder" },
   programs: { text: "Start other programs", icon: "app-window" },
+  screen: { text: "See your screen and the window in front", icon: "monitor" },
   helper: { text: "Runs its own helper program while switched on", icon: "puzzle-piece" },
   elevated: { text: "Asks for administrator rights each time it starts", icon: "shield-warning" },
 };
