@@ -320,6 +320,11 @@
    "license": "MIT"
   },
   {
+   "name": "deunicode",
+   "version": "1.6.2",
+   "license": "BSD-3-Clause"
+  },
+  {
    "name": "digest",
    "version": "0.10.7",
    "license": "MIT OR Apache-2.0"

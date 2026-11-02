@@ -585,6 +585,99 @@ pub mod image {
     }
 }
 
+/// Text the board can draw (P51-M). The text fonts hold printable ASCII, Latin-1 (U+00A0 to
+/// U+00FF, fenixOS 0.1.26) and `– — ’ • … ‹ ›`; the CJK font on the SD card, when installed, adds
+/// Chinese, Japanese and Korean. Anything else draws nothing, so pass titles through [`text::fit`].
+pub mod text {
+    /// The marks outside Latin-1 that the text fonts hold.
+    pub const MARKS: &str = "–—’•…‹›";
+
+    /// True when the board's built-in text fonts draw `c` (fenixOS 0.1.26 and newer).
+    pub fn builtin(c: char) -> bool {
+        matches!(c, ' '..='~' | '\u{A0}'..='\u{AC}' | '\u{AE}'..='\u{FF}') || MARKS.contains(c)
+    }
+
+    /// True when the CJK font on the card draws `c` (`docs/fonts.md` ranges), if it is installed.
+    pub fn cjk(c: char) -> bool {
+        matches!(c as u32, 0x3000..=0x30FF | 0x3130..=0x318F | 0x31F0..=0x31FF | 0x4E00..=0x9FFF
+            | 0xAC00..=0xD7A3 | 0xFF00..=0xFFEF)
+    }
+
+    // A base letter plus a combining mark that Latin-1 holds composed ("e" + U+0301 is "é").
+    const COMPOSE: [(char, &str); 7] = [
+        ('\u{300}', "AÀEÈIÌOÒUÙaàeèiìoòuù"),
+        ('\u{301}', "AÁEÉIÍOÓUÚYÝaáeéiíoóuúyý"),
+        ('\u{302}', "AÂEÊIÎOÔUÛaâeêiîoôuû"),
+        ('\u{303}', "AÃNÑOÕaãnñoõ"),
+        ('\u{308}', "AÄEËIÏOÖUÜaäeëiïoöuüyÿ"),
+        ('\u{30A}', "AÅaå"),
+        ('\u{327}', "CÇcç"),
+    ];
+
+    fn compose(base: char, mark: char) -> Option<char> {
+        let (_, pairs) = COMPOSE.iter().find(|(m, _)| *m == mark)?;
+        let v: Vec<char> = pairs.chars().collect();
+        v.chunks(2).find(|p| p[0] == base).map(|p| p[1])
+    }
+
+    fn emoji(c: char) -> bool {
+        matches!(c as u32, 0x1F000..=0x1FAFF | 0x2600..=0x27BF | 0x2B00..=0x2BFF | 0x2300..=0x23FF)
+    }
+
+    // Draws nothing and means nothing on its own: zero-width marks, variation selectors, skin
+    // tones, tag characters, the soft hyphen, other control characters.
+    fn invisible(c: char) -> bool {
+        matches!(c as u32, 0xAD | 0x200B..=0x200F | 0x2060..=0x2064 | 0xFE00..=0xFE0F | 0xFEFF
+            | 0x1F3FB..=0x1F3FF | 0xE0000..=0xE007F)
+            || (c.is_control() && c != '\n')
+    }
+
+    /// `s` in characters the board draws: kept when it can (Latin-1, and CJK when `cjk_font`),
+    /// else transliterated (`Ł` to `L`, `Привет` to `Privet`, `北京` to `Bei Jing` without the CJK
+    /// font, `“x”` to `"x"`), else `?` (an emoji, with its joined parts, is one `?`). A combining
+    /// accent is composed when Latin-1 has the result, else dropped. Tabs become spaces; newlines
+    /// stay; runs of spaces made by the transliteration are folded and the ends trimmed.
+    pub fn fit(s: &str, cjk_font: bool) -> String {
+        let mut out = String::with_capacity(s.len());
+        let mut joined = false; // after a zero-width joiner: the next emoji is part of the last one
+        for c in s.chars() {
+            if c == '\u{200D}' {
+                joined = true;
+                continue;
+            }
+            let join = std::mem::take(&mut joined);
+            if c == '\t' {
+                out.push(' ');
+            } else if builtin(c) || c == '\n' || (cjk_font && cjk(c)) {
+                out.push(c);
+            } else if invisible(c) {
+            } else if ('\u{300}'..='\u{36F}').contains(&c) {
+                if let Some(k) = out.pop().and_then(|b| compose(b, c).or(Some(b))) {
+                    out.push(k);
+                }
+            } else if emoji(c) {
+                if !join {
+                    out.push('?');
+                }
+            } else {
+                match deunicode::deunicode_char(c) {
+                    // Ideographs come with a space each ("Bei Jing "); the fold below keeps one.
+                    Some(t) if !t.is_empty() && t.chars().all(builtin) => out.push_str(t),
+                    _ => out.push('?'),
+                }
+            }
+        }
+        let mut folded = String::with_capacity(out.len());
+        for c in out.chars() {
+            if c == ' ' && folded.ends_with(' ') {
+                continue;
+            }
+            folded.push(c);
+        }
+        folded.trim_matches(' ').to_string()
+    }
+}
+
 /// The board's built-in icons, in its order (a copy of `fenix-pkg` ICONS, checked by a test). The
 /// last 14 (from `play`) need fenixOS 0.1.25.
 pub const ICONS: [&str; 34] = [
@@ -626,6 +719,35 @@ pub const ICONS: [&str; 34] = [
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn text_fit() {
+        use super::text::{builtin, fit};
+        // Latin-1 and the marks stay; so does a newline.
+        assert_eq!(
+            fit("Café · Ñandú – 20 °C\nÅ ß", false),
+            "Café · Ñandú – 20 °C\nÅ ß"
+        );
+        // Transliterated: Latin Extended, Cyrillic, Greek, quotes.
+        assert_eq!(fit("Łódź Dvořák", false), "Lódz Dvorák");
+        assert_eq!(fit("Привет", false), "Privet");
+        assert_eq!(fit("“Ωmega”", false), "\"Omega\"");
+        // CJK: kept with the card font, transliterated without it.
+        assert_eq!(fit("北京 東京", true), "北京 東京");
+        assert_eq!(fit("北京", false), "Bei Jing");
+        // A combining accent composes when Latin-1 has it, else it goes.
+        assert_eq!(fit("Cafe\u{301} n\u{303}o s\u{30C}", false), "Café ño s");
+        // An emoji is one '?', with its skin tone, selector and joined parts; zero-width marks go.
+        assert_eq!(
+            fit("Hi 👋🏽 👨\u{200D}👩\u{200D}👧 ❤\u{FE0F}\u{200B}!", false),
+            "Hi ? ? ?!"
+        );
+        // Tabs, soft hyphens, runs of spaces, the ends.
+        assert_eq!(fit("\ta\u{AD}b\t\tc ", false), "ab c");
+        assert!(fit("Ölçek 日本語 Ελληνικά ✓ 🎵", false)
+            .chars()
+            .all(|c| builtin(c) || c == '\n'));
+    }
+
     #[test]
     fn image_fit_and_pack() {
         use super::image::{fit, rgb565_le};

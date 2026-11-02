@@ -183,9 +183,11 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
     - Done (2026-11-02): "See your screen and the window in front" (Phosphor `monitor`) in the PC app's sheet (`api.ts`), `registry.rs` (7 permissions), `tools/registry.py` and the template's `tools/app.py` (both refuse `screen` with `min_fenixos` < 0.1.25: an older PC app would refuse the manifest), docs/registry.md, template registry.md, zip. Checked: registry check, app cargo tests, svelte-check 0/0
   - [x] 7. Docs (packages, spec, sidecars, registry, template copies), template pin to v0.1.25, zip; tests; release v0.1.25; answer in `docs/requests/morpheus.md`
     - Done (2026-11-02): template pinned to v0.1.25 (README, `tools/build.ps1`, release workflow, `app/pc/Cargo.toml`, pc-half.md, app.py header), zip; Morpheus answer "Shipped in fenixOS v0.1.25" with the corrections (RAM 54 KB not 82, views not all built, caps 32 KB and 96 px); README status and app text. Checks ok (version, tokens, registry, template, licenses, sim config), cargo workspace 0 failed, proto host 63/63, pkg host, sim 41/41, svelte-check 0/0, firmware 0x12e930, bundle with signed `fenixOS_0.1.25.fwp`, installer built and installed (/S), board flashed over USB (`fenix hello`: v0.1.25, heap 54.7 KB), tagged v0.1.25
-- [ ] P51-M Text and labels for Morpheus, v0.1.26 (after P50-M)
-  - [ ] 1. Latin-1 Supplement (0xA0–0xFF) in the text fonts (`tools/gen_fonts.py`); flash measured
-  - [ ] 2. SDK helper: transliterate to the board's glyph set, `?` for unknown
+- [~] P51-M Text and labels for Morpheus, v0.1.26 (after P50-M)
+  - [x] 1. Latin-1 Supplement (0xA0–0xFF) in the text fonts (`tools/gen_fonts.py`); flash measured
+    - Done: firmware 0x12e930 to 0x13aea0 (+50.5 KB). Accented capitals raised lv_font_conv's line height (13/12 px 15 to 16, 22 px 26 to 28) and moved 39 of 41 sim screens, so `keep_metrics` takes line_height/base_line from an ASCII-only run; sims unchanged except `app_view` (title now `Élise à Ñandú`). `docs/board-info.md` "Latin-1 in the text fonts", `docs/fonts.md`, `docs/packages.md`, template copies
+  - [x] 2. SDK helper: transliterate to the board's glyph set, `?` for unknown
+    - Done: `fenix_sdk::text::{fit, builtin, cjk, MARKS}`; transliteration by the `deunicode` 1.6 crate (BSD-3-Clause, `licenses.json` refreshed), combining accents composed into Latin-1, an emoji with its joined parts is one `?`, zero-width marks dropped; cargo test `text_fit`. Docs: `docs/sidecars.md`, template `pc-half.md`
   - [ ] 3. Label `overflow` (`wrap`, `clip`, `ellipsis`, `scroll`) and `max_lines`
   - [ ] 4. `secret` setting type (user: yes): masked in App settings, DPAPI user scope in `config.json`, never logged, plain value to the sidecar; registry and template checks
   - [ ] 5. Docs (packages, registry, template copies, Morpheus answer), tests, release v0.1.26

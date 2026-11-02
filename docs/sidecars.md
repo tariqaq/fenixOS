@@ -73,4 +73,6 @@ fn main() {
 
 `put_file(name, &bytes)`, `get_file(name)` and `delete_file(name)` keep files in the app's folder on the board's card. They block until fenixOS answers (seconds; 30 s at most) and return `Err(text)` when there is no board, no card, or an older fenixOS. Call them from the loop; each holds it for the time the request takes.
 
+`fenix_sdk::text::fit(s, cjk_font)` (P51-M) turns any text into characters the board draws: Latin-1 and `– — ’ • … ‹ ›` stay (fenixOS 0.1.26), Chinese, Japanese and Korean stay when `cjk_font` is true (the user put the CJK font on the card; an app can ask in a setting), the rest is transliterated (`Łódź` to `Lódz`, `Привет` to `Privet`, `北京` to `Bei Jing`) or becomes `?` (one per emoji). `text::builtin(c)` and `text::cjk(c)` test one character. Use it for titles from outside (songs, windows, chats); text the app writes itself needs nothing.
+
 The sample PC half in `tools/sample-app/pc` is the full example: it sends CPU and memory use while the app is open, logs every event, and writes `hello.txt` to its card folder and reads it back each time the board connects.

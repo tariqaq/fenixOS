@@ -28,6 +28,7 @@ fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.25" }
 | `app.set(bind, value)` | Set a binding: `i32`, `bool` or `&str`/`String` (≤ 255 bytes). Dropped while closed |
 | `app.set_icon(bind, "pause")` | fenixOS 0.1.25: a built-in icon (by name, `fenix_sdk::ICONS`) on a bound `icon` or button; false for an unknown name |
 | `app.set_image(bind, w, h, &rgba)` | fenixOS 0.1.25: a picture (RGBA8) for the layout's bound `image`; scaled to fill it. Once per change, not per frame |
+| `fenix_sdk::text::fit(s, cjk_font)` | Text from outside (song, window title) in characters the board draws: Latin-1 stays (fenixOS 0.1.26; older boards draw only ASCII), CJK stays when `cjk_font` (the user has the CJK font on the card), the rest is transliterated (`Привет` to `Privet`) or `?` |
 | `app.log(Level::Warn, text)`, `app.log_info(text)` | A line in the fenixOS log; `Warn` and `Error` show under Problems |
 | `app.put_file(name, &bytes)`, `app.get_file(name)`, `app.delete_file(name)` | A file in the app's folder on the board's SD card (`/sd/fenixos/data/<id>/`), at most 32 KB; `name` may hold `/`. They block until the board answers (seconds) and fail without a board, a card or fenixOS 0.1.23. The folder goes when the app is removed from the board |
 | `app.id`, `app.version`, `app.fenixos` | From `hello` |
