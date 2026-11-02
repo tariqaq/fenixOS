@@ -270,7 +270,7 @@ Shown on the first launch, and again from PC Settings › Show welcome again or,
 
 ## 4. Budgets and targets
 
-All numbers are targets to measure, not facts (latest measured: ~54 KB free on Home with Wi-Fi on and the CJK font on the card, v0.1.25, `docs/board-info.md` "App RAM with views and album art"; 52.6 KB at boot on v0.1.27. Corrected (P50-M): was 82 KB, the v0.1.12 number). Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
+All numbers are targets to measure, not facts (latest measured: ~54 KB free on Home with Wi-Fi on and the CJK font on the card, v0.1.25, `docs/board-info.md` "App RAM with views and album art"; 52.6 KB at boot on v0.1.27, 52.7 KB on v0.1.28. Corrected (P50-M): was 82 KB, the v0.1.12 number). Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
 
 ### 4.1 Board RAM (~260 KB heap at start, no PSRAM)
 
