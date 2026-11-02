@@ -7,8 +7,19 @@
         {
           "type": "box", "bg": "surface_1", "radius": 12, "pad": 12, "gap": 6, "w": "100%",
           "children": [
-            { "type": "label", "text": "Media", "font": "label", "color": "label_2" },
-            { "type": "label", "text": "--", "font": "title", "bind": "title" },
+            {
+              "type": "box", "flow": "row", "gap": 10, "cross": "center",
+              "children": [
+                { "type": "image", "bind": "art", "w": 48, "h": 48 },
+                {
+                  "type": "box", "gap": 2,
+                  "children": [
+                    { "type": "label", "text": "Media", "font": "label", "color": "label_2" },
+                    { "type": "label", "text": "--", "font": "title", "bind": "title" }
+                  ]
+                }
+              ]
+            },
             { "type": "bar", "min": 0, "max": 1000, "bind": "seek", "w": "100%", "h": 6 },
             {
               "type": "box", "flow": "row", "gap": 10, "cross": "center",

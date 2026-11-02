@@ -257,11 +257,31 @@ const char* Package::check() {
   for (size_t i = 0; i < assets.size(); i++) {
     if (i != head.icon_small && i != head.icon_large) image_bytes += assets[i].len;
   }
+  // The bound image (P50-M): one, w and h fixed in pixels (1 to MAX_ART), nothing of it changed in
+  // portrait; its buffer counts in the RAM estimate.
+  size_t art_bytes = 0;
+  int arts = 0;
+  for (const Elem& e : elems) {
+    if (e.kind != kind::IMAGE) continue;
+    bool bound = false, port = false;
+    for (int p = 0; p < e.nprops; p++) {
+      uint8_t k = e.props[p * 5], base = k & ~key::PORTRAIT;
+      if (base == key::BIND) bound = true;
+      if ((k & key::PORTRAIT) && (base == key::W || base == key::H || base == key::BIND)) port = true;
+    }
+    if (!bound) continue;
+    if (++arts > 1) return "more than one bound image";
+    int32_t w = 0, h = 0, b;
+    if (!e.prop(key::W, &w) || !e.prop(key::H, &h) || w < 1 || w > MAX_ART || h < 1 || h > MAX_ART)
+      return "bad bound image size";
+    if (!e.prop(key::BIND, &b) || port) return "bound image changes in portrait";
+    art_bytes = (size_t)w * h * 2;
+  }
   size_t string_bytes = 0;
   for (auto s : strings) string_bytes += s.size();
   if (string_bytes > MAX_STRING_BYTES) return "too many string bytes";
   if (image_bytes > MAX_IMAGE_BYTES) return "too many image bytes";
-  if (elems.size() * RAM_PER_ELEM + string_bytes + image_bytes > MAX_RAM) return "too much RAM";
+  if (elems.size() * RAM_PER_ELEM + string_bytes + image_bytes + art_bytes > MAX_RAM) return "too much RAM";
   return nullptr;
 }
 

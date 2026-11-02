@@ -39,6 +39,20 @@ const INDEX_RETRY: Duration = Duration::from_secs(3);
 /// opened, and the board's UI takes them between frames. Values waiting are kept latest per binding.
 const BIND_BURST: u32 = 16;
 const BIND_WINDOW: Duration = Duration::from_millis(50);
+/// Bound-image chunks per BIND_WINDOW (P50-M): ~3 KB per 50 ms keeps the board's 5 KB UART buffer
+/// safe; a 120 x 120 image takes ~0.5 s.
+const IMAGE_CHUNKS: u32 = 3;
+const IMAGE_CHUNK: usize = 1024;
+
+/// A bound image on its way to the board (one at a time; a newer one replaces it).
+struct ImageSend {
+    id: String,
+    bind: u16,
+    w: u16,
+    h: u16,
+    data: Vec<u8>,
+    offset: usize,
+}
 const RESTART_AFTER: [u64; 3] = [1, 5, 15];
 const FAIL_WINDOW: Duration = Duration::from_secs(120);
 
@@ -262,6 +276,9 @@ pub struct Apps {
     binds: VecDeque<(String, u16, BindValue)>,
     /// Start of the current pacing window and the values sent in it.
     bind_window: (Instant, u32),
+    /// The bound image being sent, and its chunks sent in the current window.
+    image: Option<ImageSend>,
+    image_chunks: u32,
     /// Lines for the log, flushed by the engine (it owns the AppHandle).
     pub logs: Vec<(Source, bool, String)>,
 }
@@ -353,6 +370,8 @@ impl Apps {
             open_app: None,
             binds: VecDeque::new(),
             bind_window: (Instant::now(), 0),
+            image: None,
+            image_chunks: 0,
             logs: Vec::new(),
         };
         let ids: Vec<(String, String)> = a
@@ -690,6 +709,7 @@ impl Apps {
         self.current = None;
         self.open_app = None;
         self.binds.clear();
+        self.image = None;
         if firmware_ok {
             self.ask_index();
         }
@@ -772,6 +792,9 @@ impl Apps {
             Msg::AppOpened { id } => {
                 self.open_app = Some(id.clone());
                 self.binds.retain(|(app, ..)| app == id); // the board ignores other apps' values
+                if self.image.as_ref().is_some_and(|i| &i.id != id) {
+                    self.image = None;
+                }
                 self.to_sidecar(id, Down::Opened);
                 false
             }
@@ -962,12 +985,14 @@ impl Apps {
         self.current.is_some()
             || (self.board_ready && !self.ops.is_empty())
             || !self.binds.is_empty()
+            || self.image.is_some()
     }
 
     /// Send waiting binding values, up to BIND_BURST in each BIND_WINDOW.
     fn flush_binds(&mut self) {
         if self.bind_window.0.elapsed() >= BIND_WINDOW {
             self.bind_window = (Instant::now(), 0);
+            self.image_chunks = 0;
         }
         while self.bind_window.1 < BIND_BURST {
             let Some((id, bind, value)) = self.binds.pop_front() else {
@@ -975,6 +1000,26 @@ impl Apps {
             };
             self.bind_window.1 += 1;
             let _ = self.link.send(Msg::BindSet { bind, id, value });
+        }
+        while self.image_chunks < IMAGE_CHUNKS {
+            let Some(im) = self.image.as_mut() else {
+                break;
+            };
+            let end = (im.offset + IMAGE_CHUNK).min(im.data.len());
+            let _ = self.link.send(Msg::BindImage {
+                bind: im.bind,
+                w: im.w,
+                h: im.h,
+                total: im.data.len() as u32,
+                offset: im.offset as u32,
+                id: im.id.clone(),
+                data: im.data[im.offset..end].to_vec(),
+            });
+            im.offset = end;
+            self.image_chunks += 1;
+            if end == im.data.len() {
+                self.image = None;
+            }
         }
     }
 
@@ -1151,6 +1196,39 @@ impl Apps {
                     _ => return false,
                 };
                 queue_bind(&mut self.binds, id, b, value);
+                self.flush_binds();
+                false
+            }
+            Note::Up(Up::SetImage { bind, w, h, data }) => {
+                if self.open_app.as_deref() != Some(id) {
+                    return false; // like values: the app sends again on `opened`
+                }
+                let Some(i) = self.installed.get(id) else {
+                    return false;
+                };
+                let art = i.pkg.art().filter(|a| i.pkg.bind_id(&bind) == Some(a.bind));
+                let rgb = fenix_sdk::wire::decode(&data);
+                let (w, h) = (w as usize, h as usize);
+                let why = match (&art, &rgb) {
+                    (None, _) => Some(format!("no bound image named {bind}")),
+                    (_, Some(px)) if w > 0 && h > 0 && px.len() == w * h * 3 => None,
+                    _ => Some("bad picture data".to_string()),
+                };
+                if let Some(why) = why {
+                    self.log(true, format!("{name}: set_image: {why}"));
+                    return false;
+                }
+                let (art, rgb) = (art.unwrap(), rgb.unwrap());
+                let (tw, th) = (art.w as usize, art.h as usize);
+                let px = fenix_sdk::image::fit(&rgb, w, h, tw, th);
+                self.image = Some(ImageSend {
+                    id: id.into(),
+                    bind: art.bind,
+                    w: art.w,
+                    h: art.h,
+                    data: fenix_sdk::image::rgb565_le(&px),
+                    offset: 0,
+                });
                 self.flush_binds();
                 false
             }

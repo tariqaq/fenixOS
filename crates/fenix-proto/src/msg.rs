@@ -40,6 +40,8 @@ pub mod ty {
     pub const APP_TURN_ON: u8 = 0x2D;
     pub const BIND_SET: u8 = 0x30;
     pub const EVENT: u8 = 0x31;
+    /// P50-M, firmware 0.1.25; optional (an older board answers ERROR unknown type).
+    pub const BIND_IMAGE: u8 = 0x32;
     pub const STREAM_START: u8 = 0x40;
     pub const STREAM_STOP: u8 = 0x41;
     pub const STREAM_RECT: u8 = 0x42;
@@ -576,6 +578,17 @@ pub enum Msg {
         value: i32,
         id: String,
     },
+    /// Pixels of the open app's bound image (P50-M): RGB565 little-endian, `w` x `h` as the
+    /// package declares, `total` = w * h * 2, sent in order from offset 0.
+    BindImage {
+        bind: u16,
+        w: u16,
+        h: u16,
+        total: u32,
+        offset: u32,
+        id: String,
+        data: Vec<u8>,
+    },
     StreamStart {
         fps: u8,
     },
@@ -729,6 +742,7 @@ impl Msg {
             FileResult { .. } => ty::FILE_RESULT,
             ShotSave => ty::SHOT_SAVE,
             BindSet { .. } => ty::BIND_SET,
+            BindImage { .. } => ty::BIND_IMAGE,
             Event { .. } => ty::EVENT,
             StreamStart { .. } => ty::STREAM_START,
             StreamStop => ty::STREAM_STOP,
@@ -968,6 +982,23 @@ impl Msg {
                     BindValue::Bool(v) => w.u8(*v as u8),
                     BindValue::Text(v) => w.str(v),
                 };
+            }
+            BindImage {
+                bind,
+                w: iw,
+                h,
+                total,
+                offset,
+                id,
+                data,
+            } => {
+                w.u16(*bind)
+                    .u16(*iw)
+                    .u16(*h)
+                    .u32(*total)
+                    .u32(*offset)
+                    .str(id)
+                    .bytes(data);
             }
             Event {
                 elem,
@@ -1284,6 +1315,15 @@ impl Msg {
                 };
                 Msg::BindSet { bind, id, value }
             }
+            ty::BIND_IMAGE => Msg::BindImage {
+                bind: r.u16()?,
+                w: r.u16()?,
+                h: r.u16()?,
+                total: r.u32()?,
+                offset: r.u32()?,
+                id: r.str()?,
+                data: r.rest().to_vec(),
+            },
             ty::EVENT => Msg::Event {
                 elem: r.u16()?,
                 kind: r.u8()?,

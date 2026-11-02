@@ -23,6 +23,8 @@ pub mod wire {
     pub const MAX_MSG: usize = 64 * 1024;
     /// The largest file `file_put` and `file_get` carry (base64 in one message).
     pub const MAX_FILE: usize = 32 * 1024;
+    /// The largest side `set_image` sends (P50-M); fenixOS scales it to the element's size.
+    pub const MAX_IMAGE: usize = 120;
 
     /// File bytes in a message: standard base64.
     pub fn encode(data: &[u8]) -> String {
@@ -88,6 +90,15 @@ pub mod wire {
         Log {
             level: String,
             text: String,
+        },
+        /// Pixels for the layout's bound image (P50-M, fenixOS 0.1.25): `data` is base64 RGB888,
+        /// `w` x `h` at most [`MAX_IMAGE`] each.
+        #[serde(rename = "set_image")]
+        SetImage {
+            bind: String,
+            w: u16,
+            h: u16,
+            data: String,
         },
         /// Files in the app's folder on the board's SD card, `/sd/fenixos/data/<id>/` (P53).
         /// `name` is relative to it; `data` is base64, at most [`MAX_FILE`] bytes decoded.
@@ -392,6 +403,40 @@ impl App {
         }
     }
 
+    /// Show a picture in the layout's bound `image` (album art; fenixOS 0.1.25). `rgba` is
+    /// `w` x `h` RGBA8 (transparent parts go black). fenixOS scales it to fill the element and
+    /// crops the middle; send it once per change, not per frame. False if the sizes do not match.
+    pub fn set_image(&self, bind: &str, w: usize, h: usize, rgba: &[u8]) -> bool {
+        if w == 0 || h == 0 || rgba.len() != w * h * 4 {
+            return false;
+        }
+        let rgb: Vec<u8> = rgba
+            .chunks_exact(4)
+            .flat_map(|p| {
+                let a = p[3] as u32;
+                [0, 1, 2].map(|c| (p[c] as u32 * a / 255) as u8)
+            })
+            .collect();
+        let m = wire::MAX_IMAGE;
+        let (rgb, w, h) = if w > m || h > m {
+            let s = (m as f64 / w as f64).min(m as f64 / h as f64);
+            let (tw, th) = (
+                ((w as f64 * s) as usize).max(1),
+                ((h as f64 * s) as usize).max(1),
+            );
+            (image::fit(&rgb, w, h, tw, th), tw, th)
+        } else {
+            (rgb, w, h)
+        };
+        self.send(&wire::Up::SetImage {
+            bind: bind.into(),
+            w: w as u16,
+            h: h as u16,
+            data: wire::encode(&rgb),
+        });
+        true
+    }
+
     /// Set a bound value on the board (`bind` is the name in `layout.json`).
     pub fn set(&self, bind: &str, value: impl Into<Value>) {
         let value = match value.into() {
@@ -495,6 +540,51 @@ fn open_retry(path: &str, read: bool) -> io::Result<File> {
     }
 }
 
+/// Picture helpers for the bound image (P50-M), shared with the fenixOS PC app.
+pub mod image {
+    /// Scale RGB888 `w` x `h` to cover `tw` x `th`, cropping the middle; each target pixel is
+    /// the average of the source pixels under it (so it works up and down).
+    pub fn fit(rgb: &[u8], w: usize, h: usize, tw: usize, th: usize) -> Vec<u8> {
+        let s = (tw as f64 / w as f64).max(th as f64 / h as f64);
+        let (cw, ch) = (tw as f64 / s, th as f64 / s);
+        let (x0, y0) = ((w as f64 - cw) / 2.0, (h as f64 - ch) / 2.0);
+        let span = |o: f64, step: f64, i: usize, n: usize| {
+            let a = ((o + i as f64 * step).floor() as usize).min(n - 1);
+            let b = ((o + (i + 1) as f64 * step).ceil() as usize).clamp(a + 1, n);
+            (a, b)
+        };
+        let mut out = Vec::with_capacity(tw * th * 3);
+        for ty in 0..th {
+            let (ya, yb) = span(y0, ch / th as f64, ty, h);
+            for tx in 0..tw {
+                let (xa, xb) = span(x0, cw / tw as f64, tx, w);
+                let mut sum = [0u32; 3];
+                for y in ya..yb {
+                    for x in xa..xb {
+                        let p = (y * w + x) * 3;
+                        for c in 0..3 {
+                            sum[c] += rgb[p + c] as u32;
+                        }
+                    }
+                }
+                let n = ((yb - ya) * (xb - xa)) as u32;
+                out.extend(sum.map(|v| ((v + n / 2) / n) as u8));
+            }
+        }
+        out
+    }
+
+    /// RGB888 to RGB565 little-endian (the board's image format).
+    pub fn rgb565_le(rgb: &[u8]) -> Vec<u8> {
+        rgb.chunks_exact(3)
+            .flat_map(|p| {
+                let v = (p[0] as u16 >> 3) << 11 | (p[1] as u16 >> 2) << 5 | p[2] as u16 >> 3;
+                v.to_le_bytes()
+            })
+            .collect()
+    }
+}
+
 /// The board's built-in icons, in its order (a copy of `fenix-pkg` ICONS, checked by a test). The
 /// last 14 (from `play`) need fenixOS 0.1.25.
 pub const ICONS: [&str; 34] = [
@@ -536,6 +626,26 @@ pub const ICONS: [&str; 34] = [
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn image_fit_and_pack() {
+        use super::image::{fit, rgb565_le};
+        // 2 x 2 down to 1 x 1: the average.
+        let px = [0, 0, 0, 255, 255, 255, 0, 0, 0, 255, 255, 255];
+        assert_eq!(fit(&px, 2, 2, 1, 1), vec![128, 128, 128]);
+        // 4 x 1 (red, green, green, blue) covering 2 x 1... keeps all; 1 x 1 crops to the middle.
+        let row = [255, 0, 0, 0, 255, 0, 0, 255, 0, 0, 0, 255];
+        assert_eq!(fit(&row, 4, 1, 1, 1), vec![0, 255, 0]);
+        // Up: 1 x 1 to 2 x 2 repeats it.
+        assert_eq!(fit(&[9, 8, 7], 1, 1, 2, 2), [9, 8, 7].repeat(4));
+        assert_eq!(
+            rgb565_le(&[255, 0, 0, 0, 0, 255]),
+            vec![0x00, 0xF8, 0x1F, 0x00]
+        );
+        // The largest picture fits in one message.
+        let max = super::wire::MAX_IMAGE;
+        assert!((max * max * 3).div_ceil(3) * 4 < super::wire::MAX_MSG - 256);
+    }
+
     #[test]
     fn icons_match_the_package_list() {
         assert_eq!(super::ICONS, fenix_pkg::ICONS);

@@ -312,6 +312,12 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       write_bind_set(w, b);
       break;
     }
+    case ty::BIND_IMAGE: {
+      BindImage b;
+      if (!read_bind_image(r, b)) return false;
+      write_bind_image(w, b);
+      break;
+    }
     case ty::EVENT: {
       Event e;
       if (!read_event(r, e)) return false;

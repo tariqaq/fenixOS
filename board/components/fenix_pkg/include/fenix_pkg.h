@@ -25,6 +25,7 @@ constexpr size_t MAX_IMAGE_BYTES = 24 * 1024;
 constexpr size_t MAX_RAM = 40 * 1024;
 constexpr size_t RAM_PER_ELEM = 160;
 constexpr size_t MAX_DEPTH = 8;
+constexpr int32_t MAX_ART = 120;  // largest side of the bound image (P50-M)
 constexpr size_t MAX_ID = 48;
 constexpr int N_FONTS = 11;
 constexpr int N_ICONS = 34;  // 20 before v0.1.25 (P50-M added 14)

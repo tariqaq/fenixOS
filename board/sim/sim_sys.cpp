@@ -54,6 +54,39 @@ static std::vector<uint8_t> read_file(const fs::path& p) {
 
 static fs::path pkg_path(const std::string& id) { return fs::path(s_store) / (id + ".fxp"); }
 
+// The bound image target, as link.cpp keeps it (one thread here, no lock).
+static struct {
+  uint32_t app;
+  uint16_t bind, w, h;
+  uint8_t* buf;
+  bool done;
+} s_img;
+
+bool set_image(const std::string& id, const std::string& name, std::string* err) {
+  std::vector<uint8_t> data = read_file(pkg_path(id));
+  fpkg::Package pkg;
+  if (data.empty() || pkg.parse(data.data(), data.size())) {
+    *err = "no valid package for " + id + " in the store";
+    return false;
+  }
+  int bind = -1;
+  for (size_t i = 0; i < pkg.binds.size(); i++)
+    if (pkg.strings[pkg.binds[i]] == name) bind = (int)i;
+  if (bind < 0 || !s_img.buf || s_img.app != sys::app_hash(id.c_str()) || s_img.bind != bind) {
+    *err = id + " is not open with a bound image '" + name + "'";
+    return false;
+  }
+  for (int y = 0; y < s_img.h; y++)
+    for (int x = 0; x < s_img.w; x++) {
+      uint16_t r = x * 31 / (s_img.w > 1 ? s_img.w - 1 : 1), g = y * 63 / (s_img.h > 1 ? s_img.h - 1 : 1);
+      uint16_t px = r << 11 | g << 5 | 12;
+      s_img.buf[(y * s_img.w + x) * 2] = px & 0xFF;
+      s_img.buf[(y * s_img.w + x) * 2 + 1] = px >> 8;
+    }
+  s_img.done = true;
+  return true;
+}
+
 bool set_binds(const std::string& id, const std::vector<std::string>& pairs, std::string* err) {
   std::vector<uint8_t> data = read_file(pkg_path(id));
   fpkg::Package pkg;
@@ -237,6 +270,14 @@ bool bind_poll(BindValue* v) {
   *v = sim::s_binds.front();
   sim::s_binds.pop_front();
   return true;
+}
+void bind_image_target(uint32_t app, uint16_t bind, uint8_t* buf, uint16_t w, uint16_t h) {
+  sim::s_img = {app, bind, w, h, buf, false};
+}
+bool bind_image_done() {
+  bool d = sim::s_img.done;
+  sim::s_img.done = false;
+  return d;
 }
 uint32_t link_rx_frames() { return 0; }
 uint32_t link_rx_errors() { return 0; }

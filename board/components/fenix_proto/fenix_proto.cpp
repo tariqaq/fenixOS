@@ -481,6 +481,26 @@ void write_bind_set(Writer& w, const BindSet& b) {
   }
 }
 
+bool read_bind_image(Reader& r, BindImage& b) {
+  b.bind = r.u16();
+  b.w = r.u16();
+  b.h = r.u16();
+  b.total = r.u32();
+  b.offset = r.u32();
+  r.str(b.id, sizeof b.id);
+  b.data = r.rest(&b.len);
+  return r.done();
+}
+void write_bind_image(Writer& w, const BindImage& b) {
+  w.u16(b.bind);
+  w.u16(b.w);
+  w.u16(b.h);
+  w.u32(b.total);
+  w.u32(b.offset);
+  w.str(b.id);
+  w.bytes(b.data, b.len);
+}
+
 bool read_event(Reader& r, Event& e) {
   e.elem = r.u16();
   e.kind = r.u8();

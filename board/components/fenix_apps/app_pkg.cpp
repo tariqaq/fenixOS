@@ -132,6 +132,11 @@ static struct {
   std::vector<uint16_t> pos;    // per element, its place among its parent's children
   std::vector<lv_image_dsc_t> images;  // per asset; data null unless an element shows it
   std::vector<uint8_t*> pixels;        // what the descriptors point at (malloc)
+  // The bound image (P50-M): its descriptor is images[art] (after the assets' ones), its buffer
+  // the last of `pixels`; the link fills it (sys::bind_image_target). -1 = none.
+  int art;
+  bool art_ready;     // a whole image arrived since the app opened
+  lv_obj_t* art_obj;  // the element showing it in the current build
   int64_t close_at;  // pending return to Home (app removed while showing HostOff)
   bool missing;      // stored on the SD card, which is out: no package loaded (P51)
   bool turning_on;   // Turn on was pressed; waiting for the PC's HOST_STATE
@@ -255,6 +260,9 @@ static bool has_vals() {
 
 static void close_app() {
   if (!s_app.open) return;
+  sys::bind_image_target(0, 0, nullptr, 0, 0);  // the link stops writing before the buffer retires
+  s_app.art = -1;
+  s_app.art_obj = nullptr;
   if (s_app.dirty && !s_app.missing) state_save();
   if (sys::link_connected() && !s_app.missing) send_id(fnx::ty::APP_CLOSED, s_app.id);
   s_app.open = false;
@@ -321,6 +329,32 @@ static bool load_app(const char* id) {
       d.data_size = a.len;
     }
     s_app.images.push_back(d);
+  }
+  // The bound image's buffer: allocated now, counted in the package's RAM estimate (P50-M).
+  s_app.art = -1;
+  s_app.art_ready = false;
+  for (const fpkg::Elem& e : p.elems) {
+    int32_t bind, w, h;
+    if (e.kind != fpkg::kind::IMAGE || !e.prop(fpkg::key::BIND, &bind)) continue;
+    if (!e.prop(fpkg::key::W, &w) || !e.prop(fpkg::key::H, &h)) break;  // the reader checked both
+    uint8_t* buf = (uint8_t*)calloc((size_t)w * h, 2);
+    if (!buf) {
+      sys::link_log(2, "app %s: no memory for its %ldx%ld image", id, (long)w, (long)h);
+      break;
+    }
+    lv_image_dsc_t d{};
+    d.header.magic = LV_IMAGE_HEADER_MAGIC;
+    d.header.cf = LV_COLOR_FORMAT_RGB565;
+    d.header.w = w;
+    d.header.h = h;
+    d.header.stride = w * 2;
+    d.data_size = (uint32_t)w * h * 2;
+    d.data = buf;
+    s_app.art = (int)s_app.images.size();
+    s_app.images.push_back(d);
+    s_app.pixels.push_back(buf);
+    sys::bind_image_target(sys::app_hash(id), (uint16_t)bind, buf, w, h);
+    break;
   }
   return true;
 }
@@ -582,9 +616,16 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
     case fpkg::kind::IMAGE: {
       o = lv_image_create(parent);
       int32_t src = get(fpkg::key::SRC, -1);
-      if (src >= 0) {
-        lv_image_set_src(o, &s_app.images[src]);
-        if (s_app.pkg.assets[src].format == fpkg::asset_format::A8) {
+      const lv_image_dsc_t* d = src >= 0 ? &s_app.images[src] : nullptr;
+      if (s_app.art >= 0 && e.prop(fpkg::key::BIND, &v0)) {  // the bound image (P50-M)
+        s_app.art_obj = o;
+        if (s_app.art_ready) d = &s_app.images[s_app.art];
+        lv_obj_set_style_bg_color(o, col(FX_COLOR_SURFACE_2), 0);  // until the first picture
+        lv_obj_set_style_bg_opa(o, LV_OPA_COVER, 0);
+      }
+      if (d) {
+        lv_image_set_src(o, d);
+        if (d->header.cf == LV_COLOR_FORMAT_A8) {
           lv_obj_set_style_image_recolor(o, col(get(fpkg::key::COLOR, FX_COLOR_LABEL)), 0);
           lv_obj_set_style_image_recolor_opa(o, LV_OPA_COVER, 0);
         }
@@ -758,6 +799,7 @@ static void host_state(lv_obj_t* body, Why why) {
 
 void app_screen(lv_obj_t* scr) {
   s_app.bound.clear();
+  s_app.art_obj = nullptr;
   s_app.objs.clear();  // rebuilt by build_layout; a host-state screen has none
   lv_obj_add_event_cb(scr, free_retired, LV_EVENT_DELETE, nullptr);
   navbar(scr, "Home", s_app.open ? s_app.name : "");
@@ -914,6 +956,17 @@ void app_tick() {
     return;
   }
   if (s_app.dirty && esp_timer_get_time() - s_app.saved_at > STATE_EVERY_US) state_save();
+  if (sys::bind_image_done() && s_app.art >= 0) {  // a whole picture is in the buffer (P50-M)
+    s_app.art_ready = true;
+    const lv_image_dsc_t* d = &s_app.images[s_app.art];
+    if (lv_obj_t* o = s_app.art_obj) {
+      // No image cache to drop: its size is 0 (LV_CACHE_DEF_SIZE) and LVGL draws raw RGB565 from
+      // the buffer itself, so an invalidate shows the new pixels.
+      if (lv_image_get_src(o) != d) lv_image_set_src(o, d);
+      lv_obj_set_style_image_recolor_opa(o, LV_OPA_TRANSP, 0);
+      lv_obj_invalidate(o);
+    }
+  }
   while (sys::bind_poll(&v)) {
     if (v.app != sys::app_hash(s_app.id) || v.bind >= s_app.vals.size()) continue;
     Val& val = s_app.vals[v.bind];

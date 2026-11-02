@@ -39,6 +39,7 @@ App → fenixOS (`.up`):
 | `type` | Fields | Effect |
 |---|---|---|
 | `set` | `bind` (name in `layout.json`), `value` (int, bool or string ≤ 255 bytes) | Sets a bound value on the board. Sent only while the app is open on the board; fenixOS drops it otherwise |
+| `set_image` | `bind`, `w`, `h` (each 1 to 120), `data` (base64 RGB888, w × h × 3 bytes) | fenixOS 0.1.25 (P50-M): pixels for the layout's bound `image`. fenixOS scales them to fill the element (centre crop), converts to RGB565 and sends `BIND_IMAGE` paced (~3 KB per 50 ms); a newer picture replaces one on its way. Only while the app is open; a wrong name or size is logged under Problems. SDK: `set_image(bind, w, h, &rgba)` (scales larger pictures down), and `set_icon(bind, name)` sends an icon's index with `set` |
 | `log` | `level` (`info`, `warn`, `error`), `text` | Adds a line to the fenixOS log (source "Apps"); `warn` and `error` show under Problems |
 | `file_put` | `req` (u32, the app's own number), `name`, `data` (base64, at most 32 KB decoded) | Writes `/sd/fenixos/data/<id>/<name>` on the board's SD card (P53), replacing a file of that name |
 | `file_get` | `req`, `name` | Reads it back (at most 32 KB) |

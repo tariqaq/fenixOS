@@ -23,6 +23,9 @@ pub const MAX_IMAGE_BYTES: usize = 24 * 1024;
 pub const MAX_RAM: usize = 40 * 1024;
 pub const RAM_PER_ELEM: usize = 160;
 pub const MAX_DEPTH: usize = 8;
+/// Largest side of the bound image (album art, P50-M), in pixels. Its RGB565 buffer counts in
+/// the RAM estimate.
+pub const MAX_ART: i32 = 120;
 /// App ids name files on the board (`/apps/<id>.fxp`); LittleFS names are ≤ 63 bytes.
 pub const MAX_ID: usize = 48;
 
@@ -167,6 +170,15 @@ impl Elem {
     }
 }
 
+/// The one `image` element with a `bind` (P50-M): the PC sets its pixels (`BIND_IMAGE`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Art {
+    pub elem: u16,
+    pub bind: u16,
+    pub w: u16,
+    pub h: u16,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Asset {
     pub format: u8,
@@ -212,6 +224,21 @@ impl Package {
             .position(|&s| self.strings[s as usize] == name)
             .map(|i| i as u16)
     }
+    /// The bound image, if any (`check_limits` allows one, with a fixed size).
+    pub fn art(&self) -> Option<Art> {
+        self.elems.iter().enumerate().find_map(|(i, e)| {
+            if e.kind != kind::IMAGE {
+                return None;
+            }
+            Some(Art {
+                elem: i as u16,
+                bind: e.prop(key::BIND)? as u16,
+                w: e.prop(key::W).unwrap_or(0) as u16,
+                h: e.prop(key::H).unwrap_or(0) as u16,
+            })
+        })
+    }
+
     /// Event name of element `elem` (what the PC half sees for an `EVENT`).
     pub fn event_name(&self, elem: u16) -> Option<&str> {
         let e = self.elems.get(elem as usize)?;
@@ -330,7 +357,36 @@ impl Package {
             .filter(|(i, _)| *i as u16 != self.icon_small && *i as u16 != self.icon_large)
             .map(|(_, a)| a.data.len())
             .sum();
-        let ram = self.elems.len() * RAM_PER_ELEM + strings + image_bytes;
+        // The bound image (P50-M): one, a fixed size in pixels, the same in portrait; its buffer
+        // is allocated when the app opens.
+        let mut art_bytes = 0;
+        let bound = |e: &&Elem| {
+            e.kind == kind::IMAGE
+                && e.props
+                    .iter()
+                    .any(|&(k, _)| k & !key::PORTRAIT == key::BIND)
+        };
+        for (n, e) in self.elems.iter().filter(bound).enumerate() {
+            if n > 0 {
+                return Err("only one image may have a bind".into());
+            }
+            let fixed = |k| {
+                e.prop(k)
+                    .filter(|v| (1..=MAX_ART).contains(v))
+                    .ok_or_else(|| format!("a bound image needs w and h in pixels, 1 to {MAX_ART}"))
+            };
+            let (w, h) = (fixed(key::W)?, fixed(key::H)?);
+            e.prop(key::BIND)
+                .ok_or("a bound image cannot get its bind in portrait only")?;
+            if e.props.iter().any(|&(k, _)| {
+                k & key::PORTRAIT != 0
+                    && [key::W, key::H, key::BIND].contains(&(k & !key::PORTRAIT))
+            }) {
+                return Err("a bound image cannot change size or bind in portrait".into());
+            }
+            art_bytes = (w * h * 2) as usize;
+        }
+        let ram = self.elems.len() * RAM_PER_ELEM + strings + image_bytes + art_bytes;
         let checks = [
             (
                 self.elems.len() <= MAX_ELEMS,
@@ -843,11 +899,14 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
                 let k = k & !key::PORTRAIT;
                 k == key::SHOW || (k == key::ICON && v as usize >= ICONS_BEFORE_0_1_25)
             })
-    });
+    }) || c
+        .elems
+        .iter()
+        .any(|e| e.kind == kind::IMAGE && e.prop(key::BIND).is_some());
     if new && min_fenixos < VIEW_SINCE {
         let (a, b, d) = VIEW_SINCE;
         return Err(format!(
-            "view, show and the newer icons need min_fenixos {a}.{b}.{d} or newer"
+            "view, show, a bound image and the newer icons need min_fenixos {a}.{b}.{d} or newer"
         ));
     }
     let p = Package {
@@ -925,6 +984,35 @@ mod tests {
         assert!(old.contains("min_fenixos 0.1.25"), "{old}");
         let leaf = r#"{ "type": "box", "children": [ { "type": "label", "show": "s", "children": [] } ] }"#;
         assert!(build_layout("view-leaf", leaf, "0.1.25").is_err());
+    }
+
+    #[test]
+    fn bound_image() {
+        let ok = r#"{ "type": "box", "children": [
+            { "type": "image", "bind": "art", "w": 80, "h": 80 },
+            { "type": "label", "text": "x", "bind": "title" } ] }"#;
+        let p = build_layout("art", ok, "0.1.25").unwrap();
+        let art = p.art().unwrap();
+        assert_eq!((art.elem, art.bind, art.w, art.h), (1, 0, 80, 80));
+        assert!(build_layout("art-old", ok, "0.1.24").is_err());
+        let refused = [
+            r#"{ "type": "image", "bind": "art", "w": 121, "h": 80 }"#,
+            r#"{ "type": "image", "bind": "art", "w": "50%", "h": 80 }"#,
+            r#"{ "type": "image", "bind": "art", "h": 80 }"#,
+            r#"{ "type": "image", "bind": "art", "w": 80, "h": 80, "portrait": { "w": 60 } }"#,
+            r#"{ "type": "box", "children": [
+                { "type": "image", "bind": "a", "w": 8, "h": 8 },
+                { "type": "image", "bind": "b", "w": 8, "h": 8 } ] }"#,
+        ];
+        for (n, l) in refused.iter().enumerate() {
+            assert!(
+                build_layout(&format!("art-bad{n}"), l, "0.1.25").is_err(),
+                "{l}"
+            );
+        }
+        // The buffer counts: 120 x 120 x 2 = 28.8 KB of the 40 KB estimate.
+        let big = r#"{ "type": "image", "bind": "art", "w": 120, "h": 120 }"#;
+        assert!(build_layout("art-big", big, "0.1.25").is_ok());
     }
 
     #[test]

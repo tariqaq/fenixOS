@@ -131,6 +131,10 @@ inline uint32_t app_hash(const char* id) {
   return h;
 }
 bool bind_poll(BindValue* v);  // oldest first; text is empty unless kind is 2
+// The open app's bound image (P50-M): the UI hands the link the buffer BIND_IMAGE chunks fill
+// (RGB565, w * h * 2 bytes); a null `buf` stops it, before the buffer is freed.
+void bind_image_target(uint32_t app, uint16_t bind, uint8_t* buf, uint16_t w, uint16_t h);
+bool bind_image_done();  // true once per complete image since the target was set
 uint32_t link_rx_frames();
 uint32_t link_rx_errors();
 // Remote transport (P34 TCP; SPP until P38): at most one exists. The transport moves bytes; the

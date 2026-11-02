@@ -2,7 +2,7 @@
 # Run: python tools/sim_shots.py  (builds the simulator and build/sample.fxp, then compares).
 # Verbs: tap x y | swipe x1 y1 x2 y2 | wait ms | shot name | install file | remove id
 #        set id name=value... | host id on|off|gone|starting | card in|out | stream on fps | stream off
-#        font file | connect | disconnect | ota offer <update|-> <back|-> | ota failed_version <v|->
+#        image id name | font file | connect | disconnect | ota offer <update|-> <back|-> | ota failed_version <v|->
 #        ota idle|receiving|checking|writing|restarting|failed [pct] [version]
 # Taps wait 1 s and swipes 1.2 s of virtual time afterwards, so animations have finished.
 # The simulator starts connected to a pretend PC, with an empty store and default settings.
@@ -116,6 +116,7 @@ remove io.github.tariqaq.sample
 install build/views.fxp
 tap 58 182
 set io.github.tariqaq.views "title=Night Drive" seek=420 playing=21 like=Liked
+image io.github.tariqaq.views art           # a test picture in the bound image (P50-M)
 shot app_view                             # mode not set: the first child; pause glyph, button text bound
 set io.github.tariqaq.views mode=1 timer=12:48 muted=true mic=27 hint=true
 shot app_view_call                        # the second child; the muted row (microphone-slash) and the hint

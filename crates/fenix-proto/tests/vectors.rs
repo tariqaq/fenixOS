@@ -441,6 +441,18 @@ fn samples() -> Vec<(&'static str, Msg)> {
             },
         ),
         ("shot_save", Msg::ShotSave),
+        (
+            "bind_image",
+            Msg::BindImage {
+                bind: 2,
+                w: 2,
+                h: 1,
+                total: 4,
+                offset: 0,
+                id: "a.b".into(),
+                data: vec![0x1F, 0x00, 0xE0, 0x07],
+            },
+        ),
     ]
 }
 

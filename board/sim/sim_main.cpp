@@ -138,6 +138,10 @@ static int run_script(const std::string& path, const std::string& out) {
       std::string err;
       if (!sim::set_binds(w[1], std::vector<std::string>(w.begin() + 2, w.end()), &err)) return fail(where, err);
       run_for(300);
+    } else if (v == "image" && w.size() == 3) {
+      std::string err;
+      if (!sim::set_image(w[1], w[2], &err)) return fail(where, err);
+      run_for(300);
     } else if (v == "stream" && (w.size() == 3 ? w[1] == "on" : w.size() == 2 && w[1] == "off")) {
       // `fenix shot` streams from the board, so the Stream screen there shows "Streaming".
       if (w[1] == "on") sim::post(sys::LinkEv::STREAM_START, num(2));

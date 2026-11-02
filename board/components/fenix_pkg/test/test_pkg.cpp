@@ -33,22 +33,24 @@ static void views(const char* path) {
   const char* err = p.parse(b.data(), b.size());
   expect(!err, err ? err : "");
   if (err) return;
-  expect(p.elems.size() == 17 && p.binds.size() == 9, "view counts");
+  expect(p.elems.size() == 20 && p.binds.size() == 10, "view counts");
   int32_t v = -1;
   expect(p.elems[1].kind == fpkg::kind::VIEW && p.elems[1].prop(fpkg::key::BIND, &v) && v == 0, "view bind");
-  expect(p.elems[12].prop(fpkg::key::SHOW, &v) && v == 6, "show bind");
-  expect(p.elems[16].prop(fpkg::key::SHOW, &v) && v == 8 && p.elems[16].prop(fpkg::key::HIDDEN, &v) && v == 1,
+  expect(p.elems[15].prop(fpkg::key::SHOW, &v) && v == 7, "show bind");
+  expect(p.elems[19].prop(fpkg::key::SHOW, &v) && v == 9 && p.elems[19].prop(fpkg::key::HIDDEN, &v) && v == 1,
          "show with hidden");
   // Point the first `show` at a binding that does not exist: refused.
   bool found = false;
   for (size_t i = 0; i + 5 <= b.size() && !found; i++) {
-    if (b[i] != fpkg::key::SHOW || b[i + 1] != 6 || b[i + 2] || b[i + 3] || b[i + 4]) continue;
+    if (b[i] != fpkg::key::SHOW || b[i + 1] != 7 || b[i + 2] || b[i + 3] || b[i + 4]) continue;
     std::vector<uint8_t> t = b;
-    t[i + 1] = 9;
+    t[i + 1] = 10;
     expect(p.parse(t.data(), t.size()) != nullptr, "show out of range");
     found = true;
   }
   expect(found, "show prop found");
+  // The bound image (P50-M): element 4, binding 1 ("art"), 48 x 48.
+  expect(p.elems[4].kind == fpkg::kind::IMAGE && p.elems[4].prop(fpkg::key::BIND, &v) && v == 1, "bound image");
   printf("fenix_pkg: views ok\n");
 }
 

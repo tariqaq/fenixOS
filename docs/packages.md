@@ -36,7 +36,7 @@ A folder with:
 | `switch` | On/off switch | `bind`, `event`, `value` |
 | `slider` | Horizontal slider | `min`, `max`, `value`, `bind`, `event` |
 | `bar` | Progress / meter bar | `min`, `max`, `value`, `bind`, `color` |
-| `image` | A8 (tinted with `color`) or RGB565 image | `src`, `color` (A8 only) |
+| `image` | A8 (tinted with `color`) or RGB565 image. Since v0.1.25 one `image` may have a `bind`: the PC half sends its pixels (album art); it needs `w` and `h` in pixels (1 to 120, the same in portrait), shows `src` or a `surface_2` square until the first picture arrives, and its buffer (w × h × 2 B) counts in the RAM estimate | `src`, `color` (A8 only), `bind` |
 | `icon` | Built-in Phosphor glyph | `icon`, `size` (12 14 15 16 18 20 26 28 40), `color` |
 | `view` | Since v0.1.25: a container that shows one child, picked by its int `bind` (0 = first child; out of range shows none), or by `value` until the PC sets it. Lays out like a `box` | `bind`, `value`, and the `box` props |
 
@@ -51,6 +51,7 @@ Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes defa
 - `bind: "cpu"` connects the element to binding `cpu`. The PC half sets it (`BIND_SET`, `proto/spec.md`): a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer. Corrected: the bool case on a label was missing. Since v0.1.25 (P50-M) a `button` takes text (its text) or an integer (its glyph, an index in the icon list; out of range: none), and an `icon` takes an integer (its glyph); `fenix-sdk` `set_icon(bind, "pause")` sends the index. Use one kind per button: after a rebuild only the last value is applied.
 - Since v0.1.25 (P50-M) a burst is safe: the PC app keeps the latest value per binding and sends at most 16 every 50 ms (`apps.rs`), and the board keeps values in a 4 KB ring (a 12 B header and the text each, `link.cpp`), so ~50 values on `opened` arrive whole. Measured: 120 values sent at once without the PC's pacing all arrived, the last one shown. If the ring ever fills, the oldest values go. Corrected: before v0.1.25 the board queued 16 values and dropped the newest.
 - **Switching screens (P50-M, v0.1.25):** put each screen in a `view` and set its binding to the index of the one to show; `show` hides or shows any single element. Everything is built when the app opens, so hidden parts count in the RAM estimate, and values bound inside them are applied and kept while hidden. What appears fades in (200 ms). A package with `view` or `show` must set `min_fenixos` to 0.1.25 or newer (`fenix-pkg build` checks): older boards refuse kind 9 and would ignore `show`. Example: `tools/view-app`, simulator shots `app_view` and `app_view_call`.
+- **Pictures from the PC (P50-M, v0.1.25):** one `image` per app may have a `bind`. The PC half calls `set_image(bind, w, h, &rgba)` with any picture up to 120 × 120 (the SDK scales larger ones down); fenixOS scales it to fill the element, crops the middle, converts it to RGB565 and sends it in `BIND_IMAGE` chunks, about 3 KB per 50 ms (a 120 × 120 picture takes ~0.5 s). The board writes them into the element's one buffer and redraws it once the picture is whole, so a redraw during the transfer can show the old and new picture mixed for that moment. Send it once per change (a new track), not per frame; a newer picture replaces one still on its way. Not kept on the card: after a restart or offline the element shows `src` again.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `event: "mute"` makes the element report: a button sends a tap (and a long press), a switch or slider sends its new value (sliders on release). The board sends `EVENT` with the element's index; the PC maps the index back to the name through the package.
 - The board keeps no values while an app is closed. When an app opens the board sends `APP_OPENED`, and the PC half sends its current values.
@@ -66,7 +67,7 @@ Checked by the compiler and again by the board before it commits an install. Bot
 | Strings (all, bytes) | 8 KB |
 | Bindings | 64 |
 | Image data (every asset except the two tile icons) | 24 KB |
-| RAM estimate (`elements × 160 B + strings + images`) | 40 KB |
+| RAM estimate (`elements × 160 B + strings + images + the bound image's w × h × 2`) | 40 KB |
 | Tree depth | 8 |
 
 ### Board memory (P39)

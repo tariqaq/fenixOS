@@ -101,6 +101,7 @@ payload = type:u8 ‖ seq:u8 ‖ body
 |---|---|---|---|
 | 0x30 | BIND_SET | P→B | bind:u16 ‖ kind:u8 ‖ id:str ‖ value. Kinds: 0 int (`i32`), 1 bool (`u8`), 2 text (`str`). Applies to the open app only; ignored otherwise |
 | 0x31 | EVENT | B→P | elem:u16 ‖ kind:u8 (1 tap, 2 long press, 3 value change) ‖ value:i32 ‖ id:str |
+| 0x32 | BIND_IMAGE | P→B | bind:u16 ‖ w:u16 ‖ h:u16 ‖ total:u32 ‖ offset:u32 ‖ id:str ‖ data:bytes (≤ 1024). Pixels of the open app's bound `image` (P50-M, firmware 0.1.25; optional, an older board answers ERROR unknown type): RGB565 **little-endian** (the package's image order, not the stream's), `w` × `h` as the package declares, `total` = w × h × 2, chunks in order from offset 0. The board copies them into the element's buffer and redraws it when `offset + len(data) == total`; a chunk for another app, binding or size is ignored, and a gap drops the rest until the next offset 0. No ack: the PC sends at most 3 chunks per 50 ms |
 
 ### Stream (0x4_)
 

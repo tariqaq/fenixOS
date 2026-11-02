@@ -40,6 +40,8 @@ void ota_phase(uint8_t phase, uint8_t pct, const std::string& version);
 void backup_offer(const std::string& ssid);
 // `name=value` pairs for app `id`'s binds, resolved through its package; false if unknown.
 bool set_binds(const std::string& id, const std::vector<std::string>& pairs, std::string* err);
+// A test picture (colour ramps) in the open app's bound image `name`, as BIND_IMAGE would (P50-M).
+bool set_image(const std::string& id, const std::string& name, std::string* err);
 bool install(const std::string& fxp, std::string* id, std::string* err);
 bool remove(const std::string& id);
 

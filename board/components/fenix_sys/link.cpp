@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <mutex>
+
 #include "driver/uart.h"
 #include "esp_app_desc.h"
 #include "esp_heap_caps.h"
@@ -163,6 +165,43 @@ static void post(LinkEv t, int32_t v = 0, const char* text = nullptr) {
 bool link_poll(LinkEvent* e) { return s_events && xQueueReceive(s_events, e, 0) == pdTRUE; }
 void link_post(LinkEv t, int32_t v, const char* text) { post(t, v, text); }
 bool link_connected() { return s_connected; }
+// The open app's bound image (P50-M). The link task copies BIND_IMAGE chunks straight into the
+// UI's one buffer, in order from offset 0; a missing chunk drops the rest until the next image.
+// The UI swaps nothing: it redraws the image once it is complete (bind_image_done).
+static std::mutex s_img_mu;
+static struct {
+  uint32_t app;
+  uint16_t bind, w, h;
+  uint8_t* buf;
+  uint32_t next;
+  bool done;
+} s_img;
+
+void bind_image_target(uint32_t app, uint16_t bind, uint8_t* buf, uint16_t w, uint16_t h) {
+  std::lock_guard<std::mutex> l(s_img_mu);
+  s_img = {app, bind, w, h, buf, 0, false};
+}
+
+bool bind_image_done() {
+  std::lock_guard<std::mutex> l(s_img_mu);
+  bool d = s_img.done;
+  s_img.done = false;
+  return d;
+}
+
+static void bind_image(const fnx::BindImage& b) {
+  std::lock_guard<std::mutex> l(s_img_mu);
+  bool fits = s_img.buf && s_img.app == app_hash(b.id) && s_img.bind == b.bind && s_img.w == b.w &&
+              s_img.h == b.h && b.total == (uint32_t)b.w * b.h * 2 && b.offset <= b.total &&
+              b.len <= b.total - b.offset;
+  if (!fits) return;  // not the open app's image, or not its size: ignored like other apps' values
+  if (b.offset == 0) s_img.next = 0;
+  if (b.offset != s_img.next) return;
+  memcpy(s_img.buf + b.offset, b.data, b.len);
+  s_img.next += b.len;
+  if (s_img.next == b.total) s_img.done = true;
+}
+
 static void ring_copy(size_t at, void* out, const void* in, size_t n) {
   for (size_t k = 0; k < n; k++) {
     size_t p = (at + k) % BIND_RING;
@@ -543,6 +582,12 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       bind_push(h, b.text);
       if (s_binds_dropped != dropped && !(dropped % 64))
         link_log(2, "app values: the oldest dropped, the UI fell behind (%u so far)", (unsigned)s_binds_dropped);
+      return;
+    }
+    case fnx::ty::BIND_IMAGE: {
+      fnx::BindImage b{};
+      if (!fnx::read_bind_image(r, b)) return send_error(fnx::err::BAD_BODY, "image");
+      bind_image(b);
       return;
     }
     case fnx::ty::HOST_STATE: {

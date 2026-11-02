@@ -25,7 +25,7 @@ constexpr uint8_t WEATHER_SET = 0x1B;
 constexpr uint8_t APP_LIST_REQ = 0x20, APP_LIST = 0x21, APP_INSTALL_BEGIN = 0x22, APP_CHUNK = 0x23, APP_ACK = 0x24;
 constexpr uint8_t APP_INSTALL_END = 0x25, APP_RESULT = 0x26, APP_REMOVE = 0x27, APP_OPENED = 0x28, APP_CLOSED = 0x29;
 constexpr uint8_t HOST_STATE = 0x2A, APP_INDEX_REQ = 0x2B, APP_INDEX = 0x2C, APP_TURN_ON = 0x2D;  // index, turn on: P51
-constexpr uint8_t BIND_SET = 0x30, EVENT = 0x31;
+constexpr uint8_t BIND_SET = 0x30, EVENT = 0x31, BIND_IMAGE = 0x32;  // BIND_IMAGE: P50-M, optional
 constexpr uint8_t STREAM_START = 0x40, STREAM_STOP = 0x41, STREAM_RECT = 0x42, STREAM_SYNC = 0x43, STREAM_INFO = 0x44;
 constexpr uint8_t FW_BEGIN = 0x50, FW_CHUNK = 0x51, FW_ACK = 0x52, FW_END = 0x53, FW_RESULT = 0x54;  // P52
 // Files under /sd/fenixos (P53)
@@ -295,6 +295,17 @@ struct BindSet {
 };
 bool read_bind_set(Reader& r, BindSet& b);
 void write_bind_set(Writer& w, const BindSet& b);
+
+// Pixels of the open app's bound image (P50-M): RGB565 little-endian, total = w * h * 2.
+struct BindImage {
+  uint16_t bind, w, h;
+  uint32_t total, offset;
+  char id[ID_LEN];
+  const uint8_t* data;  // into the frame being read
+  size_t len;
+};
+bool read_bind_image(Reader& r, BindImage& b);
+void write_bind_image(Writer& w, const BindImage& b);
 
 struct Event {
   uint16_t elem;
