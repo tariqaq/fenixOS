@@ -233,7 +233,7 @@ const char* Package::check() {
   size_t image_bytes = 0;
   for (size_t i = 0; i < elems.size(); i++) {
     const Elem& e = elems[i];
-    if (e.kind < kind::BOX || e.kind > kind::ICON) return "unknown element kind";
+    if (e.kind < kind::BOX || e.kind > kind::VIEW) return "unknown element kind";
     depth[i] = e.parent == NONE ? 1 : depth[e.parent] + 1;
     if (depth[i] > MAX_DEPTH) return "tree too deep";
     for (int p = 0; p < e.nprops; p++) {
@@ -243,7 +243,8 @@ const char* Package::check() {
       switch (k) {
         case key::TEXT:
         case key::EVENT: limit = strings.size(); break;
-        case key::BIND: limit = binds.size(); break;
+        case key::BIND:
+        case key::SHOW: limit = binds.size(); break;
         case key::SRC: limit = assets.size(); break;
         case key::ICON: limit = N_ICONS; break;
         case key::FONT: limit = N_FONTS; break;

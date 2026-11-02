@@ -38,8 +38,9 @@ A folder with:
 | `bar` | Progress / meter bar | `min`, `max`, `value`, `bind`, `color` |
 | `image` | A8 (tinted with `color`) or RGB565 image | `src`, `color` (A8 only) |
 | `icon` | Built-in Phosphor glyph | `icon`, `size` (12 14 15 16 18 20 26 28 40), `color` |
+| `view` | Since v0.1.25: a container that shows one child, picked by its int `bind` (0 = first child; out of range shows none), or by `value` until the PC sets it. Lays out like a `box` | `bind`, `value`, and the `box` props |
 
-Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes default to their content size), `grow` (share of the parent's free space along its flow; only applies when the parent has a set `h` for a column or `w` for a row, so a row that turns into a column in portrait keeps its children's natural height), `bind` (a binding name), `event` (an event name), `hidden`, and `portrait` (an object with any of these props, used when the board is in portrait).
+Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes default to their content size), `grow` (share of the parent's free space along its flow; only applies when the parent has a set `h` for a column or `w` for a row, so a row that turns into a column in portrait keeps its children's natural height), `bind` (a binding name), `event` (an event name), `hidden`, `show` (since v0.1.25: a binding name; the element shows while that value is true or non-zero, and follows `hidden` until the PC sets it), and `portrait` (an object with any of these props, used when the board is in portrait).
 
 - **Fonts:** `body` (15), `body_semibold`, `label` (13), `label_medium`, `label_semibold`, `caption` (12), `caption_medium`, `title` (17), `title_l` (22), `clock_56`, `clock_64`. Default `body`. Inter only: printable ASCII plus `° · × – — ’ • … ‹ ›` (`tools/gen_fonts.py`); the clock fonts hold digits, `:` `-` and space. Corrected (P45): was "digits and Basic Latin".
 - **Colours:** a token name from `design/tokens.json` (`label`, `label_2`, `accent`, `success`, `warning`, `danger`, `surface_1` … `tile_*`) or `"#RRGGBB"`.
@@ -49,6 +50,7 @@ Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes defa
 
 - `bind: "cpu"` connects the element to binding `cpu`. The PC half sets it (`BIND_SET`, `proto/spec.md`): a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer. Corrected: the bool case on a label was missing.
 - Since v0.1.25 (P50-M) a burst is safe: the PC app keeps the latest value per binding and sends at most 16 every 50 ms (`apps.rs`), and the board keeps values in a 4 KB ring (a 12 B header and the text each, `link.cpp`), so ~50 values on `opened` arrive whole. Measured: 120 values sent at once without the PC's pacing all arrived, the last one shown. If the ring ever fills, the oldest values go. Corrected: before v0.1.25 the board queued 16 values and dropped the newest.
+- **Switching screens (P50-M, v0.1.25):** put each screen in a `view` and set its binding to the index of the one to show; `show` hides or shows any single element. Everything is built when the app opens, so hidden parts count in the RAM estimate, and values bound inside them are applied and kept while hidden. What appears fades in (200 ms). A package with `view` or `show` must set `min_fenixos` to 0.1.25 or newer (`fenix-pkg build` checks): older boards refuse kind 9 and would ignore `show`. Example: `tools/view-app`, simulator shots `app_view` and `app_view_call`.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `event: "mute"` makes the element report: a button sends a tap (and a long press), a switch or slider sends its new value (sliders on release). The board sends `EVENT` with the element's index; the PC maps the index back to the name through the package.
 - The board keeps no values while an app is closed. When an app opens the board sends `APP_OPENED`, and the PC half sends its current values.
@@ -104,7 +106,7 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 ```
 
 - Elements are in tree order: a parent always comes before its children. The element index (position) is the `elem` in `EVENT`.
-- **Kinds:** 1 box, 2 label, 3 button, 4 switch, 5 slider, 6 bar, 7 image, 8 icon.
+- **Kinds:** 1 box, 2 label, 3 button, 4 switch, 5 slider, 6 bar, 7 image, 8 icon, 9 view (v0.1.25).
 - **Prop keys** (`| 0x80` = portrait-only value):
 
   | Key | Prop | Value |
@@ -132,6 +134,7 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
   | 21 | event | string index of the event name |
   | 22 | hidden | 0 / 1 |
   | 23 | align | 0 left, 1 center, 2 right |
+  | 24 | show | bind id of the value that shows the element (v0.1.25) |
 
 - **Sizes:** `≥ 0` pixels, `-1` content, `0x40000000 | pct` percent.
 - Assets are stored raw in format 1 (no compression). Compression is a later format version.
@@ -145,7 +148,7 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 - **Open:** tapping a tile reads the package from the SD card or flash (strings, element props and the images its elements show; tile icons stay in storage), fades the app screen in (navbar "Home" + app name, the layout below it, scrolling if taller than the screen) and sends `APP_OPENED`. It is sent again when the link comes back while the app is open.
 - **Close:** back, or any other screen change, sends `APP_CLOSED`; what was read is freed when the app screen is deleted (its slide out still draws it). `BOARD_STATE` reports screen 5 and the app id while it is open.
 - **States:** card out: "Insert the SD card" (the card is looked for at once; the app opens when it comes back). No PC link: the last values from the SD card, dimmed and not touchable, under "PC not connected" (P53, `docs/sd-card.md` "Last app values"); 6a "Waiting for host PC" when there are none. `HOST_STATE` (P51): off, 6b "Turned off on host PC" with a **Turn on** button (sends `APP_TURN_ON`; "Turning on" with a spinner until the PC answers); not here, "Not on this PC"; starting, "Starting on host PC" with a spinner. Running (or no state from this PC yet): the layout.
-- **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. Values for other apps, or with no app open, are dropped.
+- **Bindings:** `BIND_SET` for the open app updates every element bound to it and is cached per binding while the app is open, so rebuilds (rotation, state changes) keep the values. A `view`'s binding or a `show` binding hides and shows elements (`LV_OBJ_FLAG_HIDDEN`, so hidden ones leave the flex layout); what appears fades in over `FX_MOTION_FAST_MS`, opacity only. Values for other apps, or with no app open, are dropped.
 - **Events:** buttons send tap (1) and long press (2); switches send change (3) with 0/1; sliders send change (3) with the value on release. The board updates its cache for a bound control the user changed.
 - **Install / remove while open:** an update reloads the package in place. A remove returns Home at once, or after 2 s when 6b is showing (Remove app on the PC sends `HOST_STATE` off, then `APP_REMOVE`). Pulling the card under an open SD app returns Home.
 - **Defaults:** buttons 40 px tall (icon buttons 40 × 40, DESIGN.md's touch target), button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`. Built-in widgets match the system screens (slider, capsule button).

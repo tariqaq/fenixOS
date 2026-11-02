@@ -1,0 +1,7 @@
+# Test fixture only: a `view` and `show` (docs/packages.md, P50-M). Used by the simulator's
+# screens (board/sim/screens.txt) and the C++ reader's host test. Not a shipped app.
+id = "io.github.tariqaq.views"
+name = "Views"
+version = "0.1.0"
+min_fenixos = "0.1.25"
+color = "purple"

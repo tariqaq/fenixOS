@@ -48,7 +48,13 @@ pub mod kind {
     pub const BAR: u8 = 6;
     pub const IMAGE: u8 = 7;
     pub const ICON: u8 = 8;
+    /// Shows one child, picked by an int binding (P50-M, fenixOS 0.1.25).
+    pub const VIEW: u8 = 9;
 }
+
+/// First fenixOS that knows `view` and `show`: a package using them must say so in `min_fenixos`
+/// (older boards would refuse kind 9 and ignore `show`).
+pub const VIEW_SINCE: (u8, u8, u8) = (0, 1, 25);
 
 /// Prop keys; `| PORTRAIT` marks a portrait-only value.
 pub mod key {
@@ -75,6 +81,8 @@ pub mod key {
     pub const EVENT: u8 = 21;
     pub const HIDDEN: u8 = 22;
     pub const ALIGN: u8 = 23;
+    /// Bindable visibility: index of a bool binding (P50-M).
+    pub const SHOW: u8 = 24;
     pub const PORTRAIT: u8 = 0x80;
 }
 
@@ -266,7 +274,7 @@ impl Package {
         }
         let mut depth = vec![0usize; self.elems.len()];
         for (i, e) in self.elems.iter().enumerate() {
-            if e.kind < kind::BOX || e.kind > kind::ICON {
+            if e.kind < kind::BOX || e.kind > kind::VIEW {
                 return Err(format!("element {i}: unknown kind {}", e.kind));
             }
             depth[i] = if e.parent == NONE {
@@ -280,7 +288,7 @@ impl Package {
             for &(k, v) in &e.props {
                 let limit = match k & !key::PORTRAIT {
                     key::TEXT | key::EVENT => ns,
-                    key::BIND => nb,
+                    key::BIND | key::SHOW => nb,
                     key::SRC => na,
                     key::ICON => ICONS.len(),
                     key::FONT => FONTS.len(),
@@ -671,6 +679,7 @@ impl<'a> Compiler<'a> {
                 "color" => (key::COLOR, self.color(&str_of(v, k)?)? as i32),
                 "bg" => (key::BG, self.color(&str_of(v, k)?)? as i32),
                 "bind" => (key::BIND, self.bind(&str_of(v, k)?)),
+                "show" => (key::SHOW, self.bind(&str_of(v, k)?)),
                 "w" => (key::W, Self::size(v)?),
                 "h" => (key::H, Self::size(v)?),
                 "grow" => (key::GROW, int_of(v, k)?),
@@ -749,6 +758,7 @@ impl<'a> Compiler<'a> {
             "bar" => kind::BAR,
             "image" => kind::IMAGE,
             "icon" => kind::ICON,
+            "view" => kind::VIEW,
             other => return Err(format!("unknown element type {other}")),
         };
         let mut props = self.props(k, o, false)?;
@@ -763,7 +773,7 @@ impl<'a> Compiler<'a> {
             props,
         });
         if let Some(children) = o.get("children") {
-            if k != kind::BOX {
+            if k != kind::BOX && k != kind::VIEW {
                 return Err(format!("{ty} cannot have children"));
             }
             for c in children.as_array().ok_or("children must be a list")? {
@@ -809,8 +819,21 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
         }
     }
     c.element(&layout, NONE, 1)?;
+    let min_fenixos = parse_version(&m.min_fenixos)?;
+    let views = c.elems.iter().any(|e| {
+        e.kind == kind::VIEW
+            || e.props
+                .iter()
+                .any(|&(k, _)| k & !key::PORTRAIT == key::SHOW)
+    });
+    if views && min_fenixos < VIEW_SINCE {
+        let (a, b, d) = VIEW_SINCE;
+        return Err(format!(
+            "view and show need min_fenixos {a}.{b}.{d} or newer"
+        ));
+    }
     let p = Package {
-        min_fenixos: parse_version(&m.min_fenixos)?,
+        min_fenixos,
         strings: c.strings,
         binds: c.binds,
         elems: c.elems,
@@ -846,6 +869,50 @@ mod tests {
         assert_eq!(p.bind_id("cpu"), Some(1));
         let hello = p.elems.iter().position(|e| e.kind == kind::BUTTON).unwrap();
         assert_eq!(p.event_name(hello as u16), Some("hello"));
+    }
+
+    /// Build a package folder in the temp dir with this layout and `min_fenixos`, then parse it.
+    fn build_layout(name: &str, layout: &str, min: &str) -> Result<Package, String> {
+        let dir = std::env::temp_dir().join(format!("fenix-pkg-test-{name}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let toml = format!(
+            "id = \"t.{name}\"\nname = \"T\"\nversion = \"1.0.0\"\nmin_fenixos = \"{min}\"\ncolor = \"teal\"\n"
+        );
+        std::fs::write(dir.join("app.toml"), toml).unwrap();
+        std::fs::write(dir.join("layout.json"), layout).unwrap();
+        let built = build(&dir);
+        let _ = std::fs::remove_dir_all(&dir);
+        let b = built?;
+        let p = parse(&b)?;
+        assert_eq!(p.to_bytes(), b);
+        Ok(p)
+    }
+
+    #[test]
+    fn view_and_show() {
+        let layout = r#"{ "type": "view", "bind": "mode", "value": 1, "children": [
+            { "type": "label", "text": "A" },
+            { "type": "box", "show": "extra", "children": [ { "type": "label", "text": "B" } ] }
+        ] }"#;
+        let p = build_layout("view", layout, "0.1.25").unwrap();
+        assert_eq!(p.elems[0].kind, kind::VIEW);
+        assert!(p.elems[0].props.contains(&(key::BIND, 0)));
+        assert!(p.elems[2].props.contains(&(key::SHOW, 1)));
+        assert_eq!(p.bind_id("extra"), Some(1));
+        let old = build_layout("view-old", layout, "0.1.24").unwrap_err();
+        assert!(old.contains("min_fenixos 0.1.25"), "{old}");
+        let leaf = r#"{ "type": "box", "children": [ { "type": "label", "show": "s", "children": [] } ] }"#;
+        assert!(build_layout("view-leaf", leaf, "0.1.25").is_err());
+    }
+
+    #[test]
+    fn show_out_of_range_refused() {
+        let mut p = parse(&sample()).unwrap();
+        p.elems[1].props.push((key::SHOW, p.binds.len() as i32));
+        assert!(parse(&p.to_bytes()).is_err());
+        p.elems[1].props.pop();
+        p.elems[1].kind = kind::VIEW + 1;
+        assert!(parse(&p.to_bytes()).is_err());
     }
 
     #[test]

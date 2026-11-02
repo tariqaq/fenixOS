@@ -1,0 +1,34 @@
+{
+  "type": "box", "w": "100%", "grow": 1, "pad": 12, "gap": 10,
+  "children": [
+    {
+      "type": "view", "bind": "mode", "w": "100%",
+      "children": [
+        {
+          "type": "box", "bg": "surface_1", "radius": 12, "pad": 12, "gap": 6, "w": "100%",
+          "children": [
+            { "type": "label", "text": "Media", "font": "label", "color": "label_2" },
+            { "type": "label", "text": "--", "font": "title", "bind": "title" },
+            { "type": "bar", "min": 0, "max": 1000, "bind": "seek", "w": "100%", "h": 6 }
+          ]
+        },
+        {
+          "type": "box", "bg": "surface_1", "radius": 12, "pad": 12, "gap": 6, "w": "100%",
+          "children": [
+            { "type": "label", "text": "Call", "font": "label", "color": "label_2" },
+            { "type": "label", "text": "00:00", "font": "title_l", "bind": "timer" },
+            {
+              "type": "box", "flow": "row", "gap": 6, "cross": "center", "show": "muted",
+              "children": [
+                { "type": "icon", "icon": "x-circle", "size": 18, "color": "danger" },
+                { "type": "label", "text": "Muted", "font": "label" }
+              ]
+            }
+          ]
+        },
+        { "type": "label", "text": "Nothing to show", "font": "body", "color": "label_2" }
+      ]
+    },
+    { "type": "label", "text": "Switched by the PC", "font": "caption", "color": "label_2", "show": "hint", "hidden": true }
+  ]
+}

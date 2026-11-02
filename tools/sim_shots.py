@@ -73,6 +73,8 @@ def main():
         run(["pwsh", "-NoProfile", "-File", str(SIM / "build.ps1")])
     run(["cargo", "run", "-q", "-p", "fenix-pkg", "--", "build", "tools/sample-app/board", "-o",
          str(BUILD / "sample.fxp")])
+    run(["cargo", "run", "-q", "-p", "fenix-pkg", "--", "build", "tools/view-app", "-o",
+         str(BUILD / "views.fxp")])
     if SHOTS.exists():
         shutil.rmtree(SHOTS)
     # A run takes well under a second; one hang was seen once (P42, not reproduced in P45), so a

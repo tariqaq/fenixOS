@@ -118,6 +118,7 @@ struct Bound {
   uint16_t bind;
   uint8_t kind;  // element kind
   lv_obj_t* obj;
+  bool show;  // the element's `show` binding, not its `bind`
 };
 
 static struct {
@@ -127,6 +128,8 @@ static struct {
   char name[32];
   std::vector<Val> vals;  // last value per binding, so rebuilds keep what the PC set
   std::vector<Bound> bound;
+  std::vector<lv_obj_t*> objs;  // per element, null if not built; for view and show (P50-M)
+  std::vector<uint16_t> pos;    // per element, its place among its parent's children
   std::vector<lv_image_dsc_t> images;  // per asset; data null unless an element shows it
   std::vector<uint8_t*> pixels;        // what the descriptors point at (malloc)
   int64_t close_at;  // pending return to Home (app removed while showing HostOff)
@@ -266,6 +269,8 @@ static void close_app() {
   s_app.pixels.clear();
   s_app.vals.clear();
   s_app.bound.clear();
+  s_app.objs.clear();
+  s_app.pos.clear();
   s_app.close_at = 0;
   s_app.missing = false;
   s_app.turning_on = false;
@@ -473,7 +478,8 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   int32_t icon = get(fpkg::key::ICON, -1);
   lv_obj_t* o = nullptr;
   switch (e.kind) {
-    case fpkg::kind::BOX: {
+    case fpkg::kind::BOX:
+    case fpkg::kind::VIEW: {  // a view lays out like a box; refresh_shown() hides all but one child
       o = column(parent, 0);
       lv_obj_set_size(o, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
       int32_t flow = get(fpkg::key::FLOW, 0);
@@ -564,8 +570,8 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   if (e.prop(fpkg::key::W, &v, port)) lv_obj_set_width(o, lv_size(v));
   if (e.prop(fpkg::key::H, &v, port)) lv_obj_set_height(o, lv_size(v));
   if (e.prop(fpkg::key::GROW, &v, port) && grow_applies(e, port)) lv_obj_set_flex_grow(o, v);
-  if (get(fpkg::key::HIDDEN, 0)) lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
-  if (e.prop(fpkg::key::BIND, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o});
+  if (e.prop(fpkg::key::BIND, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o, false});
+  if (e.prop(fpkg::key::SHOW, &v, port)) s_app.bound.push_back({(uint16_t)v, e.kind, o, true});
   if (e.prop(fpkg::key::EVENT, &v, port)) {
     void* ud = (void*)(uintptr_t)idx;
     if (e.kind == fpkg::kind::SWITCH)
@@ -581,19 +587,75 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   return o;
 }
 
+// Whether element `i` shows (P50-M): its `show` binding once set, else not `hidden`; and inside
+// a view, only the child the view's binding (or `value`, else 0) picks. Hidden elements stay
+// built, so values bound inside them are applied and kept.
+static bool shown(size_t i, bool port) {
+  const fpkg::Elem& e = s_app.pkg.elems[i];
+  int32_t b, v = 0;
+  bool on;
+  if (e.prop(fpkg::key::SHOW, &b, port) && s_app.vals[b].set) {
+    const Val& s = s_app.vals[b];
+    on = s.kind == 2 ? !s.text.empty() : s.i != 0;
+  } else {
+    on = !(e.prop(fpkg::key::HIDDEN, &v, port) && v);
+  }
+  if (!on || e.parent == fpkg::NONE) return on;
+  const fpkg::Elem& p = s_app.pkg.elems[e.parent];
+  if (p.kind != fpkg::kind::VIEW) return on;
+  int32_t pick = 0;
+  if (p.prop(fpkg::key::BIND, &b, port) && s_app.vals[b].set) pick = s_app.vals[b].i;
+  else p.prop(fpkg::key::VALUE, &pick, port);
+  return pick == s_app.pos[i];
+}
+
+static void fade_exec(void* o, int32_t v) { lv_obj_set_style_opa((lv_obj_t*)o, (lv_opa_t)v, 0); }
+
+// Hide and show elements to match the values; with `animate`, what appears fades in (DESIGN.md:
+// apps have no motion props, the board animates). Fade only: a scale would draw through a
+// full-size layer (P51, home.cpp).
+static void refresh_shown(bool animate) {
+  bool port = portrait();
+  for (size_t i = 0; i < s_app.objs.size(); i++) {
+    lv_obj_t* o = s_app.objs[i];
+    if (!o) continue;
+    bool on = shown(i, port), was = !lv_obj_has_flag(o, LV_OBJ_FLAG_HIDDEN);
+    if (on == was) continue;
+    if (!on) {
+      lv_obj_add_flag(o, LV_OBJ_FLAG_HIDDEN);
+      continue;
+    }
+    lv_obj_remove_flag(o, LV_OBJ_FLAG_HIDDEN);
+    if (!animate) continue;
+    lv_anim_t a;
+    lv_anim_init(&a);
+    lv_anim_set_var(&a, o);
+    lv_anim_set_exec_cb(&a, fade_exec);
+    lv_anim_set_values(&a, LV_OPA_TRANSP, LV_OPA_COVER);
+    lv_anim_set_duration(&a, FX_MOTION_FAST_MS);
+    lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+    fade_exec(o, LV_OPA_TRANSP);
+    lv_anim_start(&a);
+  }
+}
+
 static void build_layout(lv_obj_t* body) {
   const fpkg::Package& p = s_app.pkg;
   bool port = portrait();
-  std::vector<lv_obj_t*> objs(p.elems.size(), nullptr);
+  s_app.objs.assign(p.elems.size(), nullptr);
+  s_app.pos.assign(p.elems.size(), 0);
+  std::vector<uint16_t> kids(p.elems.size(), 0);  // children seen so far, per element
   for (size_t i = 0; i < p.elems.size(); i++) {
     const fpkg::Elem& e = p.elems[i];
-    lv_obj_t* parent = e.parent == fpkg::NONE ? body : objs[e.parent];
+    if (e.parent != fpkg::NONE) s_app.pos[i] = kids[e.parent]++;
+    lv_obj_t* parent = e.parent == fpkg::NONE ? body : s_app.objs[e.parent];
     if (!parent) continue;
-    objs[i] = make(e, i, parent, port);
+    s_app.objs[i] = make(e, i, parent, port);
   }
   for (const Bound& b : s_app.bound) {
-    if (s_app.vals[b.bind].set) apply(b, s_app.vals[b.bind]);
+    if (!b.show && s_app.vals[b.bind].set) apply(b, s_app.vals[b.bind]);
   }
+  refresh_shown(false);
 }
 
 enum Why { WAITING, OFF, NOT_HERE, STARTING, MISSING };
@@ -665,6 +727,7 @@ static void host_state(lv_obj_t* body, Why why) {
 
 void app_screen(lv_obj_t* scr) {
   s_app.bound.clear();
+  s_app.objs.clear();  // rebuilt by build_layout; a host-state screen has none
   lv_obj_add_event_cb(scr, free_retired, LV_EVENT_DELETE, nullptr);
   navbar(scr, "Home", s_app.open ? s_app.name : "");
   lv_obj_t* body = column(scr, 0);
@@ -828,8 +891,13 @@ void app_tick() {
     val.i = v.i;
     if (v.kind == 2) val.text = v.text;
     s_app.dirty = true;
-    for (const Bound& b : s_app.bound)
-      if (b.bind == v.bind) apply(b, val);
+    bool shows = false;
+    for (const Bound& b : s_app.bound) {
+      if (b.bind != v.bind) continue;
+      if (b.show || b.kind == fpkg::kind::VIEW) shows = true;
+      else apply(b, val);
+    }
+    if (shows) refresh_shown(true);
   }
 }
 

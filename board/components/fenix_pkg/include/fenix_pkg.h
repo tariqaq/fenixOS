@@ -30,12 +30,15 @@ constexpr int N_FONTS = 11;
 constexpr int N_ICONS = 20;
 
 namespace kind {
-constexpr uint8_t BOX = 1, LABEL = 2, BUTTON = 3, SWITCH = 4, SLIDER = 5, BAR = 6, IMAGE = 7, ICON = 8;
+constexpr uint8_t BOX = 1, LABEL = 2, BUTTON = 3, SWITCH = 4, SLIDER = 5, BAR = 6, IMAGE = 7, ICON = 8,
+                  VIEW = 9;  // shows one child, picked by its int binding (P50-M)
 }
 namespace key {
 constexpr uint8_t TEXT = 1, FONT = 2, COLOR = 3, BG = 4, BIND = 5, W = 6, H = 7, GROW = 8, GAP = 9, PAD = 10,
                   FLOW = 11, MAIN = 12, CROSS = 13, RADIUS = 14, MIN = 15, MAX = 16, VALUE = 17, ICON = 18,
-                  SIZE = 19, SRC = 20, EVENT = 21, HIDDEN = 22, ALIGN = 23, PORTRAIT = 0x80;
+                  SIZE = 19, SRC = 20, EVENT = 21, HIDDEN = 22, ALIGN = 23,
+                  SHOW = 24,  // a bool binding shows or hides the element (P50-M)
+                  PORTRAIT = 0x80;
 }
 namespace asset_format {
 constexpr uint8_t A8 = 1, RGB565 = 2;  // RGB565 is little-endian (LVGL's native order)

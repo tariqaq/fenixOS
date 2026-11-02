@@ -16,14 +16,47 @@ static void expect(bool ok, const char* what) {
   }
 }
 
-int main(int argc, char** argv) {
-  if (argc < 2) return 2;
-  FILE* f = fopen(argv[1], "rb");
-  if (!f) return 2;
+static std::vector<uint8_t> slurp(const char* path) {
   std::vector<uint8_t> b;
+  FILE* f = fopen(path, "rb");
+  if (!f) return b;
   int c;
   while ((c = fgetc(f)) != EOF) b.push_back((uint8_t)c);
   fclose(f);
+  return b;
+}
+
+// tools/view-app (P50-M): a view (kind 9) and `show` (key 24) read; out-of-range refused.
+static void views(const char* path) {
+  std::vector<uint8_t> b = slurp(path);
+  fpkg::Package p;
+  const char* err = p.parse(b.data(), b.size());
+  expect(!err, err ? err : "");
+  if (err) return;
+  expect(p.elems.size() == 14 && p.binds.size() == 6, "view counts");
+  int32_t v = -1;
+  expect(p.elems[1].kind == fpkg::kind::VIEW && p.elems[1].prop(fpkg::key::BIND, &v) && v == 0, "view bind");
+  expect(p.elems[9].prop(fpkg::key::SHOW, &v) && v == 4, "show bind");
+  expect(p.elems[13].prop(fpkg::key::SHOW, &v) && v == 5 && p.elems[13].prop(fpkg::key::HIDDEN, &v) && v == 1,
+         "show with hidden");
+  // Point the first `show` at a binding that does not exist: refused.
+  bool found = false;
+  for (size_t i = 0; i + 5 <= b.size() && !found; i++) {
+    if (b[i] != fpkg::key::SHOW || b[i + 1] != 4 || b[i + 2] || b[i + 3] || b[i + 4]) continue;
+    std::vector<uint8_t> t = b;
+    t[i + 1] = 6;
+    expect(p.parse(t.data(), t.size()) != nullptr, "show out of range");
+    found = true;
+  }
+  expect(found, "show prop found");
+  printf("fenix_pkg: views ok\n");
+}
+
+int main(int argc, char** argv) {
+  if (argc < 2) return 2;
+  std::vector<uint8_t> b = slurp(argv[1]);
+  if (b.empty()) return 2;
+  FILE* f;
 
   fpkg::Package p;
   const char* err = p.parse(b.data(), b.size());
@@ -78,6 +111,7 @@ int main(int argc, char** argv) {
     if (!p.parse(t.data(), t.size())) accepted++;
   }
   printf("fenix_pkg: sample ok, %zu flips, %d still parse (prop values, pixels)\n", b.size(), accepted);
+  if (argc > 2) views(argv[2]);
   printf(fails ? "%d FAILED\n" : "all passed\n", fails);
   return fails ? 1 : 0;
 }

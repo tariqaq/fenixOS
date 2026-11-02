@@ -111,6 +111,16 @@ shot app_card_missing
 card in                                   # the card comes back: the app opens
 tap 30 16
 remove io.github.tariqaq.sample
+# View and show (P50-M, tools/view-app): a view shows the one child its int binding picks; `show`
+# shows an element while its bool binding is true. Home turns to the new tile's page.
+install build/views.fxp
+tap 58 182
+set io.github.tariqaq.views "title=Night Drive" seek=420
+shot app_view                             # mode not set: the view's first child
+set io.github.tariqaq.views mode=1 timer=12:48 muted=true hint=true
+shot app_view_call                        # the second child; the muted row and the hint shown
+tap 30 16
+remove io.github.tariqaq.views
 # Settings backup (P53): an erased board finds a backup on its card.
 backup offer HomeWiFi
 shot backup_offer
