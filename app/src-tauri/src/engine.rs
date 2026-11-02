@@ -146,6 +146,10 @@ pub struct Engine {
     update_started: Mutex<Option<Instant>>,
     /// An update over the link (P52): the sender, polled by the engine thread.
     ota: Mutex<Option<OtaSend>>,
+    /// A file job on the board's SD card (P53): where the engine thread forwards file answers.
+    file_rx: Mutex<Option<Sender<Msg>>>,
+    /// One file job at a time.
+    file_job: Mutex<()>,
 }
 
 impl Engine {
@@ -195,6 +199,8 @@ impl Engine {
             fw_dir,
             update_started: Mutex::new(None),
             ota: Mutex::new(None),
+            file_rx: Mutex::new(None),
+            file_job: Mutex::new(()),
         });
         engine.log(
             &app,
@@ -737,7 +743,40 @@ impl Engine {
     }
 
     /// Apply one link event. True when the state the UI shows changed.
+    /// Run a file job on the board's SD card (P53) from a command thread: `job` gets `send` and
+    /// `recv` for `fenix_link::files::list` and `read`. Blocks; one job at a time.
+    pub fn board_files<T>(
+        &self,
+        job: impl FnOnce(&dyn Fn(Msg), &mut dyn FnMut(Duration) -> Option<Msg>) -> Result<T, String>,
+    ) -> Result<T, String> {
+        let _one = self.file_job.lock().unwrap();
+        if self.state.lock().unwrap().status != Status::Connected {
+            return Err("the board is not connected".into());
+        }
+        let (tx, rx) = mpsc::channel();
+        *self.file_rx.lock().unwrap() = Some(tx);
+        let r = job(&|m| self.link.send(m), &mut |d| rx.recv_timeout(d).ok());
+        *self.file_rx.lock().unwrap() = None;
+        r
+    }
+
     fn handle(&self, app: &AppHandle, e: Event) -> bool {
+        // Answers for a file job go to it (P53). An ERROR goes there too while a job waits: an
+        // older board answers unknown type.
+        if let Event::Msg(
+            m @ (Msg::FileList { .. }
+            | Msg::FileData { .. }
+            | Msg::FileResult { .. }
+            | Msg::Error { .. }),
+        ) = &e
+        {
+            if let Some(tx) = self.file_rx.lock().unwrap().as_ref() {
+                let _ = tx.send(m.clone());
+                if !matches!(m, Msg::Error { .. }) {
+                    return false;
+                }
+            }
+        }
         match e {
             Event::Connected { port, info } => {
                 let fw = format!("{}.{}.{}", info.fw.0, info.fw.1, info.fw.2);

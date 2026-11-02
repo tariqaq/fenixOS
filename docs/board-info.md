@@ -293,9 +293,9 @@ fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MH
 
 The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
 
-## Files over the link (P53, 2026-11-03)
+## Files over the link, board log, crash records (P53, 2026-11-03)
 
-`fenix files ls|get|put|rm`, messages in `proto/spec.md` "Files (0x6_)", board side `fenix_sys/files.cpp`.
+The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, messages in `proto/spec.md` "Files (0x6_)", board side `fenix_sys/files.cpp`.
 
 | Case (8 GB card, 1 MB = 10^6 B) | USB | Wi-Fi |
 |---|---|---|
@@ -307,6 +307,10 @@ The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18
 - A list of 30 long names came in two frames.
 - Refused as expected: writes to `apps/` and to a `.part` name, deletes in `firmware/`, deleting `data` itself, a non-empty folder ("the folder is not empty"), missing paths (`NOT_FOUND`).
 - While a write is open, the part's size on the card reads 0: FAT updates a file's size when it closes. A resume after a power cut therefore starts over.
+- **Board log and core dumps (step 2):**
+  - Cost: the image grew 10.6 KB (IDF's core dump code). Free heap at idle went from 66.2 to 63.3 KB: the 512 B log buffer, IDF's ISR stack growing from 1,536 to 2,096 B per core when core dumps are on, and the core dump's own state.
+  - A test crash (a null write in the link task) left a 26,564 B ELF dump, under half the 56 KB partition. The board copied it to `crash/3.elf` at the next boot, and the summary's backtrace decoded to the right line.
+  - newlib nano's `printf` has no `%lld`: the first log lines printed `ld` for the time. They now use `%lu`.
 
 ## Two OTA slots and updates (P52, 2026-11-03)
 

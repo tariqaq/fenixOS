@@ -113,6 +113,9 @@ static void mount() {
   uint64_t cl = (uint64_t)fs->csize * 512;
   set(fnx::sd_state::READY, (uint32_t)((uint64_t)(fs->n_fatent - 2) * cl / 1024), (uint32_t)(free_cl * cl / 1024),
       (uint16_t)s_card->real_freq_khz);
+  logs_mounted();  // this boot's log file, a crash record (P53)
+  logs_note(3, "sd: card mounted, %u MB free of %u", (unsigned)(free_cl * cl / 1048576),
+            (unsigned)((uint64_t)(fs->n_fatent - 2) * cl / 1048576));
   store_sd_changed(true);
   ota_scan_sd();  // a firmware package on the card (P52)
 }
@@ -121,6 +124,7 @@ static void probe_task(void*) {
   if (s_card && sdmmc_get_status(s_card) != ESP_OK) {  // pulled out
     unmount();
     set(fnx::sd_state::NONE);
+    logs_note(2, "sd: card removed");
     store_sd_changed(false);
     ota_scan_sd();
   }

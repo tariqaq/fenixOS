@@ -197,6 +197,13 @@ void files_frame(uint8_t type, fnx::Reader& r);  // link task: FILE_* from the P
 void files_tick(int64_t now_us);                 // link task: closes a write or read idle for 10 s
 void files_abort();                              // the session ended (a part stays for a resume)
 
+// ---- Board log and crash records on the card (P53, logs.cpp) ----
+void logs_line(uint8_t level, const char* text, size_t n);  // any task (link_log calls it)
+// A line for the card only, for what the PC logs on its side anyway (sessions, installs).
+void logs_note(uint8_t level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
+void logs_tick(int64_t now_us);  // link task: writes waiting lines to /sd/fenixos/logs/<boot>.txt
+void logs_mounted();             // sd task, after a mount: this boot's file; copies a core dump
+
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
 void web_start();  // phone page on port 80, status only (web.cpp)

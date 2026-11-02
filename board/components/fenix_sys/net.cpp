@@ -292,6 +292,8 @@ void net_start() {
 
 // Each new address (radio.cpp, GOT_IP): ask for the time now.
 void net_up() {
+  RadioInfo ri = radio_info();
+  logs_note(3, "Wi-Fi up: %s, %u.%u.%u.%u, %d dBm", ri.name, ri.ip[0], ri.ip[1], ri.ip[2], ri.ip[3], ri.rssi);
   if (esp_netif_sntp_start() != ESP_OK) link_log(2, "net: SNTP did not start");
   if (s_wx_task) xTaskNotifyGive(s_wx_task);
 }

@@ -108,3 +108,8 @@ CONFIG_LWIP_SNTP_MAX_SERVERS=2
 CONFIG_FATFS_LFN_HEAP=y
 CONFIG_FATFS_MAX_LFN=255
 CONFIG_WL_SECTOR_SIZE_512=y
+
+# Crash records (P53): a panic writes an ELF core dump to the 56 KB "coredump" partition; logs.cpp
+# copies it to /sd/fenixos/crash/ at the next mount and erases it.
+CONFIG_ESP_COREDUMP_ENABLE_TO_FLASH=y
+CONFIG_ESP_COREDUMP_DATA_FORMAT_ELF=y

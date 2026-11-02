@@ -3,6 +3,8 @@
 //! fenix ports                      list serial ports (CH340 marked)
 //! fenix hello                      handshake and print the board info
 //! fenix logs [secs]                print LOG / STATS / BOARD_STATE (default 30 s)
+//! fenix logs --board [n]           the board's saved logs and crash records on its SD card
+//!                                  (0.1.23 and later), then log n (default: the newest)
 //! fenix time                       send TIME_SET (now, UTC)
 //! fenix reboot                     ask the board to restart
 //! fenix sysinfo                    the Task manager's numbers: two SYSINFO 1 s apart, per-core
@@ -71,6 +73,9 @@ fn main() {
             0
         }
         "hello" => with_link(opts, |_| true, 5),
+        "logs" if args.get(1).map(String::as_str) == Some("--board") => {
+            board_logs(opts, args.get(2).map(String::as_str))
+        }
         "logs" => {
             let secs = arg_u64(&args, 1, 30);
             with_link(opts, |_| false, secs)
@@ -218,7 +223,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -1084,47 +1089,44 @@ fn wait_file(link: &Link, secs: u64, mut f: impl FnMut(&Msg) -> bool) -> Option<
     None
 }
 
+/// The board's next file message (or ERROR), for `fenix_link::files::list` and `read`.
+fn file_recv(link: &Link, wait: Duration) -> Option<Msg> {
+    let end = Instant::now() + wait;
+    loop {
+        let left = end.saturating_duration_since(Instant::now());
+        match link.recv_event(left.max(Duration::from_millis(1)))? {
+            Event::Msg(
+                m @ (Msg::FileList { .. }
+                | Msg::FileData { .. }
+                | Msg::FileResult { .. }
+                | Msg::Error { .. }),
+            ) => return Some(m),
+            _ if Instant::now() >= end => return None,
+            _ => {}
+        }
+    }
+}
+
 fn files_ls(opts: LinkOptions, path: &str) -> i32 {
     let link = Link::spawn(opts);
     if !wait_connected(&link, 6) {
         return 1;
     }
-    let (mut start, mut shown) = (0u16, 0usize);
-    loop {
-        link.send(Msg::FileListReq {
-            start,
-            path: path.to_string(),
-        });
-        let m = wait_file(&link, 5, |m| {
-            matches!(
-                m,
-                Msg::FileList { .. }
-                    | Msg::FileResult {
-                        op: fenix_proto::file::OP_LIST,
-                        ..
-                    }
-            )
-        });
-        match m {
-            Some(Msg::FileList { total, entries, .. }) => {
-                for e in &entries {
-                    if e.dir {
-                        println!("{:>10}  {}/", "", e.name);
-                    } else {
-                        println!("{:>10}  {}", e.size, e.name);
-                    }
-                }
-                shown += entries.len();
-                start += entries.len() as u16;
-                if entries.is_empty() || start >= total {
-                    println!("{shown} entries in /sd/fenixos/{path}");
-                    return 0;
+    match fenix_link::files::list(&|m| link.send(m), &mut |d| file_recv(&link, d), path) {
+        Ok(entries) => {
+            for e in &entries {
+                if e.dir {
+                    println!("{:>10}  {}/", "", e.name);
+                } else {
+                    println!("{:>10}  {}", e.size, e.name);
                 }
             }
-            Some(Msg::FileResult { code, text, .. }) => {
-                return file_failed("ls", path, code, &text)
-            }
-            _ => return 1,
+            println!("{} entries in /sd/fenixos/{path}", entries.len());
+            0
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            1
         }
     }
 }
@@ -1135,72 +1137,18 @@ fn files_get(opts: LinkOptions, path: &str, out: &Path) -> i32 {
         return 1;
     }
     let t0 = Instant::now();
-    let req = |offset: usize| Msg::FileReadReq {
-        offset: offset as u32,
-        len: fenix_link::files::READ_LEN,
-        path: path.to_string(),
-    };
-    let step = fenix_link::files::READ_LEN as usize;
-    // The first answer gives the size; then up to READ_WINDOW requests stay in flight.
-    link.send(req(0));
-    let mut data: Vec<u8> = Vec::new();
-    let mut total = None::<usize>;
-    let mut asked = step;
-    let mut last = Instant::now();
-    loop {
-        match link.recv_event(Duration::from_millis(100)) {
-            Some(Event::Msg(Msg::FileData {
-                offset,
-                total: t,
-                data: d,
-            })) => {
-                last = Instant::now();
-                let t = t as usize;
-                total.get_or_insert(t);
-                if offset as usize == data.len() {
-                    data.extend_from_slice(&d);
-                }
-                if data.len() >= t {
-                    break;
-                }
-                // A lost answer: ask again from what we have.
-                if offset as usize > data.len() {
-                    asked = data.len();
-                }
-                while asked < t && asked < data.len() + fenix_link::files::READ_WINDOW * step {
-                    link.send(req(asked));
-                    asked += step;
-                }
-            }
-            Some(Event::Msg(Msg::FileResult {
-                op: fenix_proto::file::OP_READ,
-                code,
-                text,
-                ..
-            })) => return file_failed("get", path, code, &text),
-            Some(Event::Msg(Msg::Error { code, text })) => {
-                eprintln!("board error {code}: {text}");
-                return 1;
-            }
-            Some(Event::Disconnected { .. }) => {
-                eprintln!("the board went away");
-                return 1;
-            }
-            _ => {
-                if last.elapsed() > Duration::from_secs(2) {
-                    if last.elapsed() > Duration::from_secs(10) {
-                        eprintln!(
-                            "no answer from the board (firmware 0.1.23 or later reads files)"
-                        );
-                        return 1;
-                    }
-                    asked = data.len();
-                    link.send(req(asked));
-                    asked += step;
-                }
-            }
+    let data = match fenix_link::files::read(
+        &|m| link.send(m),
+        &mut |d| file_recv(&link, d),
+        path,
+        &mut |_, _| {},
+    ) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("{e}");
+            return 1;
         }
-    }
+    };
     if let Err(e) = std::fs::write(out, &data) {
         eprintln!("{}: {e}", out.display());
         return 1;
@@ -1213,6 +1161,60 @@ fn files_get(opts: LinkOptions, path: &str, out: &Path) -> i32 {
         data.len() as f32 / 1024.0 / s.max(0.001)
     );
     0
+}
+
+/// `fenix logs --board [n]` (P53): the board's saved logs and crash records on its SD card, then
+/// log `n` (default: the newest) printed.
+fn board_logs(opts: LinkOptions, which: Option<&str>) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    let send = |m| link.send(m);
+    let mut recv = |d| file_recv(&link, d);
+    let num = |n: &str| n.trim_end_matches(".txt").parse::<u32>().ok();
+    let mut logs: Vec<u32> = match fenix_link::files::list(&send, &mut recv, "logs") {
+        Ok(e) => e.iter().filter_map(|e| num(&e.name)).collect(),
+        Err(e) => {
+            eprintln!("{e}");
+            return 1;
+        }
+    };
+    logs.sort_unstable();
+    let crashes: Vec<u32> = fenix_link::files::list(&send, &mut recv, "crash")
+        .map(|e| e.iter().filter_map(|e| num(&e.name)).collect())
+        .unwrap_or_default();
+    println!(
+        "logs on the card: {}",
+        logs.iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<_>>()
+            .join(" ")
+    );
+    for c in &crashes {
+        if let Ok(t) =
+            fenix_link::files::read(&send, &mut recv, &format!("crash/{c}.txt"), &mut |_, _| {})
+        {
+            print!("crash record {c}: {}", String::from_utf8_lossy(&t));
+        }
+    }
+    let Some(n) = which
+        .and_then(|w| w.parse::<u32>().ok())
+        .or(logs.last().copied())
+    else {
+        return 0;
+    };
+    match fenix_link::files::read(&send, &mut recv, &format!("logs/{n}.txt"), &mut |_, _| {}) {
+        Ok(t) => {
+            println!("--- logs/{n}.txt");
+            print!("{}", String::from_utf8_lossy(&t));
+            0
+        }
+        Err(e) => {
+            eprintln!("{e}");
+            1
+        }
+    }
 }
 
 fn files_put(opts: LinkOptions, local: &Path, path: &str) -> i32 {

@@ -88,6 +88,7 @@ void link_log(uint8_t level, const char* fmt, ...) {
   va_end(ap);
   if (n < 0) return;
   if (n >= (int)sizeof text) n = sizeof text - 1;
+  logs_line(level, text, n);  // also to the SD card (P53)
   send_with(fnx::ty::LOG, [&](fnx::Writer& w) {
     w.u8(level);
     w.bytes(text, n);
@@ -273,6 +274,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       send_hello_ack();
       if (!s_connected) {
         s_connected = true;
+        logs_note(3, "PC connected over %s", via == VIA_REMOTE ? "Wi-Fi" : "USB");
         post(LinkEv::CONNECTED);
         send_board_state(board_info());
         report_oom();
@@ -406,6 +408,8 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       strlcpy(keep, id, sizeof keep);
       uint8_t code = store_end(why, sizeof why);
       send_app_result(fnx::app::OP_INSTALL, code, keep, why);
+      logs_note(code == fnx::app::OK ? 3 : 2, "app %s: install %s%s%s", keep, code == fnx::app::OK ? "done" : "failed",
+                why[0] ? ": " : "", why);
       if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, keep);
       return;
     }
@@ -415,6 +419,8 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       if (!r.done()) return send_error(fnx::err::BAD_BODY, "remove");
       uint8_t code = store_remove(id);
       send_app_result(fnx::app::OP_REMOVE, code, id, code == fnx::app::STORAGE ? "storage error, or its SD card is out" : "");
+      logs_note(code == fnx::app::OK ? 3 : 2, "app %s: remove %s (code %u)", id, code == fnx::app::OK ? "done" : "failed",
+                (unsigned)code);
       if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, id);
       return;
     }
@@ -489,6 +495,7 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
 
 static void end_session() {
   s_connected = false;
+  logs_note(3, "PC disconnected");
   s_remote = 0;
   store_abort();
   ota_abort();
@@ -526,6 +533,7 @@ static void link_task(void*) {
     if (store_installing(nullptr) && now - s_install_rx > INSTALL_TIMEOUT_US) store_abort();
     if (ota_receiving() && now - s_fw_rx > INSTALL_TIMEOUT_US) ota_abort();
     files_tick(now);
+    logs_tick(now);
     if (now >= next_stats) {
       next_stats = now + STATS_PERIOD_US;
       if (s_connected) send_stats();

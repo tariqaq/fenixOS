@@ -178,6 +178,23 @@ export const onState = (cb: (s: State) => void): Promise<UnlistenFn> => listen<S
 export const onLog = (cb: (l: LogLine) => void): Promise<UnlistenFn> => listen<LogLine>("log", (e) => cb(e.payload));
 export const getLogs = () => invoke<LogLine[]>("get_logs");
 export const openLogFolder = () => invoke("open_log_folder");
+
+/** A saved board log or crash summary on the board's SD card (P53, firmware 0.1.23). */
+export interface CardLog {
+  path: string;
+  boot: number;
+  size: number;
+  crash: boolean;
+}
+export const boardCardLogs = () => invoke<CardLog[]>("board_card_logs");
+export const boardCardFile = (path: string) => invoke<string>("board_card_file", { path });
+
+/** A board log line as saved on the card: "<seconds since boot> <HH:MM:SS or --:--:--> <E|W|I|D> text". */
+export function cardLine(raw: string, crash: boolean): LogLine {
+  const m = /^(\d+)\.\d{3} (\d\d:\d\d:\d\d|--:--:--) ([EWID?]) (.*)$/.exec(raw);
+  if (!m) return { time: "", source: "board", problem: crash, text: raw };
+  return { time: m[2] === "--:--:--" ? `+${m[1]} s` : m[2], source: "board", problem: m[3] === "E" || m[3] === "W", text: m[4] };
+}
 export const getAutostart = () => invoke<boolean>("get_autostart");
 export const setAutostart = (on: boolean) => invoke<boolean>("set_autostart", { on });
 export const rebootBoard = () => invoke("reboot_board");

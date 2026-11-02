@@ -122,6 +122,64 @@ fn open_log_folder(engine: tauri::State<Arc<Engine>>) {
         .spawn();
 }
 
+/// A saved board log or crash record on the board's SD card (P53).
+#[derive(Serialize)]
+struct CardLog {
+    /// Path under `/sd/fenixos`, for `board_card_file`.
+    path: String,
+    /// The boot number.
+    boot: u32,
+    size: u32,
+    crash: bool,
+}
+
+/// The board's saved logs and crash records, newest first.
+#[tauri::command]
+async fn board_card_logs(app: AppHandle) -> Result<Vec<CardLog>, String> {
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        e.board_files(|send, recv| {
+            let mut out = Vec::new();
+            for (dir, crash) in [("logs", false), ("crash", true)] {
+                let entries = match fenix_link::files::list(send, recv, dir) {
+                    Ok(v) => v,
+                    Err(_) if crash => Vec::new(), // no crash folder yet
+                    Err(e) => return Err(e),
+                };
+                for f in entries {
+                    if let Some(boot) = f.name.strip_suffix(".txt").and_then(|n| n.parse().ok()) {
+                        out.push(CardLog {
+                            path: format!("{dir}/{}", f.name),
+                            boot,
+                            size: f.size,
+                            crash,
+                        });
+                    }
+                }
+            }
+            out.sort_by(|a, b| b.boot.cmp(&a.boot).then(b.crash.cmp(&a.crash)));
+            Ok(out)
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// One saved log or crash summary, as text.
+#[tauri::command]
+async fn board_card_file(app: AppHandle, path: String) -> Result<String, String> {
+    if !(path.starts_with("logs/") || path.starts_with("crash/")) || !path.ends_with(".txt") {
+        return Err("not a board log".into());
+    }
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        e.board_files(|send, recv| fenix_link::files::read(send, recv, &path, &mut |_, _| {}))
+            .map(|d| String::from_utf8_lossy(&d).into_owned())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 fn get_autostart(app: AppHandle) -> bool {
     app.autolaunch().is_enabled().unwrap_or(false)
@@ -539,6 +597,8 @@ fn main() {
             get_state,
             get_logs,
             open_log_folder,
+            board_card_logs,
+            board_card_file,
             get_autostart,
             set_autostart,
             reboot_board,

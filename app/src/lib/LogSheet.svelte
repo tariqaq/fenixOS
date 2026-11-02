@@ -1,26 +1,72 @@
 <script lang="ts">
   // Artboard 16 (PcLogs): filter, copy, open the log folder. Follows new lines while open.
+  // "On the card" (P53) reads the board's saved logs and crash records from its SD card.
   import { FAST, scrim, sheet } from "./motion";
   import { onDestroy, tick } from "svelte";
   import Icon from "./Icon.svelte";
-  import { getLogs, onLog, openLogFolder, type LogLine } from "./api";
+  import { boardCardFile, boardCardLogs, cardLine, getLogs, onLog, openLogFolder, type CardLog, type LogLine } from "./api";
 
   let { onclose }: { onclose: () => void } = $props();
-  type Filter = "all" | "board" | "apps" | "problems";
+  type Filter = "all" | "board" | "apps" | "problems" | "card";
   const filters: { id: Filter; label: string }[] = [
     { id: "all", label: "All" },
     { id: "board", label: "Board" },
     { id: "apps", label: "Apps" },
     { id: "problems", label: "Problems" },
+    { id: "card", label: "On the card" },
   ];
   let filter = $state<Filter>("all");
   let lines = $state<LogLine[]>([]);
   let list: HTMLDivElement | undefined = $state();
 
+  // On the card: the saved files, the one shown and its lines.
+  let files = $state<CardLog[]>([]);
+  let picked = $state<string>("");
+  let cardLines = $state<LogLine[]>([]);
+  let cardNote = $state("");
+
+  async function openCard() {
+    cardNote = "Reading the board's SD card…";
+    cardLines = [];
+    try {
+      files = await boardCardLogs();
+      const first = files.find((f) => !f.crash) ?? files[0];
+      if (!first) {
+        cardNote = "No saved logs on the card yet.";
+        return;
+      }
+      await pick(first);
+    } catch (e) {
+      files = [];
+      cardNote = `Could not read the card: ${e}`;
+    }
+  }
+  async function pick(f: CardLog) {
+    picked = f.path;
+    cardNote = "Reading…";
+    try {
+      const text = await boardCardFile(f.path);
+      cardLines = text
+        .split("\n")
+        .filter((l) => l.length)
+        .map((l) => cardLine(l, f.crash));
+      cardNote = "";
+      toBottom();
+    } catch (e) {
+      cardLines = [];
+      cardNote = `Could not read ${f.path}: ${e}`;
+    }
+  }
+  function choose(id: Filter) {
+    filter = id;
+    if (id === "card") openCard();
+    else toBottom();
+  }
+
   const shown = $derived(
-    lines.filter((l) =>
-      filter === "all" ? true : filter === "problems" ? l.problem : l.source === filter,
-    ),
+    filter === "card"
+      ? cardLines
+      : lines.filter((l) => (filter === "all" ? true : filter === "problems" ? l.problem : l.source === filter)),
   );
   const tag = (s: LogLine["source"]) => (s === "pc" ? "PC" : s === "board" ? "Board" : "Apps");
 
@@ -36,7 +82,7 @@
   const stop = onLog((l) => {
     const atEnd = !list || list.scrollTop + list.clientHeight >= list.scrollHeight - 4;
     lines = [...lines.slice(-1999), l];
-    if (atEnd) toBottom();
+    if (atEnd && filter !== "card") toBottom();
   });
   onDestroy(() => stop.then((f) => f()));
 
@@ -56,7 +102,7 @@
       <h2 id="logs-title">Logs</h2>
       <div class="seg" role="group" aria-label="Show">
         {#each filters as f (f.id)}
-          <button type="button" aria-pressed={filter === f.id} class:on={filter === f.id} onclick={() => (filter = f.id)}>
+          <button type="button" aria-pressed={filter === f.id} class:on={filter === f.id} onclick={() => choose(f.id)}>
             {f.label}
           </button>
         {/each}
@@ -67,7 +113,19 @@
         <button type="button" class="x" aria-label="Close" onclick={onclose}><Icon name="x" size={12} color="var(--label-2)" /></button>
       </div>
     </div>
+    {#if filter === "card" && files.length}
+      <div class="files" role="group" aria-label="Saved on the card">
+        {#each files as f (f.path)}
+          <button type="button" class="file" class:on={picked === f.path} class:crash={f.crash} aria-pressed={picked === f.path} onclick={() => pick(f)}>
+            {f.crash ? `Crash ${f.boot}` : `Boot ${f.boot}`}
+          </button>
+        {/each}
+      </div>
+    {/if}
     <div class="log" role="log" bind:this={list}>
+      {#if filter === "card" && cardNote}
+        <p class="note">{cardNote}</p>
+      {/if}
       {#each shown as l, i (i)}
         <div class="line" class:problem={l.problem}>
           <span class="t">{l.time}</span><span class="s">{tag(l.source)}</span><span class="m">{l.text}</span>
@@ -154,6 +212,35 @@
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+  .files {
+    display: flex;
+    gap: 6px;
+    padding: 0 20px 10px;
+    overflow-x: auto;
+    flex: 0 0 auto;
+  }
+  .file {
+    height: 26px;
+    border: 0;
+    border-radius: 13px;
+    background: var(--surface-2);
+    color: var(--label);
+    padding: 0 12px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .file.on {
+    background: var(--tile-gray);
+    font-weight: 600;
+  }
+  .file.crash {
+    color: var(--warning);
+  }
+  .note {
+    padding: 8px 20px;
+    font-size: 13px;
+    color: var(--label-2);
   }
   .log {
     flex: 1;
