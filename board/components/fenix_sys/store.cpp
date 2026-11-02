@@ -289,6 +289,14 @@ bool store_at(int i, AppMeta* out) {
   return true;
 }
 
+bool store_card_missing() {
+  if (!s_lock) return false;
+  Lock l;
+  for (const AppMeta& m : s_index)
+    if (m.state == fnx::app_state::CARD_MISSING) return true;
+  return false;
+}
+
 bool store_find(const char* id, AppMeta* out) {
   if (!s_lock) return false;
   Lock l;

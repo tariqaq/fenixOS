@@ -62,6 +62,7 @@ void store_usage(uint32_t* used_kb, uint32_t* total_kb);  // the flash store
 int store_count();
 bool store_at(int i, AppMeta* out);               // sorted by id; false past the end
 bool store_find(const char* id, AppMeta* out);
+bool store_card_missing();  // an app is listed on a card that is out (sd_tick retries the mount, P57)
 bool store_sha(const char* id, uint8_t out[32]);  // false if missing or its card is out
 FILE* store_open(const char* id, size_t* n);  // the package file and its size; caller closes. nullptr if missing
 // sd.cpp, from its task: the card was mounted (scan its apps) or went away (mark them missing).
@@ -179,7 +180,7 @@ void sd_start();   // boot: mounts in a short-lived background task
 void sd_probe();   // checks a mounted card is still there, or mounts one; async, SD_CHANGED on a change
 SdInfo sd_info();
 void sd_report();  // SD_STATE to the PC; without a ready card it also probes again
-void sd_tick(int64_t now);  // link task: a mounted card that stops answering is probed (P57)
+void sd_tick(int64_t now);  // link task: a pulled card is noticed, a card put back is mounted (P57)
 void sd_update_free();  // after a write to the card: new free space, SD_STATE on a change
 
 // ---- Firmware updates (P52, ota.cpp; docs/ota.md) ----

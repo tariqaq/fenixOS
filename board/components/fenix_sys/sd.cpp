@@ -8,6 +8,7 @@
 
 #include "driver/sdspi_host.h"
 #include "driver/spi_common.h"
+#include "esp_timer.h"
 #include "esp_vfs_fat.h"
 #include "fenix_sys.h"
 #include "ff.h"
@@ -103,10 +104,13 @@ static void mount() {
   // Open at once, worst case (P53): a file read and a file write from the PC, a firmware part, an
   // app install or an opened package, the log, a font (P54). 552 B each.
   mc.max_files = 6;
+  int64_t t0 = esp_timer_get_time();
   esp_err_t err = esp_vfs_fat_sdspi_mount(SD_PATH, &host, &dev, &mc, &s_card);
   if (err != ESP_OK) {
     s_card = nullptr;
-    link_log(3, "sd: mount failed (0x%x)", (unsigned)err);
+    // Logged once per state: sd_tick retries every 3 s while card apps are missing (P57).
+    if (sd_info().state != (err == ESP_FAIL ? fnx::sd_state::NO_FS : fnx::sd_state::NONE))
+      link_log(3, "sd: mount failed (0x%x, %d ms)", (unsigned)err, (int)((esp_timer_get_time() - t0) / 1000));
     // A card that answered but has no FAT (exFAT, NTFS, blank) fails the mount, not the init.
     return set(err == ESP_FAIL ? fnx::sd_state::NO_FS : fnx::sd_state::NONE);
   }
@@ -158,16 +162,24 @@ void sd_start() { sd_probe(); }
 // reads nothing from the card, so before this nothing touched it until Settings › Storage or an
 // install. CMD13 is one short command; the SPI driver takes the bus for each whole command
 // (sdspi_host.c, spi_device_acquire_bus), so it cannot cut into another task's read or write.
-static constexpr int64_t CHECK_US = 2 * 1000000;
+// With no card mounted, a mount is tried every RETRY_US, but only while apps on a card are
+// listed as missing (their tiles are faded): a card put back brings them back on its own.
+static constexpr int64_t CHECK_US = 2 * 1000000, RETRY_US = 3 * 1000000;
 
 void sd_tick(int64_t now) {
-  static int64_t next;
-  if (now < next) return;
-  next = now + CHECK_US;
-  if (s_busy || xSemaphoreTake(lock(), 0) != pdTRUE) return;
-  bool gone = s_card && sdmmc_get_status(s_card) != ESP_OK;
-  xSemaphoreGive(lock());
-  if (gone) sd_probe();  // unmounts, SD_CHANGED, the store marks the card's apps missing
+  static int64_t next_check, next_retry;
+  if (s_busy) return;
+  if (s_card) {
+    if (now < next_check) return;
+    next_check = now + CHECK_US;
+    if (xSemaphoreTake(lock(), 0) != pdTRUE) return;
+    bool gone = s_card && sdmmc_get_status(s_card) != ESP_OK;
+    xSemaphoreGive(lock());
+    if (gone) sd_probe();  // unmounts, SD_CHANGED, the store marks the card's apps missing
+  } else if (now >= next_retry) {
+    next_retry = now + RETRY_US;
+    if (store_card_missing()) sd_probe();
+  }
 }
 
 SdInfo sd_info() {
