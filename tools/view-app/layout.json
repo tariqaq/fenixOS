@@ -9,7 +9,14 @@
           "children": [
             { "type": "label", "text": "Media", "font": "label", "color": "label_2" },
             { "type": "label", "text": "--", "font": "title", "bind": "title" },
-            { "type": "bar", "min": 0, "max": 1000, "bind": "seek", "w": "100%", "h": 6 }
+            { "type": "bar", "min": 0, "max": 1000, "bind": "seek", "w": "100%", "h": 6 },
+            {
+              "type": "box", "flow": "row", "gap": 10, "cross": "center",
+              "children": [
+                { "type": "button", "icon": "play", "bind": "playing", "event": "play" },
+                { "type": "button", "text": "Like", "bind": "like", "bg": "surface_2", "event": "like" }
+              ]
+            }
           ]
         },
         {
@@ -20,7 +27,7 @@
             {
               "type": "box", "flow": "row", "gap": 6, "cross": "center", "show": "muted",
               "children": [
-                { "type": "icon", "icon": "x-circle", "size": 18, "color": "danger" },
+                { "type": "icon", "icon": "microphone", "size": 18, "color": "danger", "bind": "mic" },
                 { "type": "label", "text": "Muted", "font": "label" }
               ]
             }

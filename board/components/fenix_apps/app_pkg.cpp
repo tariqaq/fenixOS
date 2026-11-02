@@ -358,7 +358,15 @@ static const char* const ICONS[fpkg::N_ICONS] = {
     FX_ICON_TIMER,         FX_ICON_DEVICE_ROTATE, FX_ICON_HAND_TAP,    FX_ICON_HARD_DRIVES,
     FX_ICON_DESKTOP_TOWER, FX_ICON_INFO,        FX_ICON_SQUARES_FOUR,  FX_ICON_WARNING,
     FX_ICON_PUZZLE_PIECE,  FX_ICON_CHECK_CIRCLE, FX_ICON_X_CIRCLE,     FX_ICON_MONITOR,
+    // P50-M (v0.1.25)
+    FX_ICON_PLAY,          FX_ICON_PAUSE,       FX_ICON_SKIP_FORWARD,  FX_ICON_SKIP_BACK,
+    FX_ICON_SPEAKER_HIGH,  FX_ICON_SPEAKER_X,   FX_ICON_MICROPHONE,    FX_ICON_MICROPHONE_SLASH,
+    FX_ICON_HEADPHONES,    FX_ICON_GAME_CONTROLLER, FX_ICON_MUSIC_NOTES, FX_ICON_VIDEO,
+    FX_ICON_PHONE,         FX_ICON_SPARKLE,
 };
+
+// An int value as a glyph: an icon index, or "" (none) out of range.
+static const char* glyph_of(int32_t i) { return i >= 0 && i < fpkg::N_ICONS ? ICONS[i] : ""; }
 
 static const lv_font_t* icon_font(int px) {
   static const struct {
@@ -413,6 +421,24 @@ static void apply(const Bound& b, const Val& v) {
     case fpkg::kind::BAR:
       lv_bar_set_value(b.obj, v.i, LV_ANIM_ON);
       break;
+    case fpkg::kind::ICON:  // an int picks the glyph (P50-M)
+      if (v.kind == 0) lv_label_set_text(b.obj, glyph_of(v.i));
+      break;
+    case fpkg::kind::BUTTON: {  // text sets the text, an int the glyph (P50-M); see make()
+      uint32_t n = lv_obj_get_child_count(b.obj);
+      lv_obj_t* g = lv_obj_get_child(b.obj, 0);
+      if (v.kind == 2 && n == 2) {
+        lv_label_set_text(lv_obj_get_child(b.obj, 1), v.text.c_str());
+      } else if (v.kind == 0 && g) {
+        const char* s = glyph_of(v.i);
+        lv_label_set_text(g, s);
+        if (n == 2) {  // a capsule drops an empty glyph, so its gap does not shift the text
+          if (*s) lv_obj_remove_flag(g, LV_OBJ_FLAG_HIDDEN);
+          else lv_obj_add_flag(g, LV_OBJ_FLAG_HIDDEN);
+        }
+      }
+      break;
+    }
     default:
       break;
   }
@@ -475,7 +501,7 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
   };
   int32_t text_ix = get(fpkg::key::TEXT, -1);
   const char* label = text_ix >= 0 ? s_app.pkg.strings[text_ix].data() : "";  // NUL-terminated
-  int32_t icon = get(fpkg::key::ICON, -1);
+  int32_t icon = get(fpkg::key::ICON, -1), v0;
   lv_obj_t* o = nullptr;
   switch (e.kind) {
     case fpkg::kind::BOX:
@@ -521,7 +547,12 @@ static lv_obj_t* make(const fpkg::Elem& e, uint16_t idx, lv_obj_t* parent, bool 
         lv_obj_add_flag(o, LV_OBJ_FLAG_CLICKABLE);
         text(o, glyph, &fx_icon_fill_18, get(fpkg::key::COLOR, FX_COLOR_LABEL));
       } else {
-        o = capsule(parent, glyph, &fx_icon_fill_16, label, bg, 40, nullptr, nullptr);  // DESIGN.md: 40 px targets
+        // A bound capsule always gets a glyph label (children: glyph, text), hidden while empty,
+        // so a binding can set either (apply()).
+        bool bound = e.prop(fpkg::key::BIND, &v0, port);
+        o = capsule(parent, glyph ? glyph : bound ? "" : nullptr, &fx_icon_fill_16, label, bg, 40, nullptr,
+                    nullptr);  // DESIGN.md: 40 px targets
+        if (bound && !glyph) lv_obj_add_flag(lv_obj_get_child(o, 0), LV_OBJ_FLAG_HIDDEN);
       }
       break;
     }

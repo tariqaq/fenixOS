@@ -27,7 +27,7 @@ constexpr size_t RAM_PER_ELEM = 160;
 constexpr size_t MAX_DEPTH = 8;
 constexpr size_t MAX_ID = 48;
 constexpr int N_FONTS = 11;
-constexpr int N_ICONS = 20;
+constexpr int N_ICONS = 34;  // 20 before v0.1.25 (P50-M added 14)
 
 namespace kind {
 constexpr uint8_t BOX = 1, LABEL = 2, BUTTON = 3, SWITCH = 4, SLIDER = 5, BAR = 6, IMAGE = 7, ICON = 8,

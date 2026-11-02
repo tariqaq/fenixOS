@@ -380,6 +380,18 @@ impl App {
         self.shared.settings.lock().unwrap().clone()
     }
 
+    /// Show a built-in icon (`"pause"`, list in [`ICONS`]) on an `icon` element or a button bound
+    /// to `bind` (fenixOS 0.1.25). Returns false, and sends nothing, for an unknown name.
+    pub fn set_icon(&self, bind: &str, name: &str) -> bool {
+        match ICONS.iter().position(|n| *n == name) {
+            Some(i) => {
+                self.set(bind, i as i32);
+                true
+            }
+            None => false,
+        }
+    }
+
     /// Set a bound value on the board (`bind` is the name in `layout.json`).
     pub fn set(&self, bind: &str, value: impl Into<Value>) {
         let value = match value.into() {
@@ -483,8 +495,52 @@ fn open_retry(path: &str, read: bool) -> io::Result<File> {
     }
 }
 
+/// The board's built-in icons, in its order (a copy of `fenix-pkg` ICONS, checked by a test). The
+/// last 14 (from `play`) need fenixOS 0.1.25.
+pub const ICONS: [&str; 34] = [
+    "gear-six",
+    "power",
+    "screencast",
+    "arrow-clockwise",
+    "plugs-connected",
+    "plugs",
+    "sun",
+    "moon",
+    "timer",
+    "device-rotate",
+    "hand-tap",
+    "hard-drives",
+    "desktop-tower",
+    "info",
+    "squares-four",
+    "warning",
+    "puzzle-piece",
+    "check-circle",
+    "x-circle",
+    "monitor",
+    "play",
+    "pause",
+    "skip-forward",
+    "skip-back",
+    "speaker-high",
+    "speaker-x",
+    "microphone",
+    "microphone-slash",
+    "headphones",
+    "game-controller",
+    "music-notes",
+    "video",
+    "phone",
+    "sparkle",
+];
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn icons_match_the_package_list() {
+        assert_eq!(super::ICONS, fenix_pkg::ICONS);
+    }
+
     use super::wire::{self, Down, Up};
 
     #[test]

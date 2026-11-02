@@ -107,8 +107,9 @@ pub const FONTS: [&str; 11] = [
     "clock_56",
     "clock_64",
 ];
-/// Built-in icons, in the board's order (`tools/gen_fonts.py` FILL_ICONS).
-pub const ICONS: [&str; 20] = [
+/// Built-in icons, in the board's order (`tools/gen_fonts.py` FILL_ICONS). The last 14 are new in
+/// fenixOS 0.1.25 (P50-M): older boards refuse a package that names them. `fenix-sdk` has a copy.
+pub const ICONS: [&str; 34] = [
     "gear-six",
     "power",
     "screencast",
@@ -129,7 +130,23 @@ pub const ICONS: [&str; 20] = [
     "check-circle",
     "x-circle",
     "monitor",
+    "play",
+    "pause",
+    "skip-forward",
+    "skip-back",
+    "speaker-high",
+    "speaker-x",
+    "microphone",
+    "microphone-slash",
+    "headphones",
+    "game-controller",
+    "music-notes",
+    "video",
+    "phone",
+    "sparkle",
 ];
+/// Icons up to this index exist on every fenixOS; the rest need `VIEW_SINCE` (0.1.25).
+pub const ICONS_BEFORE_0_1_25: usize = 20;
 pub const ICON_SIZES: [i32; 9] = [12, 14, 15, 16, 18, 20, 26, 28, 40];
 
 const TOKENS_JSON: &str = include_str!("../../../design/tokens.json");
@@ -820,16 +837,17 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
     }
     c.element(&layout, NONE, 1)?;
     let min_fenixos = parse_version(&m.min_fenixos)?;
-    let views = c.elems.iter().any(|e| {
+    let new = c.elems.iter().any(|e| {
         e.kind == kind::VIEW
-            || e.props
-                .iter()
-                .any(|&(k, _)| k & !key::PORTRAIT == key::SHOW)
+            || e.props.iter().any(|&(k, v)| {
+                let k = k & !key::PORTRAIT;
+                k == key::SHOW || (k == key::ICON && v as usize >= ICONS_BEFORE_0_1_25)
+            })
     });
-    if views && min_fenixos < VIEW_SINCE {
+    if new && min_fenixos < VIEW_SINCE {
         let (a, b, d) = VIEW_SINCE;
         return Err(format!(
-            "view and show need min_fenixos {a}.{b}.{d} or newer"
+            "view, show and the newer icons need min_fenixos {a}.{b}.{d} or newer"
         ));
     }
     let p = Package {
@@ -900,6 +918,10 @@ mod tests {
         assert!(p.elems[2].props.contains(&(key::SHOW, 1)));
         assert_eq!(p.bind_id("extra"), Some(1));
         let old = build_layout("view-old", layout, "0.1.24").unwrap_err();
+        assert!(old.contains("min_fenixos 0.1.25"), "{old}");
+        let play = r#"{ "type": "button", "icon": "pause", "bind": "playing" }"#;
+        assert!(build_layout("icon-old", play, "0.1.24").is_err());
+        assert!(build_layout("icon-new", play, "0.1.25").is_ok());
         assert!(old.contains("min_fenixos 0.1.25"), "{old}");
         let leaf = r#"{ "type": "box", "children": [ { "type": "label", "show": "s", "children": [] } ] }"#;
         assert!(build_layout("view-leaf", leaf, "0.1.25").is_err());

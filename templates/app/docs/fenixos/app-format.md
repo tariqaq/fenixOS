@@ -66,11 +66,11 @@ A token from `design/tokens.json` with `_` for `-`: `label`, `label_2`, `accent`
 
 ### Icons
 
-The 20 built-in glyphs: `gear-six`, `power`, `screencast`, `arrow-clockwise`, `plugs-connected`, `plugs`, `sun`, `moon`, `timer`, `device-rotate`, `hand-tap`, `hard-drives`, `desktop-tower`, `info`, `squares-four`, `warning`, `puzzle-piece`, `check-circle`, `x-circle`, `monitor`. Other artwork goes in as an `image` (draw it from Phosphor, fill weight, to match).
+The built-in glyphs (the last 14, from `play`, need fenixOS v0.1.25): `gear-six`, `power`, `screencast`, `arrow-clockwise`, `plugs-connected`, `plugs`, `sun`, `moon`, `timer`, `device-rotate`, `hand-tap`, `hard-drives`, `desktop-tower`, `info`, `squares-four`, `warning`, `puzzle-piece`, `check-circle`, `x-circle`, `monitor`, `play`, `pause`, `skip-forward`, `skip-back`, `speaker-high`, `speaker-x`, `microphone`, `microphone-slash`, `headphones`, `game-controller`, `music-notes`, `video`, `phone`, `sparkle`. Other artwork goes in as an `image` (draw it from Phosphor, fill weight, to match).
 
 ## Bindings and events
 
-- `"bind": "cpu"` connects the element to binding `cpu`. The PC half sets it: a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer.
+- `"bind": "cpu"` connects the element to binding `cpu`. The PC half sets it: a label shows text, an integer, or "On" / "Off" for a bool; a switch takes a bool, a slider or bar an integer. Since v0.1.25 (P50-M) a `button` takes text (its text) or an integer (its glyph, an index in the icon list; out of range: none), and an `icon` takes an integer (its glyph); `fenix-sdk` `set_icon(bind, "pause")` sends the index. Use one kind per button: after a rebuild only the last value is applied.
 - Sending every value on `opened` (~50) is fine from fenixOS v0.1.25: the PC app sends the latest value per binding, paced, and the board keeps them in order. Before v0.1.25 the board kept only 16 at a time.
 - **Several screens in one app** (fenixOS v0.1.25): put each screen in a `view` and set its binding to the index of the one to show (`app.set("mode", 2)`). Every screen is built when the app opens, so all of them count in the RAM estimate; values bound inside a hidden screen are applied and kept. What appears fades in; no motion props. `view` or `show` needs `min_fenixos = "0.1.25"` in `app.toml` (`fenix-pkg build` says so).
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.

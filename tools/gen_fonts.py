@@ -42,6 +42,9 @@ FILL_ICONS = [
     "info", "squares-four", "warning", "puzzle-piece", "check-circle", "x-circle", "monitor",
     "wifi-high", "wifi-medium", "wifi-low", "wifi-none", "lock",
     "sim-card", "download-simple", "arrow-counter-clockwise",  # P51 SD badge (no sd-card glyph); P52 update, go back
+    # P50-M: for apps (Morpheus), appended to the app icon list after "monitor" (fenix-pkg ICONS)
+    "play", "pause", "skip-forward", "skip-back", "speaker-high", "speaker-x", "microphone",
+    "microphone-slash", "headphones", "game-controller", "music-notes", "video", "phone", "sparkle",
 ]
 FILL_SIZES = [12, 14, 15, 16, 18, 20, 26, 28, 40]
 BOLD_ICONS = ["caret-left", "caret-right", "check", "plus", "x"]
