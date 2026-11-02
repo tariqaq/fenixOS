@@ -1,11 +1,13 @@
 //! Write the PC half of a fenixOS app. fenixOS starts the program with `--fenix-pipe <base>`;
 //! [`App::connect`] opens the two pipes, and the app then reads [`Message`]s and sends values to
-//! the board with [`App::set`]. Protocol: `docs/sidecars.md`.
+//! the board with [`App::set`]. [`App::put_file`] and [`App::get_file`] keep the app's files on
+//! the board's SD card. Protocol: `docs/sidecars.md`.
 
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -19,6 +21,19 @@ pub mod wire {
 
     pub const PROTOCOL: u32 = 1;
     pub const MAX_MSG: usize = 64 * 1024;
+    /// The largest file `file_put` and `file_get` carry (base64 in one message).
+    pub const MAX_FILE: usize = 32 * 1024;
+
+    /// File bytes in a message: standard base64.
+    pub fn encode(data: &[u8]) -> String {
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD.encode(data)
+    }
+
+    pub fn decode(text: &str) -> Option<Vec<u8>> {
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD.decode(text).ok()
+    }
 
     /// fenixOS → app.
     #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -46,6 +61,16 @@ pub mod wire {
         Button {
             key: String,
         },
+        /// The answer to a `file_put`, `file_get` or `file_delete` (P53). `data` (base64) only
+        /// for a get that worked; `error` when `ok` is false.
+        File {
+            req: u32,
+            ok: bool,
+            #[serde(default, skip_serializing_if = "String::is_empty")]
+            data: String,
+            #[serde(default, skip_serializing_if = "String::is_empty")]
+            error: String,
+        },
         Stop,
         /// A type this version does not know (the protocol only grows).
         #[serde(other)]
@@ -63,6 +88,24 @@ pub mod wire {
         Log {
             level: String,
             text: String,
+        },
+        /// Files in the app's folder on the board's SD card, `/sd/fenixos/data/<id>/` (P53).
+        /// `name` is relative to it; `data` is base64, at most [`MAX_FILE`] bytes decoded.
+        #[serde(rename = "file_put")]
+        FilePut {
+            req: u32,
+            name: String,
+            data: String,
+        },
+        #[serde(rename = "file_get")]
+        FileGet {
+            req: u32,
+            name: String,
+        },
+        #[serde(rename = "file_delete")]
+        FileDelete {
+            req: u32,
+            name: String,
         },
         #[serde(other)]
         Unknown,
@@ -164,12 +207,19 @@ pub enum Level {
     Error,
 }
 
+type Answer = Result<Vec<u8>, String>;
+
 struct Shared {
     open: AtomicBool,
     board: AtomicBool,
     stopped: AtomicBool,
     settings: Mutex<Map<String, Json>>,
+    /// File requests waiting for fenixOS's answer, by `req`.
+    files: Mutex<HashMap<u32, Sender<Answer>>>,
 }
+
+/// How long a file request waits: a 32 KB write over Wi-Fi takes a few seconds.
+const FILE_WAIT: Duration = Duration::from_secs(30);
 
 pub struct App {
     pub id: String,
@@ -178,6 +228,7 @@ pub struct App {
     up: Mutex<File>,
     rx: Receiver<Message>,
     shared: Arc<Shared>,
+    next_req: AtomicU32,
 }
 
 impl App {
@@ -220,6 +271,7 @@ impl App {
             board: AtomicBool::new(false),
             stopped: AtomicBool::new(false),
             settings: Mutex::new(Map::new()),
+            files: Mutex::new(HashMap::new()),
         });
         let (tx, rx) = mpsc::channel();
         let sh = shared.clone();
@@ -262,6 +314,21 @@ impl App {
                             value,
                         },
                         wire::Down::Button { key } => Message::Button { key },
+                        wire::Down::File {
+                            req,
+                            ok,
+                            data,
+                            error,
+                        } => {
+                            if let Some(w) = sh.files.lock().unwrap().remove(&req) {
+                                let _ = w.send(if !ok {
+                                    Err(error)
+                                } else {
+                                    wire::decode(&data).ok_or_else(|| "bad file data".into())
+                                });
+                            }
+                            continue;
+                        }
                         wire::Down::Stop => break,
                         wire::Down::Hello { .. } | wire::Down::Unknown => continue,
                     };
@@ -270,6 +337,7 @@ impl App {
                     }
                 }
                 sh.stopped.store(true, Ordering::Relaxed);
+                sh.files.lock().unwrap().clear(); // waiting file requests fail at once
                 let _ = tx.send(Message::Stop);
             })?;
         let app = App {
@@ -279,6 +347,7 @@ impl App {
             up: Mutex::new(up),
             rx,
             shared,
+            next_req: AtomicU32::new(1),
         };
         Ok(app)
     }
@@ -338,6 +407,55 @@ impl App {
 
     pub fn log_info(&self, text: impl Into<String>) {
         self.log(Level::Info, text)
+    }
+
+    /// Save a file in this app's folder on the board's SD card (`/sd/fenixos/data/<id>/<name>`),
+    /// replacing one of that name. At most 32 KB. Blocks until the board has it (a few seconds at
+    /// most); fails when the board is not connected or has no card. `name` may hold `/` for
+    /// subfolders. The folder goes when the app is removed from the board.
+    pub fn put_file(&self, name: &str, data: &[u8]) -> Result<(), String> {
+        if data.len() > wire::MAX_FILE {
+            return Err(format!("{name}: over {} KB", wire::MAX_FILE / 1024));
+        }
+        self.file_req(|req| wire::Up::FilePut {
+            req,
+            name: name.into(),
+            data: wire::encode(data),
+        })
+        .map(|_| ())
+    }
+
+    /// A file this app saved with [`App::put_file`]. Blocks like it.
+    pub fn get_file(&self, name: &str) -> Result<Vec<u8>, String> {
+        self.file_req(|req| wire::Up::FileGet {
+            req,
+            name: name.into(),
+        })
+    }
+
+    /// Delete a file (or an empty subfolder) in this app's folder on the card.
+    pub fn delete_file(&self, name: &str) -> Result<(), String> {
+        self.file_req(|req| wire::Up::FileDelete {
+            req,
+            name: name.into(),
+        })
+        .map(|_| ())
+    }
+
+    fn file_req(&self, m: impl FnOnce(u32) -> wire::Up) -> Answer {
+        let req = self.next_req.fetch_add(1, Ordering::Relaxed);
+        let (tx, rx) = mpsc::channel();
+        self.shared.files.lock().unwrap().insert(req, tx);
+        self.send(&m(req));
+        let r = rx.recv_timeout(FILE_WAIT);
+        self.shared.files.lock().unwrap().remove(&req);
+        match r {
+            Ok(a) => a,
+            Err(RecvTimeoutError::Disconnected) => Err("fenixOS stopped the app".into()),
+            Err(RecvTimeoutError::Timeout) => {
+                Err("no answer from fenixOS (0.1.23 or later keeps app files)".into())
+            }
+        }
     }
 
     fn send(&self, m: &wire::Up) {
@@ -406,6 +524,34 @@ mod tests {
             })
         );
         assert!(wire::read::<Down>(&mut r).is_err());
+    }
+
+    #[test]
+    fn file_messages() {
+        let up = Up::FilePut {
+            req: 7,
+            name: "notes/a.txt".into(),
+            data: wire::encode(b"hi"),
+        };
+        assert_eq!(
+            serde_json::to_string(&up).unwrap(),
+            r#"{"type":"file_put","req":7,"name":"notes/a.txt","data":"aGk="}"#
+        );
+        let down: Down =
+            serde_json::from_str(r#"{"type":"file","req":7,"ok":false,"error":"no card"}"#)
+                .unwrap();
+        assert_eq!(
+            down,
+            Down::File {
+                req: 7,
+                ok: false,
+                data: String::new(),
+                error: "no card".into()
+            }
+        );
+        assert_eq!(wire::decode("aGk=").unwrap(), b"hi");
+        // A full-size file still fits one message with its fields.
+        assert!(wire::MAX_FILE.div_ceil(3) * 4 < wire::MAX_MSG - 256);
     }
 
     #[test]

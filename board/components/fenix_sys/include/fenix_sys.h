@@ -204,6 +204,8 @@ void files_frame(uint8_t type, fnx::Reader& r);  // link task: FILE_* from the P
 void files_tick(int64_t now_us);                 // link task: closes a write or read idle for 10 s
 void files_abort();                              // the session ended (a part stays for a resume)
 void shot_save();  // UI task: the screen to /sd/fenixos/shots/<time>.bmp, answered with FILE_RESULT
+// Link task: an app was removed; its files from the SDK's put_file, /sd/fenixos/data/<id>/, go too.
+void app_data_forget(const char* id);
 // An app's last bound values, /sd/fenixos/state/<id>.bin (P53, files.cpp). UI task. The bytes are
 // the app host's (app_pkg.cpp). Read returns 0 when there is none or no card.
 bool app_state_write(const char* id, const uint8_t* data, size_t n);

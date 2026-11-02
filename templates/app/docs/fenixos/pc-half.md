@@ -15,7 +15,7 @@ Copied from fenixOS `docs/sidecars.md`, cut for app authors. Skip this file if t
 `app/pc/Cargo.toml` takes it from the fenixOS repo at a release tag:
 
 ```toml
-fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.13" }
+fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.23" }
 ```
 
 | API | What it does |
@@ -27,6 +27,7 @@ fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.13" }
 | `app.settings()` | Latest settings: key → `Json` (bool, number, string; see `registry.md`) |
 | `app.set(bind, value)` | Set a binding: `i32`, `bool` or `&str`/`String` (≤ 255 bytes). Dropped while closed |
 | `app.log(Level::Warn, text)`, `app.log_info(text)` | A line in the fenixOS log; `Warn` and `Error` show under Problems |
+| `app.put_file(name, &bytes)`, `app.get_file(name)`, `app.delete_file(name)` | A file in the app's folder on the board's SD card (`/sd/fenixos/data/<id>/`), at most 32 KB; `name` may hold `/`. They block until the board answers (seconds) and fail without a board, a card or fenixOS 0.1.23. The folder goes when the app is removed from the board |
 | `app.id`, `app.version`, `app.fenixos` | From `hello` |
 
 `Message`: `Settings(map)`, `Board { connected }`, `Opened`, `Closed`, `Event { name, kind, value }` (`kind`: `Tap`, `Long`, `Change`; `value`: slider value or switch 0/1), `Button { key }` (a `button` setting was pressed), `Stop`.
@@ -63,7 +64,7 @@ Send only what changed when values are large or frequent: every `set` crosses th
 
 ## Other languages
 
-Any Windows program can speak the protocol: each message is a little-endian `u32` length, then UTF-8 JSON with a `type`, at most 64 KB. Down: `hello {app, version, fenixos, protocol: 1}`, `settings {values}`, `board {connected}`, `opened`, `closed`, `event {name, kind, value}`, `button {key}`, `stop`. Up: `set {bind, value}`, `log {level, text}`. Open `.down` first, then `.up`; fenixOS waits 10 s for both. Unknown types and fields are ignored.
+Any Windows program can speak the protocol: each message is a little-endian `u32` length, then UTF-8 JSON with a `type`, at most 64 KB. Down: `hello {app, version, fenixos, protocol: 1}`, `settings {values}`, `board {connected}`, `opened`, `closed`, `event {name, kind, value}`, `button {key}`, `stop`. Up: `set {bind, value}`, `log {level, text}`, `file_put {req, name, data}` (base64), `file_get {req, name}`, `file_delete {req, name}`, each answered by down `file {req, ok, data, error}`. Open `.down` first, then `.up`; fenixOS waits 10 s for both. Unknown types and fields are ignored.
 
 ## Permissions
 

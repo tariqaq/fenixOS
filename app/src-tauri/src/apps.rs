@@ -1059,6 +1059,13 @@ impl Apps {
         }
     }
 
+    /// An answer for the app, if `gen` is still its run.
+    pub fn reply(&self, id: &str, gen: u64, m: Down) {
+        if self.run.get(id).is_some_and(|r| r.gen == gen) {
+            self.to_sidecar(id, m);
+        }
+    }
+
     fn all_sidecars(&self, m: Down) {
         for r in self.run.values() {
             if let Some(sc) = &r.sidecar {
@@ -1126,7 +1133,10 @@ impl Apps {
                 self.log(problem, format!("{name}: {text}"));
                 false
             }
-            Note::Up(Up::Unknown) => false,
+            // Files go to the engine, which has the link's file jobs (`Engine::app_file`).
+            Note::Up(
+                Up::Unknown | Up::FilePut { .. } | Up::FileGet { .. } | Up::FileDelete { .. },
+            ) => false,
             Note::Exited {
                 why,
                 requested,

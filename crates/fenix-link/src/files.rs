@@ -7,7 +7,7 @@
 //! (`chunks.rs`), `FILE_END`; the board checks the sha256 and answers `FILE_RESULT`. A cut write
 //! goes on from where it stopped when the same file is sent again.
 //!
-//! `list` and `read` run one request-and-answer job each. They take `send` (put a message on
+//! `list`, `read`, `write` and `delete` run one request-and-answer job each. They take `send` (put a message on
 //! the link) and `recv` (the board's next file message, or `None` after the given time), so the
 //! CLI and the PC app share them over their own links.
 
@@ -205,6 +205,71 @@ pub fn read(
                     last = Instant::now() - Duration::from_secs(1);
                 }
             }
+        }
+    }
+}
+
+/// Write a whole file (a resume when a cut write of the same bytes is on the card). For small
+/// files; the CLI's `files put` runs the same steps with progress.
+pub fn write(
+    send: &dyn Fn(Msg),
+    recv: &mut dyn FnMut(Duration) -> Option<Msg>,
+    path: &str,
+    data: Vec<u8>,
+) -> Result<(), String> {
+    let mut s = FileSend::new(path, data);
+    send(s.begin());
+    loop {
+        for m in s.poll()? {
+            send(m);
+        }
+        let wait = if s.stage() == Stage::Sending { 5 } else { 100 };
+        match recv(Duration::from_millis(wait)) {
+            Some(Msg::FileAck { next_offset }) => s.on_ack(next_offset),
+            Some(Msg::FileResult {
+                op: file::OP_WRITE,
+                code,
+                path,
+                text,
+            }) => {
+                return if code == file::OK {
+                    Ok(())
+                } else {
+                    Err(refused("write", &path, code, &text))
+                }
+            }
+            Some(Msg::Error { code, text }) => return Err(format!("board error {code}: {text}")),
+            _ => {}
+        }
+    }
+}
+
+/// Delete a file, or an empty folder.
+pub fn delete(
+    send: &dyn Fn(Msg),
+    recv: &mut dyn FnMut(Duration) -> Option<Msg>,
+    path: &str,
+) -> Result<(), String> {
+    send(Msg::FileDelete { path: path.into() });
+    let end = Instant::now() + QUIET;
+    loop {
+        let left = end.saturating_duration_since(Instant::now());
+        match recv(left.max(Duration::from_millis(1))) {
+            Some(Msg::FileResult {
+                op: file::OP_DELETE,
+                code,
+                path,
+                text,
+            }) => {
+                return if code == file::OK {
+                    Ok(())
+                } else {
+                    Err(refused("delete", &path, code, &text))
+                }
+            }
+            Some(Msg::Error { code, text }) => return Err(format!("board error {code}: {text}")),
+            Some(_) if Instant::now() < end => continue,
+            _ => return Err(silent()),
         }
     }
 }

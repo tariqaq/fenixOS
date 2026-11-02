@@ -1274,6 +1274,7 @@ dependencies = [
 name = "fenix-sdk"
 version = "0.1.22"
 dependencies = [
+ "base64 0.22.1",
  "serde",
  "serde_json",
 ]

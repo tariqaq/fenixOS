@@ -8,7 +8,8 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `firmware/` | Kept firmware packages `<v>.fwp`, a staged `<v>.part` | Firmware updates (`docs/ota.md`) | P52, v0.1.22 |
 | `logs/` | The board log, `<n>.txt` per boot | The board | P53, v0.1.23 |
 | `crash/` | Crash records `<n>.elf` and `<n>.txt` | The board, at the next mount after a crash | P53 |
-| `fonts/` `data/` `web/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
+| `fonts/` `web/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
+| `data/` | `<id>/`: each app's own files | The app's PC half (`put_file`, `docs/sidecars.md`), or `fenix files put` | P53 |
 | `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
 | `state/` | Last bound values per app, `<id>.bin` | The board | P53 |
 | `backup/` | `settings.bin`: settings, the Wi-Fi network, the weather place | The board | P53 |
@@ -46,6 +47,14 @@ Board: `board/components/fenix_apps/app_pkg.cpp` (the format), `fenix_sys/files.
 - **With no PC:** the layout shows the values under "PC not connected", behind a 50 % veil, and takes no taps (it still scrolls). With no values saved the screen is 6a "Waiting for host PC" as before. When the PC connects, the app screen is rebuilt live.
 - **Removed** with the app (while the card is in).
 - **Cost:** 2.1 KB of firmware; a 4 KB buffer while the app opens.
+
+## App data (P53 step 8)
+
+PC: `crates/fenix-sdk` (`put_file`, `get_file`, `delete_file`), `app/src-tauri/src/engine.rs` (`app_file`). Board: `files.cpp` (`app_data_forget`).
+
+- **What:** an app's PC half keeps files in `data/<id>/` on the board's card, at most 32 KB each. They go with the board, so the app finds them on another PC.
+- **How:** the SDK sends `file_put`, `file_get` or `file_delete` over its pipe; the PC app runs a file write, read or delete over the board link (the same messages as `fenix files`) and answers with the result.
+- **Removed with the app:** when the board removes an app (`APP_REMOVE`), it deletes `data/<id>/` too, a few folder levels deep. An app updated in place keeps its folder. A card that is out at the removal keeps the folder.
 
 ## Settings backup (P53 step 5)
 

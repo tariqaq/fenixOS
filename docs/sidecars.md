@@ -31,6 +31,7 @@ fenixOS → app (`.down`):
 | `opened` / `closed` | | The app's screen opened / closed on the board. Values the app `set`s show only while it is open |
 | `event` | `name` (the element's `event` name in `layout.json`), `kind` (`tap`, `long`, `change`), `value` (int: slider value, switch 0/1, else 0) | The user touched an element on the board |
 | `button` | `key` | A `button` setting was pressed on the App settings page |
+| `file` | `req`, `ok` (bool), `data` (base64, a get that worked), `error` (text, when not `ok`) | The answer to a `file_put`, `file_get` or `file_delete` with that `req` |
 | `stop` | | Exit now |
 
 App → fenixOS (`.up`):
@@ -39,6 +40,11 @@ App → fenixOS (`.up`):
 |---|---|---|
 | `set` | `bind` (name in `layout.json`), `value` (int, bool or string ≤ 255 bytes) | Sets a bound value on the board. Sent only while the app is open on the board; fenixOS drops it otherwise |
 | `log` | `level` (`info`, `warn`, `error`), `text` | Adds a line to the fenixOS log (source "Apps"); `warn` and `error` show under Problems |
+| `file_put` | `req` (u32, the app's own number), `name`, `data` (base64, at most 32 KB decoded) | Writes `/sd/fenixos/data/<id>/<name>` on the board's SD card (P53), replacing a file of that name |
+| `file_get` | `req`, `name` | Reads it back (at most 32 KB) |
+| `file_delete` | `req`, `name` | Deletes a file, or an empty subfolder |
+
+App files (P53): `name` is relative to the app's folder and may hold `/` for subfolders (no `..`, the board's path rules in `docs/sd-card.md`). fenixOS sends them over its board link as file writes (`proto/spec.md` "Files (0x6_)") and answers `file` once the board has, so a request takes a few seconds at most. It answers `ok: false` with the reason when the board is not connected, has no card, or refuses. The board deletes the folder when the app is removed from it (from the board's card; a card that is out then keeps it). fenixOS before 0.1.23 ignores these types, so the SDK gives up after 30 s.
 
 ## fenix-sdk (Rust)
 
@@ -64,4 +70,6 @@ fn main() {
 
 `next` returns `Stop` once fenixOS sends `stop` or the pipe closes, and keeps returning it after that. `settings()` holds the latest values; `set` and `log` never block for long and are dropped once the pipe is closed.
 
-The sample PC half in `tools/sample-app/pc` is the full example: it sends CPU and memory use while the app is open and logs every event.
+`put_file(name, &bytes)`, `get_file(name)` and `delete_file(name)` keep files in the app's folder on the board's card. They block until fenixOS answers (seconds; 30 s at most) and return `Err(text)` when there is no board, no card, or an older fenixOS. Call them from the loop; each holds it for the time the request takes.
+
+The sample PC half in `tools/sample-app/pc` is the full example: it sends CPU and memory use while the app is open, logs every event, and writes `hello.txt` to its card folder and reads it back each time the board connects.

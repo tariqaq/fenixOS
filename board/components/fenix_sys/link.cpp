@@ -421,7 +421,10 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       send_app_result(fnx::app::OP_REMOVE, code, id, code == fnx::app::STORAGE ? "storage error, or its SD card is out" : "");
       logs_note(code == fnx::app::OK ? 3 : 2, "app %s: remove %s (code %u)", id, code == fnx::app::OK ? "done" : "failed",
                 (unsigned)code);
-      if (code == fnx::app::OK) post(LinkEv::APPS_CHANGED, 0, id);
+      if (code == fnx::app::OK) {
+        app_data_forget(id);
+        post(LinkEv::APPS_CHANGED, 0, id);
+      }
       return;
     }
     case fnx::ty::FW_BEGIN: {

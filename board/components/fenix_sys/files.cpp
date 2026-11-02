@@ -518,6 +518,43 @@ void app_state_forget(const char* id) {
   unlink(full);
 }
 
+// ---- App data (the SDK's put_file) ----
+
+// A folder and everything in it, at most a few levels deep. `p` is a FULL buffer, changed and put back.
+static void rm_tree(char* p, int depth) {
+  size_t n = strlen(p);
+  if (DIR* d = opendir(p)) {
+    while (struct dirent* e = readdir(d)) {
+      if (!strcmp(e->d_name, ".") || !strcmp(e->d_name, "..")) continue;
+      if ((size_t)snprintf(p + n, FULL - n, "/%s", e->d_name) >= FULL - n) continue;
+      struct stat st;
+      if (!stat(p, &st) && S_ISDIR(st.st_mode)) {
+        if (depth < 4) rm_tree(p, depth + 1);
+      } else {
+        unlink(p);
+      }
+      p[n] = 0;
+    }
+    closedir(d);
+  }
+  rmdir(p);
+}
+
+void app_data_forget(const char* id) {
+  if (!card() || !path_ok(id, false) || strchr(id, '/')) return;
+  // A write from the PC into this folder stops here: its part and pin go with the folder.
+  size_t n = strlen(id);
+  if (s_wr.on && !strncasecmp(s_wr.path, "data/", 5) && !strncasecmp(s_wr.path + 5, id, n) && s_wr.path[5 + n] == '/')
+    wr_close();
+  char full[FULL];
+  snprintf(full, sizeof full, "%s/data/%s", ROOT, id);
+  struct stat st;
+  if (stat(full, &st)) return;
+  rm_tree(full, 0);
+  sd_update_free();
+  logs_note(3, "app %s: its data folder was deleted", id);
+}
+
 // ---- Link task ----
 
 void files_frame(uint8_t type, fnx::Reader& r) {

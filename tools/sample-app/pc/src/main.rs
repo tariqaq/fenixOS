@@ -1,5 +1,6 @@
 //! PC half of the test fixture app: sends CPU and memory use to the board while the app is open,
-//! and logs what the user does on the board (docs/sidecars.md).
+//! and logs what the user does on the board (docs/sidecars.md). Each time the board connects it
+//! writes `hello.txt` to its folder on the board's SD card and reads it back (`put_file`).
 #![windows_subsystem = "windows"]
 
 use std::time::{Duration, Instant};
@@ -20,6 +21,7 @@ fn main() {
         let wait = next.saturating_duration_since(Instant::now());
         match app.next(wait) {
             Some(Message::Stop) => break,
+            Some(Message::Board { connected: true }) => card_check(&app),
             Some(Message::Opened) => {
                 // Restore the slider from the settings, and send stats right away.
                 let level = app
@@ -72,6 +74,19 @@ fn main() {
                 }
             }
         }
+    }
+}
+
+/// Write a file to this app's folder on the board's card, read it back, and log the result.
+fn card_check(app: &App) {
+    let text = format!("sample {} was here", app.version);
+    let r = app
+        .put_file("hello.txt", text.as_bytes())
+        .and_then(|_| app.get_file("hello.txt"));
+    match r {
+        Ok(d) if d == text.as_bytes() => app.log_info("Card: hello.txt written and read back"),
+        Ok(_) => app.log(Level::Warn, "Card: hello.txt came back different"),
+        Err(e) => app.log(Level::Warn, format!("Card: {e}")),
     }
 }
 

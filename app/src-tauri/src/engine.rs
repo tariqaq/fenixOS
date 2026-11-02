@@ -16,6 +16,8 @@ use tauri::{AppHandle, Emitter, Manager};
 use crate::apps::{AppView, Apps, Cmd, SyncItem};
 use crate::logs::{Logs, Source};
 use crate::registry::Manifest;
+use crate::sidecar::Note;
+use fenix_sdk::wire::{self, Down, Up};
 
 const TIME_SYNC_EVERY: Duration = Duration::from_secs(3600);
 /// Stream rate the PC asks for: the board's own (`STREAM_FPS`, P46).
@@ -652,7 +654,19 @@ impl Engine {
         loop {
             let mut changed = false;
             while let Ok(c) = inbox.try_recv() {
-                changed |= self.apps.lock().unwrap().command(c);
+                match c {
+                    Cmd::Sidecar {
+                        id,
+                        gen,
+                        note:
+                            Note::Up(
+                                up @ (Up::FilePut { .. }
+                                | Up::FileGet { .. }
+                                | Up::FileDelete { .. }),
+                            ),
+                    } => self.clone().app_file(id, gen, up),
+                    c => changed |= self.apps.lock().unwrap().command(c),
+                }
             }
             // Poll fast only while an install or an update streams chunks; otherwise stay mostly
             // asleep.
@@ -684,6 +698,70 @@ impl Engine {
                 self.emit_state(&app);
             }
         }
+    }
+
+    /// An app's file on the board's card, `data/<id>/<name>` (P53, `docs/sidecars.md`). Runs on
+    /// its own thread, as the board answers over the link; the answer goes to the app if the same
+    /// run of it is still there.
+    fn app_file(self: Arc<Self>, id: String, gen: u64, up: Up) {
+        let _ = std::thread::Builder::new()
+            .name("fenix-app-file".into())
+            .spawn(move || {
+                let (req, r) = self.app_file_job(&id, up);
+                let (ok, data, error) = match r {
+                    Ok(d) => (
+                        true,
+                        d.map(|d| wire::encode(&d)).unwrap_or_default(),
+                        String::new(),
+                    ),
+                    Err(e) => (false, String::new(), e),
+                };
+                self.apps.lock().unwrap().reply(
+                    &id,
+                    gen,
+                    Down::File {
+                        req,
+                        ok,
+                        data,
+                        error,
+                    },
+                );
+            });
+    }
+
+    fn app_file_job(&self, id: &str, up: Up) -> (u32, Result<Option<Vec<u8>>, String>) {
+        let (req, name) = match &up {
+            Up::FilePut { req, name, .. }
+            | Up::FileGet { req, name }
+            | Up::FileDelete { req, name } => (*req, name.clone()),
+            _ => return (0, Err("not a file request".into())),
+        };
+        let path = format!("data/{id}/{name}");
+        if !fenix_link::files::path_ok(&path) {
+            return (req, Err(format!("{name}: not a file name")));
+        }
+        let r = match up {
+            Up::FilePut { data, .. } => match wire::decode(&data) {
+                Some(d) if d.len() <= wire::MAX_FILE => self
+                    .board_files(|s, r| fenix_link::files::write(s, r, &path, d))
+                    .map(|_| None),
+                Some(_) => Err(format!("{name}: over {} KB", wire::MAX_FILE / 1024)),
+                None => Err("bad file data".into()),
+            },
+            Up::FileGet { .. } => self
+                .board_files(|s, r| fenix_link::files::read(s, r, &path, &mut |_, _| {}))
+                .and_then(|d| {
+                    if d.len() > wire::MAX_FILE {
+                        Err(format!("{name}: over {} KB", wire::MAX_FILE / 1024))
+                    } else {
+                        Ok(Some(d))
+                    }
+                }),
+            _ => self
+                .board_files(|s, r| fenix_link::files::delete(s, r, &path))
+                .map(|_| None),
+        };
+        (req, r)
     }
 
     fn flush_app_logs(&self, app: &AppHandle) {
@@ -766,6 +844,7 @@ impl Engine {
         if let Event::Msg(
             m @ (Msg::FileList { .. }
             | Msg::FileData { .. }
+            | Msg::FileAck { .. }
             | Msg::FileResult { .. }
             | Msg::Error { .. }),
         ) = &e
