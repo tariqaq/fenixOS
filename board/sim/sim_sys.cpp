@@ -254,6 +254,10 @@ SdInfo sd_info() {
   return {fnx::sd_state::READY, 7855104, 7855104, 40000};
 }
 void sd_update_free() {}
+bool app_state_write(const char*, const uint8_t*, size_t) { return false; }
+size_t app_state_read(const char*, uint8_t*, size_t) { return 0; }
+void app_state_forget(const char*) {}
+void shot_save() {}
 void sd_start() {}
 void sd_probe() {}
 void sd_report() {}

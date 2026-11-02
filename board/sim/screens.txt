@@ -90,8 +90,11 @@ shot app_starting
 host io.github.tariqaq.sample gone
 shot app_not_here
 host io.github.tariqaq.sample on
-disconnect                                # 6a: only the simulator can show this one
-shot app_waiting
+disconnect
+shot app_offline                          # the last values, dimmed, "PC not connected" (P53)
+tap 30 16
+tap 58 182                                # opened again: the simulator keeps no values on a card
+shot app_waiting                          # 6a: only the simulator can show this one
 connect
 tap 30 16
 host io.github.tariqaq.sample off

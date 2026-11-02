@@ -175,7 +175,7 @@ docs/, pics/
 - **Store:** LittleFS on the `apps` partition (~1.9 MB), `/apps/<id>.fxp` plus `/apps/<id>.sha` (corrected 2026-10-29: no separate index). Corrected (P51/P52): apps go to the SD card first; the flash store is 256 KB, 128 KB per package (`docs/packages.md` "Where apps live"). An install writes to a temp file, checks sha256 and renames it, so a broken install never leaves a half app.
 - **Host states:**
   - PC half running: the app works.
-  - No PC link: "Waiting for host PC" (artboard 6a).
+  - No PC link: "Waiting for host PC" (artboard 6a). Corrected (P53): with last values saved on the SD card, the layout shows them dimmed under "PC not connected" (`docs/sd-card.md` "Last app values").
   - `HOST_STATE` off: "Turned off on host PC" (6b).
 - **Switch-off in v0.1:**
   - Switching an app off on the PC sends `HOST_STATE` off, then `APP_REMOVE`.

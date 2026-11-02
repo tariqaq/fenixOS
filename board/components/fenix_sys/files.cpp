@@ -473,6 +473,51 @@ void shot_save() {
   result(file::OP_SHOT, file::OK, path);
 }
 
+// ---- Last app values (P53 step 4) ----
+
+static void state_path(char* full, const char* id, const char* ext) {
+  char path[fnx::PATH_LEN];
+  snprintf(path, sizeof path, "state/%.63s.%s", id, ext);
+  join(full, path);
+}
+
+// Written beside, then put in place: a cut write leaves the old file.
+bool app_state_write(const char* id, const uint8_t* data, size_t n) {
+  if (!card()) return false;
+  char tmp[FULL], full[FULL];
+  state_path(tmp, id, "tmp");
+  state_path(full, id, "bin");
+  make_dirs("state/x");
+  FILE* f = fopen(tmp, "wb");
+  if (!f) return false;
+  bool ok = fwrite(data, 1, n, f) == n;
+  ok = fclose(f) == 0 && ok;
+  if (ok) {
+    unlink(full);
+    ok = rename(tmp, full) == 0;
+  }
+  if (!ok) unlink(tmp);
+  return ok;
+}
+
+size_t app_state_read(const char* id, uint8_t* out, size_t cap) {
+  if (!card()) return 0;
+  char full[FULL];
+  state_path(full, id, "bin");
+  FILE* f = fopen(full, "rb");
+  if (!f) return 0;
+  size_t n = fread(out, 1, cap, f);
+  fclose(f);
+  return n;
+}
+
+void app_state_forget(const char* id) {
+  if (!card()) return;
+  char full[FULL];
+  state_path(full, id, "bin");
+  unlink(full);
+}
+
 // ---- Link task ----
 
 void files_frame(uint8_t type, fnx::Reader& r) {

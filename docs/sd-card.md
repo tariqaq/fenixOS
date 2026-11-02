@@ -10,7 +10,8 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `crash/` | Crash records `<n>.elf` and `<n>.txt` | The board, at the next mount after a crash | P53 |
 | `fonts/` `data/` `wallpaper/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
 | `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
-| `state/` `backup/` `web/` | Last app values, settings backup, status page | Planned (P53 steps 4 to 6, `tasks.md`) | |
+| `state/` | Last bound values per app, `<id>.bin` | The board | P53 |
+| `backup/` `web/` | Settings backup, status page | Planned (P53 steps 5 and 6, `tasks.md`) | |
 
 ## Files over the link (P53 step 1)
 
@@ -34,6 +35,17 @@ Measured numbers: `docs/board-info.md` "Files over the link".
 - **Name:** `shots/YYYYMMDD-HHMMSS.bmp` in local time, `-2` to `-9` for more in the same second, or `shots/up-<seconds>.bmp` before the clock is set.
 - **What it shows** is the glass, not what LVGL meant to draw. `fenix shot` (the stream) is the other way round.
 - **The PC app** copies each shot to `%LOCALAPPDATA%\fenixOS\shots`; "Show" opens that folder. Older shots: `fenix files ls shots`, `fenix files get shots/<name>`. They stay on the card until deleted (`fenix files rm`).
+
+## Last app values (P53 step 4)
+
+Board: `board/components/fenix_apps/app_pkg.cpp` (the format), `fenix_sys/files.cpp` (the file).
+
+- **Saved** when an app closes, and every 60 s while it is open and a value changed. Values the PC sets and controls the user moves both count. The file is written as `<id>.tmp`, then put in place, so a cut write leaves the old one.
+- **Format:** `FXS1`, a count, then per set binding: its name (length byte + bytes), the kind, the value (i32 LE) and the text (length byte + up to 255 bytes). At most 4 KB. Values are matched by binding name, so an app update keeps the values of the bindings it still has.
+- **Loaded** when the app opens, PC or not; values from the PC replace them as they come.
+- **With no PC:** the layout shows the values under "PC not connected", behind a 50 % veil, and takes no taps (it still scrolls). With no values saved the screen is 6a "Waiting for host PC" as before. When the PC connects, the app screen is rebuilt live.
+- **Removed** with the app (while the card is in).
+- **Cost:** 2.1 KB of firmware; a 4 KB buffer while the app opens.
 
 ## Board log (P53 step 2)
 

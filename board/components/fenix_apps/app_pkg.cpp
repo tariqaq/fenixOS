@@ -2,11 +2,14 @@
 // a package. One app is open at a time. Packages are read from the SD card or flash in pieces
 // (P39): tiles read the two icons only, and only for the tiles Home shows (P51); an open app keeps
 // its strings, props and the images its elements show, from which its LVGL objects are rebuilt
-// (rotation, host state). Artboards 6a, 6b.
+// (rotation, host state). Artboards 6a, 6b. The last bound values are kept on the SD card (P53):
+// with no PC the app opens on them, dimmed, under "PC not connected".
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include <memory>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -129,6 +132,8 @@ static struct {
   int64_t close_at;  // pending return to Home (app removed while showing HostOff)
   bool missing;      // stored on the SD card, which is out: no package loaded (P51)
   bool turning_on;   // Turn on was pressed; waiting for the PC's HOST_STATE
+  bool dirty;        // values changed since they were last saved to the card (P53)
+  int64_t saved_at;
 } s_app;
 
 // A closed app's package, images and pixels, kept until its screen is deleted: labels show the
@@ -182,8 +187,72 @@ static void send_event(uint16_t elem, uint8_t kind, int32_t value) {
   sys::link_send(fnx::ty::EVENT, b, w.size());
 }
 
+// ---- Last values on the card (P53) ----
+// state/<id>.bin: "FXS1", a count, then per set binding: its name (u8 length + bytes), kind u8,
+// value i32 LE, text (u8 length + bytes). Matched by name, so an update keeps the values of the
+// bindings it still has. Saved when the app closes and every 60 s while it is open and changed.
+
+static constexpr int64_t STATE_EVERY_US = 60000000;
+static constexpr size_t STATE_MAX = 4096;
+
+static std::string_view bind_name(size_t k) { return s_app.pkg.strings[s_app.pkg.binds[k]]; }
+
+static void state_save() {
+  s_app.dirty = false;
+  s_app.saved_at = esp_timer_get_time();
+  std::vector<uint8_t> b{'F', 'X', 'S', '1', 0};
+  for (size_t k = 0; k < s_app.vals.size(); k++) {
+    const Val& v = s_app.vals[k];
+    std::string_view name = bind_name(k);
+    size_t tn = v.kind == 2 ? (v.text.size() < 255 ? v.text.size() : 255) : 0;
+    if (!v.set || name.size() > 255 || b[4] == 255 || b.size() + 2 + name.size() + 6 + tn > STATE_MAX) continue;
+    b[4]++;
+    b.push_back(name.size());
+    b.insert(b.end(), name.begin(), name.end());
+    b.push_back(v.kind);
+    for (int i = 0; i < 4; i++) b.push_back((uint32_t)v.i >> (8 * i));
+    b.push_back(tn);
+    b.insert(b.end(), v.text.begin(), v.text.begin() + tn);
+  }
+  if (!sys::app_state_write(s_app.id, b.data(), b.size())) s_app.dirty = true;  // no card: later
+}
+
+static void state_load() {
+  std::unique_ptr<uint8_t[]> b(new (std::nothrow) uint8_t[STATE_MAX]);
+  if (!b) return;
+  size_t n = sys::app_state_read(s_app.id, b.get(), STATE_MAX);
+  if (n < 5 || memcmp(b.get(), "FXS1", 4) != 0) return;
+  size_t at = 5;
+  for (int e = 0; e < b[4]; e++) {
+    if (at + 1 > n || at + 1 + b[at] + 6 > n) return;
+    std::string_view name((const char*)&b[at + 1], b[at]);
+    at += 1 + b[at];
+    uint8_t kind = b[at];
+    int32_t i = (int32_t)(b[at + 1] | b[at + 2] << 8 | b[at + 3] << 16 | (uint32_t)b[at + 4] << 24);
+    size_t tn = b[at + 5];
+    at += 6;
+    if (at + tn > n) return;
+    for (size_t k = 0; k < s_app.vals.size(); k++) {
+      if (bind_name(k) != name) continue;
+      Val& v = s_app.vals[k];
+      v.set = true;
+      v.kind = kind;
+      v.i = i;
+      v.text.assign((const char*)&b[at], tn);
+    }
+    at += tn;
+  }
+}
+
+static bool has_vals() {
+  for (const Val& v : s_app.vals)
+    if (v.set) return true;
+  return false;
+}
+
 static void close_app() {
   if (!s_app.open) return;
+  if (s_app.dirty && !s_app.missing) state_save();
   if (sys::link_connected() && !s_app.missing) send_id(fnx::ty::APP_CLOSED, s_app.id);
   s_app.open = false;
   // At most one app screen outlives the app (nav keeps two screens, only during a slide), and
@@ -200,6 +269,7 @@ static void close_app() {
   s_app.close_at = 0;
   s_app.missing = false;
   s_app.turning_on = false;
+  s_app.dirty = false;
 }
 
 static bool load_app(const char* id) {
@@ -233,6 +303,9 @@ static bool load_app(const char* id) {
   strlcpy(s_app.id, id, sizeof s_app.id);
   snprintf(s_app.name, sizeof s_app.name, "%.*s", (int)p.name.size(), p.name.data());
   s_app.vals.assign(p.binds.size(), Val{});
+  state_load();
+  s_app.dirty = false;
+  s_app.saved_at = esp_timer_get_time();
   s_app.images.clear();
   for (size_t i = 0; i < p.assets.size(); i++) {
     const fpkg::Asset& a = p.assets[i];
@@ -348,6 +421,7 @@ static void remember(uint16_t elem, int32_t value) {
   v.set = true;
   v.kind = 0;
   v.i = value;
+  s_app.dirty = true;
 }
 
 static void elem_cb(lv_event_t* e) {
@@ -524,6 +598,15 @@ static void build_layout(lv_obj_t* body) {
 
 enum Why { WAITING, OFF, NOT_HERE, STARTING, MISSING };
 
+// Taps pass through to the scroller: nothing in the layout takes them.
+static void untouchable(lv_obj_t* o) {
+  for (uint32_t i = 0; i < lv_obj_get_child_count(o); i++) {
+    lv_obj_t* c = lv_obj_get_child(o, i);
+    lv_obj_remove_flag(c, LV_OBJ_FLAG_CLICKABLE);
+    untouchable(c);
+  }
+}
+
 static void turn_on_cb(lv_event_t*) {
   if (s_app.turning_on || !sys::link_connected()) return;
   s_app.turning_on = true;
@@ -589,8 +672,9 @@ void app_screen(lv_obj_t* scr) {
   lv_obj_set_flex_grow(body, 1);
   if (!s_app.open) return;
   if (s_app.missing) return host_state(body, MISSING);
-  if (!sys::link_connected()) return host_state(body, WAITING);
-  switch (app_host(s_app.id)) {
+  bool offline = !sys::link_connected();
+  if (offline && !has_vals()) return host_state(body, WAITING);
+  switch (offline ? fnx::host::RUNNING : app_host(s_app.id)) {
     case fnx::host::OFF:
       return host_state(body, OFF);
     case fnx::host::NOT_HERE:
@@ -600,11 +684,30 @@ void app_screen(lv_obj_t* scr) {
     default:
       break;
   }
+  if (offline) {  // the last values, dimmed and not touchable, under one line (P53)
+    lv_obj_t* r = rowbox(body, 6);
+    lv_obj_set_style_pad_hor(r, 16, 0);
+    lv_obj_set_style_pad_ver(r, 6, 0);
+    text(r, FX_ICON_PLUGS, &fx_icon_fill_16, FX_COLOR_WARNING);
+    text(r, "PC not connected", &fx_font_label, FX_COLOR_LABEL_2);
+    body = column(body, 0);
+    lv_obj_set_width(body, LV_PCT(100));
+    lv_obj_set_flex_grow(body, 1);
+  }
   lv_obj_add_flag(body, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_add_flag(body, LV_OBJ_FLAG_CLICKABLE);  // drags must reach the scroller
   lv_obj_set_scroll_dir(body, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_ACTIVE);
   build_layout(body);
+  if (offline) {
+    untouchable(body);
+    lv_obj_t* veil = box(body);  // above the layout; stays put while it scrolls
+    lv_obj_add_flag(veil, LV_OBJ_FLAG_FLOATING);
+    lv_obj_remove_flag(veil, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_set_size(veil, LV_PCT(100), LV_PCT(100));
+    lv_obj_set_style_bg_color(veil, col(FX_COLOR_BG), 0);
+    lv_obj_set_style_bg_opa(veil, LV_OPA_50, 0);
+  }
 }
 
 // ---- Link events and the UI loop ----
@@ -682,6 +785,8 @@ void app_on_link(const sys::LinkEvent& e) {
           refresh_if_top(app_screen);
         }
       } else if (had) {
+        sys::app_state_forget(id);
+        if (is_open) s_app.dirty = false;  // closing must not write it again
         bool off_shown = is_open && nav_top() == app_screen && app_host(id) == fnx::host::OFF;
         if (is_open || home_top) strlcpy(s_ghost, id, sizeof s_ghost);
         if (is_open && off_shown)
@@ -714,6 +819,7 @@ void app_tick() {
     nav_pop();
     return;
   }
+  if (s_app.dirty && esp_timer_get_time() - s_app.saved_at > STATE_EVERY_US) state_save();
   while (sys::bind_poll(&v)) {
     if (strcmp(v.id, s_app.id) != 0 || v.bind >= s_app.vals.size()) continue;
     Val& val = s_app.vals[v.bind];
@@ -721,6 +827,7 @@ void app_tick() {
     val.kind = v.kind;
     val.i = v.i;
     if (v.kind == 2) val.text = v.text;
+    s_app.dirty = true;
     for (const Bound& b : s_app.bound)
       if (b.bind == v.bind) apply(b, val);
   }

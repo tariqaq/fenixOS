@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #ifdef _WIN32
 #include <windows.h>
+#undef FILE_END  // winbase.h's SetFilePointer origin; fenix_proto.h has its own (P53)
 #undef ERROR  // wingdi.h; clashes with fnx::ty::ERROR (fenix_sys.h includes fenix_proto.h)
 #endif
 
