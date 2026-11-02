@@ -1,0 +1,9 @@
+[package]
+name = "fenix-font"
+description = "CJK bitmap fonts for the board's SD card (FXF1, docs/fonts.md)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+ab_glyph = "0.2"

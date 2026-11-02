@@ -14,6 +14,7 @@ fenix-link = { path = "crates/fenix-link" }
 fenix-pkg = { path = "crates/fenix-pkg" }
 fenix-sdk = { path = "crates/fenix-sdk" }
 fenix-flash = { path = "crates/fenix-flash" }
+fenix-font = { path = "crates/fenix-font" }
 
 # serialport with reads that never wait in the driver: the CH340 driver crashes Windows in its
 # read-timeout code (third_party/serialport/PATCH.md, docs/board-info.md).

@@ -29,6 +29,8 @@
 //! fenix files ls [path]           files on the board's SD card under /sd/fenixos (0.1.23 and later)
 //! fenix files get <path> [out]     download one; files put <local> <path> uploads into fonts/,
 //!                                  data/ or web/ (resumes a cut upload); files rm <path>
+//! fenix font make <font.otf> <out.fxf> [--chars <text>]   draw a CJK font into the board's bitmap
+//!                                  format (docs/fonts.md); then files put <out.fxf> fonts/cjk.fxf
 //! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
 //! fenix host <id> on|off|gone|starting   tell the board the state of an app's PC half
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
@@ -51,6 +53,44 @@ use fenix_proto::{
     Sysinfo,
 };
 use sha2::{Digest, Sha256};
+
+/// `fenix font make <font.otf> <out.fxf> [--chars <text>]`: no board needed.
+fn font(args: &[String]) -> i32 {
+    let (Some("make"), Some(src), Some(out)) =
+        (args.first().map(String::as_str), args.get(1), args.get(2))
+    else {
+        return usage();
+    };
+    let chars = match args.iter().position(|a| a == "--chars") {
+        Some(i) => match args.get(i + 1) {
+            Some(c) => Some(c.as_str()),
+            None => return usage(),
+        },
+        None => None,
+    };
+    let data = match std::fs::read(src) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("{src}: {e}");
+            return 1;
+        }
+    };
+    let t = Instant::now();
+    let built = fenix_font::build(&data, &fenix_font::SIZES, chars, &mut |p| {
+        eprint!("\r{p:3}%");
+    });
+    eprintln!();
+    match built.and_then(|f| std::fs::write(out, &f).map(|_| f.len()).map_err(|e| e.to_string())) {
+        Ok(n) => {
+            println!("{out}: {n} B in {:.1} s", t.elapsed().as_secs_f64());
+            0
+        }
+        Err(e) => {
+            eprintln!("font: {e}");
+            1
+        }
+    }
+}
 
 fn main() {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
@@ -167,6 +207,7 @@ fn main() {
             None => usage(),
         },
         "files" => files(opts, &args[1..]),
+        "font" => font(&args[1..]),
         "ota" => match args.get(1) {
             Some(f) => ota(opts, Path::new(f)),
             None => usage(),
@@ -228,7 +269,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|shot --sd [out.bmp]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|shot --sd [out.bmp]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|font make <otf> <out.fxf> [--chars <text>]|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 

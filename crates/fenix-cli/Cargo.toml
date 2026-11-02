@@ -14,5 +14,6 @@ fenix-proto.workspace = true
 fenix-link.workspace = true
 fenix-pkg.workspace = true
 fenix-flash.workspace = true
+fenix-font.workspace = true
 sha2 = "0.10"
 png = "0.17"
