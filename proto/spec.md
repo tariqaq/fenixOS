@@ -122,11 +122,29 @@ Firmware updates over the link (P52, firmware 0.1.22 and later). Optional: an ol
 
 | Type | Name | Dir | Body |
 |---|---|---|---|
-| 0x50 | FW_BEGIN | P→B | version:str ‖ size:u32 ‖ sha256:32 ‖ signature:64 (ECDSA P-256 over the sha256, r ‖ s). Answered with FW_ACK (the offset to send from) or FW_RESULT (refused). With an SD card the image is staged on the card, and a FW_BEGIN for the same sha256 resumes: the ACK gives the bytes already there |
+| 0x50 | FW_BEGIN | P→B | version:str ‖ size:u32 ‖ sha256:32 ‖ signature:64 (ECDSA P-256 over the sha256, r ‖ s). Answered with FW_ACK (the offset to send from) or FW_RESULT (refused). With an SD card the image is staged on the card, and a FW_BEGIN for the same sha256 resumes: the ACK gives the bytes already there. A FW_BEGIN while a transfer is still open replaces it (the PC reconnected) |
 | 0x51 | FW_CHUNK | P→B | offset:u32 ‖ data:bytes (≤ 1024) |
 | 0x52 | FW_ACK | B→P | next_offset:u32. Flow control as APP_ACK. The board drops an update after 10 s without firmware messages, or when the link drops (a staged image stays on the card) |
 | 0x53 | FW_END | P→B | (empty). The board checks size, sha256 and signature, copies the image to the spare slot and answers; this can take 20 s |
 | 0x54 | FW_RESULT | B→P | code:u8 ‖ text:bytes. Codes: 0 ok (the board restarts into the new firmware), 1 no space, 2 bad hash, 3 bad signature, 4 busy, 5 storage error, 6 older than the running firmware (a downgrade is only offered on the board) |
+
+### Files (0x6_)
+
+Files on the board's SD card under `/sd/fenixos` (P53, firmware 0.1.23 and later). Optional: an older board answers ERROR unknown type. A path is relative to `/sd/fenixos`, split by `/`, shorter than 128 bytes; no part may be empty, `.`, `..`, or end in a dot or a space, and `\ : * ? " < > |` are refused. `""` is the folder itself (list only).
+
+| Type | Name | Dir | Body |
+|---|---|---|---|
+| 0x60 | FILE_LIST_REQ | P→B | start:u16 ‖ path:str. Answered with FILE_LIST, or FILE_RESULT op list |
+| 0x61 | FILE_LIST | B→P | start:u16 ‖ total:u16 ‖ path:str ‖ entries to the end of the body, each dir:u8 ‖ size:u32 ‖ name:str. One frame's worth from entry `start`, in the card's order; ask again from `start` + the count for the rest |
+| 0x62 | FILE_READ_REQ | P→B | offset:u32 ‖ len:u16 (≤ 1024) ‖ path:str. Answered with FILE_DATA, or FILE_RESULT op read. Several may be in flight; they are answered in order |
+| 0x63 | FILE_DATA | B→P | offset:u32 ‖ total:u32 (the file's size) ‖ data:bytes (shorter at the end; empty past it) |
+| 0x64 | FILE_DELETE | P→B | path:str. Only inside `fonts/ data/ wallpaper/ logs/ crash/ shots/`; a folder only when empty. Answered with FILE_RESULT op delete |
+| 0x65 | FILE_WRITE_BEGIN | P→B | size:u32 ‖ sha256:32 ‖ path:str. Only inside `fonts/ data/ wallpaper/`; folders on the way are made; a name ending in `.part` or `.pin` is refused. Answered with FILE_ACK (the offset to send from) or FILE_RESULT op write. The board writes `<path>.part` and keeps `<path>.pin` (size and sha256) beside it, so a FILE_WRITE_BEGIN for the same size and sha256 resumes: the ACK gives the bytes already there. A FILE_WRITE_BEGIN while a write is open replaces it |
+| 0x66 | FILE_CHUNK | P→B | offset:u32 ‖ data:bytes (≤ 1024). Flow control as APP_ACK. The board closes a write after 10 s without file messages, or when the link drops (the part stays) |
+| 0x67 | FILE_END | P→B | (empty). The board reads the part back, checks the sha256, then puts it in place of any old file. Answered with FILE_RESULT op write |
+| 0x68 | FILE_ACK | B→P | next_offset:u32 |
+| 0x69 | FILE_RESULT | B→P | op:u8 ‖ code:u8 ‖ path:str ‖ text:bytes. Ops: 1 list, 2 read, 3 delete, 4 write, 5 shot. Codes: 0 ok, 1 not found, 2 not allowed, 3 no card, 4 no space, 5 bad hash, 6 storage error, 7 busy. A list or read that works answers with FILE_LIST or FILE_DATA instead |
+| 0x6A | SHOT_SAVE | P→B | (empty). Save the screen to `/sd/fenixos/shots/` (P53 step 3, not built yet). Answered with FILE_RESULT op shot; its path is the saved file |
 
 ## Versioning
 

@@ -279,11 +279,12 @@ The spike now checks the layout and formats only a card that is not in the SD As
 
 ## SD card in fenixOS (P50, 2026-11-02)
 
-fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MHz, FAT32 at `/sd`, long names, `max_files` 4, never formats. A one-shot task mounts it after boot (no card-detect pin: Settings › Storage and a PC connecting probe again). Touch moved to software SPI (`fenix_hal/include/fenix_touch.hpp`).
+fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MHz, FAT32 at `/sd`, long names, `max_files` 6 (4 until P53), never formats. A one-shot task mounts it after boot (no card-detect pin: Settings › Storage and a PC connecting probe again). Touch moved to software SPI (`fenix_hal/include/fenix_touch.hpp`).
 
 - **DMA channel:** `spi_bus_initialize(SPI3_HOST, ..., SPI_DMA_CH_AUTO)` failed with `ESP_ERR_NOT_FOUND` (0x105) next to LovyanGFX's LCD on SPI2. Probed: `SPI_DMA_CH1` 0x105, `SPI_DMA_CH2` ok, no DMA ok. LovyanGFX holds channel 1; why AUTO did not pick channel 2 was not traced. `sd.cpp` tries AUTO, then channel 2, then 1.
 - **`sdkconfig.defaults` does not change an existing `board/sdkconfig`:** a choice already written there (`CONFIG_FATFS_LFN_NONE`, `CONFIG_WL_SECTOR_SIZE_4096`) wins over a new default. The first P50 build kept 8.3 names and 4 KB sectors, and the mount cost 28 KB of heap. Fix: delete those lines from the local `board/sdkconfig` (not in git; CI starts from the defaults) and build again.
 - **Heap cost of the mount (measured, 512 B sectors):** 9.6 KB, plus 0.3 KB for the SPI bus. Of it: the VFS context with 4 × `FIL` (552 B each, with its sector cache) and `FATFS` (564 B), plus two fixed path buffers of `FILENAME_MAX + 3` (2 × 1,027 B) in IDF's `vfs_fat.c`; the rest is the sdspi device, the card struct and the FatFs mutex. Each extra `max_files` costs 552 B. Long-name buffers are on the heap only during a call.
+- **A new folder took 32 KB of heap for a moment (P53, measured):** FatFs zeroes a new folder's cluster through a heap buffer of up to 32 KB (`ff.c` `dir_clear`, `MAX_MALLOC` 0x8000). With this card's 32 KB clusters, one `mkdir` took the low point from 63 to 29 KB. LVGL allocates from the same heap on the UI task, and a failed LVGL allocation aborts. Fix: `sd.cpp` wraps `ff_memalloc` (`-Wl,--wrap`, `fenix_sys/CMakeLists.txt`) and refuses power-of-two asks over 4 KB, so FatFs halves down to 4 KB. A first try refused every ask over 4 KB and the mount failed with `ESP_ERR_NO_MEM`: the VFS context at mount is ~6 KB. After the fix a `mkdir` plus a file check costs 8.6 KB at the low point.
 - **Heap with Wi-Fi joined, card mounted:** 70.6 KB free (lowest 66.0 KB) at 50 s up, against 79.9 KB on v0.1.19 at the same point (`fenix sysinfo`).
 - **Image:** 1,155,568 B (+38 KB on v0.1.19: FatFs, sdspi, SD state and UI).
 - **Card seen by fenixOS:** 7,856,128 KB total, 7,856,096 KB free, 40,000 kHz (`fenix sd`).
@@ -291,6 +292,21 @@ fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MH
 ### SD clock
 
 The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
+
+## Files over the link (P53, 2026-11-03)
+
+`fenix files ls|get|put|rm`, messages in `proto/spec.md` "Files (0x6_)", board side `fenix_sys/files.cpp`.
+
+| Case (8 GB card, 1 MB = 10^6 B) | USB | Wi-Fi |
+|---|---|---|
+| put 300 KB (sent, then the sha256 read-back) | 4.3 s, ~70 KB/s | 2.5 s, ~120 KB/s |
+| get | 88 KB/s (300 KB and 1.18 MB) | 192 KB/s |
+| Heap low point | 54 KB (the check task: 4 KB stack and a 4 KB buffer) | 48.9 KB (lwIP buffers too) |
+
+- A put killed at 30% went on from 620,544 B on the next try ("resuming at").
+- A list of 30 long names came in two frames.
+- Refused as expected: writes to `apps/` and to a `.part` name, deletes in `firmware/`, deleting `data` itself, a non-empty folder ("the folder is not empty"), missing paths (`NOT_FOUND`).
+- While a write is open, the part's size on the card reads 0: FAT updates a file's size when it closes. A resume after a power cut therefore starts over.
 
 ## Two OTA slots and updates (P52, 2026-11-03)
 

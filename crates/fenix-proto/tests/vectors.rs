@@ -365,6 +365,82 @@ fn samples() -> Vec<(&'static str, Msg)> {
                 text: "bad signature".into(),
             },
         ),
+        (
+            "file_list_req",
+            Msg::FileListReq {
+                start: 0,
+                path: "logs".into(),
+            },
+        ),
+        (
+            "file_list",
+            Msg::FileList {
+                start: 0,
+                total: 2,
+                path: "logs".into(),
+                entries: vec![
+                    FileEntry {
+                        dir: false,
+                        size: 1234,
+                        name: "12.txt".into(),
+                    },
+                    FileEntry {
+                        dir: true,
+                        size: 0,
+                        name: "old".into(),
+                    },
+                ],
+            },
+        ),
+        (
+            "file_read_req",
+            Msg::FileReadReq {
+                offset: 1024,
+                len: 1024,
+                path: "logs/12.txt".into(),
+            },
+        ),
+        (
+            "file_data",
+            Msg::FileData {
+                offset: 1024,
+                total: 1234,
+                data: b"boot".to_vec(),
+            },
+        ),
+        (
+            "file_delete",
+            Msg::FileDelete {
+                path: "shots/1.bmp".into(),
+            },
+        ),
+        (
+            "file_write_begin",
+            Msg::FileWriteBegin {
+                size: 5000,
+                sha256: sha(4),
+                path: "fonts/cjk.ttf".into(),
+            },
+        ),
+        (
+            "file_chunk",
+            Msg::FileChunk {
+                offset: 0,
+                data: vec![1, 2, 3],
+            },
+        ),
+        ("file_end", Msg::FileEnd),
+        ("file_ack", Msg::FileAck { next_offset: 3 }),
+        (
+            "file_result",
+            Msg::FileResult {
+                op: file::OP_WRITE,
+                code: file::NOT_ALLOWED,
+                path: "apps/x.fxp".into(),
+                text: "not allowed".into(),
+            },
+        ),
+        ("shot_save", Msg::ShotSave),
     ]
 }
 

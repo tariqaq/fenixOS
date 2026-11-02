@@ -445,6 +445,13 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       if (code != 0xFF) send_fw_result(code);
       return;
     }
+    case fnx::ty::FILE_LIST_REQ:
+    case fnx::ty::FILE_READ_REQ:
+    case fnx::ty::FILE_DELETE:
+    case fnx::ty::FILE_WRITE_BEGIN:
+    case fnx::ty::FILE_CHUNK:
+    case fnx::ty::FILE_END:
+      return files_frame(type, r);
     case fnx::ty::STREAM_START: {
       uint8_t fps = r.u8();
       post(LinkEv::STREAM_START, fps ? fps : 10);
@@ -485,6 +492,7 @@ static void end_session() {
   s_remote = 0;
   store_abort();
   ota_abort();
+  files_abort();
   post(LinkEv::DISCONNECTED);
 }
 
@@ -517,6 +525,7 @@ static void link_task(void*) {
     if (s_connected && now - s_last_rx > LINK_TIMEOUT_US) end_session();
     if (store_installing(nullptr) && now - s_install_rx > INSTALL_TIMEOUT_US) store_abort();
     if (ota_receiving() && now - s_fw_rx > INSTALL_TIMEOUT_US) ota_abort();
+    files_tick(now);
     if (now >= next_stats) {
       next_stats = now + STATS_PERIOD_US;
       if (s_connected) send_stats();

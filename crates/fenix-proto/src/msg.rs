@@ -50,6 +50,17 @@ pub mod ty {
     pub const FW_ACK: u8 = 0x52;
     pub const FW_END: u8 = 0x53;
     pub const FW_RESULT: u8 = 0x54;
+    pub const FILE_LIST_REQ: u8 = 0x60;
+    pub const FILE_LIST: u8 = 0x61;
+    pub const FILE_READ_REQ: u8 = 0x62;
+    pub const FILE_DATA: u8 = 0x63;
+    pub const FILE_DELETE: u8 = 0x64;
+    pub const FILE_WRITE_BEGIN: u8 = 0x65;
+    pub const FILE_CHUNK: u8 = 0x66;
+    pub const FILE_END: u8 = 0x67;
+    pub const FILE_ACK: u8 = 0x68;
+    pub const FILE_RESULT: u8 = 0x69;
+    pub const SHOT_SAVE: u8 = 0x6A;
 }
 
 /// `ERROR` codes.
@@ -90,6 +101,33 @@ pub mod fw {
     pub const STORAGE: u8 = 5;
     /// Older than the running firmware: a downgrade is only offered on the board (Settings › About).
     pub const OLDER: u8 = 6;
+}
+
+/// `FILE_RESULT` ops and codes (P53, files under `/sd/fenixos` on the board's card).
+pub mod file {
+    pub const OP_LIST: u8 = 1;
+    pub const OP_READ: u8 = 2;
+    pub const OP_DELETE: u8 = 3;
+    pub const OP_WRITE: u8 = 4;
+    /// `SHOT_SAVE`: the path is the saved screenshot.
+    pub const OP_SHOT: u8 = 5;
+    pub const OK: u8 = 0;
+    pub const NOT_FOUND: u8 = 1;
+    /// Outside `/sd/fenixos`, or a folder the PC may not change.
+    pub const NOT_ALLOWED: u8 = 2;
+    pub const NO_CARD: u8 = 3;
+    pub const NO_SPACE: u8 = 4;
+    pub const BAD_HASH: u8 = 5;
+    pub const STORAGE: u8 = 6;
+    pub const BUSY: u8 = 7;
+}
+
+/// One entry of `FILE_LIST`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FileEntry {
+    pub dir: bool,
+    pub size: u32,
+    pub name: String,
 }
 
 /// `HOST_STATE` states: how the app's PC half is doing. Before P51 the byte was a bool
@@ -479,6 +517,54 @@ pub enum Msg {
         code: u8,
         text: String,
     },
+    /// List a folder under `/sd/fenixos` (P53), from entry `start`; "" is the top.
+    FileListReq {
+        start: u16,
+        path: String,
+    },
+    /// One page of a folder: as many entries as fit a frame. `total` entries in all.
+    FileList {
+        start: u16,
+        total: u16,
+        path: String,
+        entries: Vec<FileEntry>,
+    },
+    FileReadReq {
+        offset: u32,
+        len: u16,
+        path: String,
+    },
+    /// Answer to `FILE_READ_REQ`: up to `len` bytes from `offset` of a file `total` bytes long.
+    FileData {
+        offset: u32,
+        total: u32,
+        data: Vec<u8>,
+    },
+    FileDelete {
+        path: String,
+    },
+    /// Write a file (P53): only under `fonts/`, `data/` and `wallpaper/`. Resumes like `FW_BEGIN`.
+    FileWriteBegin {
+        size: u32,
+        sha256: [u8; 32],
+        path: String,
+    },
+    FileChunk {
+        offset: u32,
+        data: Vec<u8>,
+    },
+    FileEnd,
+    FileAck {
+        next_offset: u32,
+    },
+    FileResult {
+        op: u8,
+        code: u8,
+        path: String,
+        text: String,
+    },
+    /// Save the screen to `/sd/fenixos/shots/` (P53); answered with `FILE_RESULT` op shot.
+    ShotSave,
     BindSet {
         bind: u16,
         id: String,
@@ -631,6 +717,17 @@ impl Msg {
             FwAck { .. } => ty::FW_ACK,
             FwEnd => ty::FW_END,
             FwResult { .. } => ty::FW_RESULT,
+            FileListReq { .. } => ty::FILE_LIST_REQ,
+            FileList { .. } => ty::FILE_LIST,
+            FileReadReq { .. } => ty::FILE_READ_REQ,
+            FileData { .. } => ty::FILE_DATA,
+            FileDelete { .. } => ty::FILE_DELETE,
+            FileWriteBegin { .. } => ty::FILE_WRITE_BEGIN,
+            FileChunk { .. } => ty::FILE_CHUNK,
+            FileEnd => ty::FILE_END,
+            FileAck { .. } => ty::FILE_ACK,
+            FileResult { .. } => ty::FILE_RESULT,
+            ShotSave => ty::SHOT_SAVE,
             BindSet { .. } => ty::BIND_SET,
             Event { .. } => ty::EVENT,
             StreamStart { .. } => ty::STREAM_START,
@@ -756,7 +853,7 @@ impl Msg {
                 w.i32(*lat_e4).i32(*lon_e4).str(name);
             }
             Reboot | AppListReq | AppInstallEnd | StreamStop | StreamSync | SysinfoReq
-            | WifiScanReq | FwEnd => {}
+            | WifiScanReq | FwEnd | FileEnd | ShotSave => {}
             Touch { x, y, down } => {
                 w.u16(*x).u16(*y).u8(*down as u8);
             }
@@ -782,11 +879,49 @@ impl Msg {
             } => {
                 w.str(id).str(version).u32(*size).bytes(sha256);
             }
-            AppChunk { offset, data } | FwChunk { offset, data } => {
+            AppChunk { offset, data } | FwChunk { offset, data } | FileChunk { offset, data } => {
                 w.u32(*offset).bytes(data);
             }
-            AppAck { next_offset } | FwAck { next_offset } => {
+            AppAck { next_offset } | FwAck { next_offset } | FileAck { next_offset } => {
                 w.u32(*next_offset);
+            }
+            FileListReq { start, path } => {
+                w.u16(*start).str(path);
+            }
+            FileList {
+                start,
+                total,
+                path,
+                entries,
+            } => {
+                w.u16(*start).u16(*total).str(path);
+                for e in entries {
+                    w.u8(e.dir as u8).u32(e.size).str(&e.name);
+                }
+            }
+            FileReadReq { offset, len, path } => {
+                w.u32(*offset).u16(*len).str(path);
+            }
+            FileData {
+                offset,
+                total,
+                data,
+            } => {
+                w.u32(*offset).u32(*total).bytes(data);
+            }
+            FileDelete { path } => {
+                w.str(path);
+            }
+            FileWriteBegin { size, sha256, path } => {
+                w.u32(*size).bytes(sha256).str(path);
+            }
+            FileResult {
+                op,
+                code,
+                path,
+                text,
+            } => {
+                w.u8(*op).u8(*code).str(path).bytes(text.as_bytes());
             }
             FwBegin {
                 version,
@@ -1083,6 +1218,60 @@ impl Msg {
                 code: r.u8()?,
                 text: r.text(),
             },
+            ty::FILE_LIST_REQ => Msg::FileListReq {
+                start: r.u16()?,
+                path: r.str()?,
+            },
+            ty::FILE_LIST => {
+                let start = r.u16()?;
+                let total = r.u16()?;
+                let path = r.str()?;
+                let mut entries = Vec::new();
+                while r.i < r.b.len() {
+                    entries.push(FileEntry {
+                        dir: r.u8()? != 0,
+                        size: r.u32()?,
+                        name: r.str()?,
+                    });
+                }
+                Msg::FileList {
+                    start,
+                    total,
+                    path,
+                    entries,
+                }
+            }
+            ty::FILE_READ_REQ => Msg::FileReadReq {
+                offset: r.u32()?,
+                len: r.u16()?,
+                path: r.str()?,
+            },
+            ty::FILE_DATA => Msg::FileData {
+                offset: r.u32()?,
+                total: r.u32()?,
+                data: r.rest().to_vec(),
+            },
+            ty::FILE_DELETE => Msg::FileDelete { path: r.str()? },
+            ty::FILE_WRITE_BEGIN => Msg::FileWriteBegin {
+                size: r.u32()?,
+                sha256: r.arr()?,
+                path: r.str()?,
+            },
+            ty::FILE_CHUNK => Msg::FileChunk {
+                offset: r.u32()?,
+                data: r.rest().to_vec(),
+            },
+            ty::FILE_END => Msg::FileEnd,
+            ty::FILE_ACK => Msg::FileAck {
+                next_offset: r.u32()?,
+            },
+            ty::FILE_RESULT => Msg::FileResult {
+                op: r.u8()?,
+                code: r.u8()?,
+                path: r.str()?,
+                text: r.text(),
+            },
+            ty::SHOT_SAVE => Msg::ShotSave,
             ty::BIND_SET => {
                 let bind = r.u16()?;
                 let kind = r.u8()?;

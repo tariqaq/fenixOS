@@ -1241,6 +1241,7 @@ version = "0.1.22"
 dependencies = [
  "fenix-proto",
  "serialport",
+ "sha2 0.10.9",
  "windows-sys 0.52.0",
 ]
 

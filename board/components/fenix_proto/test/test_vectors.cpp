@@ -134,6 +134,8 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
     case ty::APP_LIST_REQ:
     case ty::APP_INSTALL_END:
     case ty::FW_END:
+    case ty::FILE_END:
+    case ty::SHOT_SAVE:
     case ty::STREAM_STOP:
     case ty::STREAM_SYNC:
       if (!r.done()) return false;
@@ -168,12 +170,96 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       break;
     }
     case ty::FW_CHUNK:
+    case ty::FILE_CHUNK:
     case ty::APP_CHUNK: {
       uint32_t off = r.u32();
       size_t len;
       const uint8_t* d = r.rest(&len);
       w.u32(off);
       w.bytes(d, len);
+      break;
+    }
+    case ty::FILE_ACK: {
+      uint32_t next = r.u32();
+      if (!r.done()) return false;
+      w.u32(next);
+      break;
+    }
+    case ty::FILE_LIST_REQ: {
+      uint16_t start = r.u16();
+      char path[PATH_LEN];
+      r.str(path, sizeof path);
+      if (!r.done()) return false;
+      w.u16(start);
+      w.str(path);
+      break;
+    }
+    case ty::FILE_LIST: {
+      w.u16(r.u16());
+      w.u16(r.u16());
+      char path[PATH_LEN];
+      r.str(path, sizeof path);
+      w.str(path);
+      while (r.ok() && r.remaining()) {
+        uint8_t dir = r.u8();
+        uint32_t size = r.u32();
+        char name[PATH_LEN];
+        r.str(name, sizeof name);
+        w.u8(dir);
+        w.u32(size);
+        w.str(name);
+      }
+      if (!r.done()) return false;
+      break;
+    }
+    case ty::FILE_READ_REQ: {
+      uint32_t off = r.u32();
+      uint16_t len = r.u16();
+      char path[PATH_LEN];
+      r.str(path, sizeof path);
+      if (!r.done()) return false;
+      w.u32(off);
+      w.u16(len);
+      w.str(path);
+      break;
+    }
+    case ty::FILE_DATA: {
+      uint32_t off = r.u32(), total = r.u32();
+      size_t len;
+      const uint8_t* d = r.rest(&len);
+      w.u32(off);
+      w.u32(total);
+      w.bytes(d, len);
+      break;
+    }
+    case ty::FILE_DELETE: {
+      char path[PATH_LEN];
+      r.str(path, sizeof path);
+      if (!r.done()) return false;
+      w.str(path);
+      break;
+    }
+    case ty::FILE_WRITE_BEGIN: {
+      uint32_t size = r.u32();
+      const uint8_t* h = r.take(32);
+      char path[PATH_LEN];
+      r.str(path, sizeof path);
+      if (!h || !r.done()) return false;
+      w.u32(size);
+      w.bytes(h, 32);
+      w.str(path);
+      break;
+    }
+    case ty::FILE_RESULT: {
+      uint8_t op = r.u8(), code = r.u8();
+      char path[PATH_LEN];
+      r.str(path, sizeof path);
+      size_t len;
+      const uint8_t* t = r.rest(&len);
+      w.u8(op);
+      w.u8(code);
+      w.str(path);
+      w.bytes(t, len);
       break;
     }
     case ty::APP_RESULT: {

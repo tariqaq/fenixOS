@@ -192,6 +192,11 @@ void ota_abort();
 bool ota_receiving();
 bool ota_busy();
 
+// ---- Files under /sd/fenixos over the link (P53, files.cpp; proto/spec.md "Files (0x6_)") ----
+void files_frame(uint8_t type, fnx::Reader& r);  // link task: FILE_* from the PC
+void files_tick(int64_t now_us);                 // link task: closes a write or read idle for 10 s
+void files_abort();                              // the session ended (a part stays for a resume)
+
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
 void web_start();  // phone page on port 80, status only (web.cpp)

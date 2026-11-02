@@ -22,6 +22,9 @@
 //! fenix remove <id>                remove an app
 //! fenix ota <file.fwp>             update the firmware over the link (USB or Wi-Fi; firmware 0.1.22
 //!                                  and later): a signed package from tools/sign_fw.py
+//! fenix files ls [path]           files on the board's SD card under /sd/fenixos (0.1.23 and later)
+//! fenix files get <path> [out]     download one; files put <local> <path> uploads into fonts/,
+//!                                  data/ or wallpaper/ (resumes a cut upload); files rm <path>
 //! fenix set <file.fxp> <bind>=<value>...   set bindings like an app's PC half
 //! fenix host <id> on|off|gone|starting   tell the board the state of an app's PC half
 //! fenix soak <minutes>             ping + stats soak, counts errors and reconnects
@@ -153,6 +156,7 @@ fn main() {
             Some(f) => install(opts, Path::new(f)),
             None => usage(),
         },
+        "files" => files(opts, &args[1..]),
         "ota" => match args.get(1) {
             Some(f) => ota(opts, Path::new(f)),
             None => usage(),
@@ -214,7 +218,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -1030,6 +1034,293 @@ fn ota(opts: LinkOptions, file: &Path) -> i32 {
             Some(e) => print_event(&e),
             None => {}
         }
+    }
+}
+
+/// `fenix files ls|get|put|rm` (P53): files under the board's `/sd/fenixos`.
+fn files(opts: LinkOptions, args: &[String]) -> i32 {
+    let sub = args.first().map(String::as_str).unwrap_or("");
+    let arg = |i: usize| args.get(i).map(String::as_str);
+    match (sub, arg(1), arg(2)) {
+        ("ls", p, _) => files_ls(opts, p.unwrap_or("")),
+        ("get", Some(p), out) => {
+            let out = out.unwrap_or_else(|| p.rsplit('/').next().unwrap_or(p));
+            files_get(opts, p, Path::new(out))
+        }
+        ("put", Some(local), Some(p)) => files_put(opts, Path::new(local), p),
+        ("rm", Some(p), _) => files_rm(opts, p),
+        _ => usage(),
+    }
+}
+
+fn file_failed(op: &str, path: &str, code: u8, text: &str) -> i32 {
+    let why = if text.is_empty() {
+        fenix_link::files::result_text(code)
+    } else {
+        text
+    };
+    eprintln!("{op} {path}: {why} (code {code})");
+    1
+}
+
+/// Wait for the board's answer; `None` after `secs` without one.
+fn wait_file(link: &Link, secs: u64, mut f: impl FnMut(&Msg) -> bool) -> Option<Msg> {
+    let end = Instant::now() + Duration::from_secs(secs);
+    while Instant::now() < end {
+        match link.recv_event(Duration::from_millis(100)) {
+            Some(Event::Msg(m)) if f(&m) => return Some(m),
+            Some(Event::Msg(Msg::Error { code, text })) => {
+                eprintln!("board error {code}: {text}");
+                return None;
+            }
+            Some(Event::Disconnected { .. }) => {
+                eprintln!("the board went away");
+                return None;
+            }
+            _ => {}
+        }
+    }
+    eprintln!("no answer from the board (firmware 0.1.23 or later reads files)");
+    None
+}
+
+fn files_ls(opts: LinkOptions, path: &str) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    let (mut start, mut shown) = (0u16, 0usize);
+    loop {
+        link.send(Msg::FileListReq {
+            start,
+            path: path.to_string(),
+        });
+        let m = wait_file(&link, 5, |m| {
+            matches!(
+                m,
+                Msg::FileList { .. }
+                    | Msg::FileResult {
+                        op: fenix_proto::file::OP_LIST,
+                        ..
+                    }
+            )
+        });
+        match m {
+            Some(Msg::FileList { total, entries, .. }) => {
+                for e in &entries {
+                    if e.dir {
+                        println!("{:>10}  {}/", "", e.name);
+                    } else {
+                        println!("{:>10}  {}", e.size, e.name);
+                    }
+                }
+                shown += entries.len();
+                start += entries.len() as u16;
+                if entries.is_empty() || start >= total {
+                    println!("{shown} entries in /sd/fenixos/{path}");
+                    return 0;
+                }
+            }
+            Some(Msg::FileResult { code, text, .. }) => {
+                return file_failed("ls", path, code, &text)
+            }
+            _ => return 1,
+        }
+    }
+}
+
+fn files_get(opts: LinkOptions, path: &str, out: &Path) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    let t0 = Instant::now();
+    let req = |offset: usize| Msg::FileReadReq {
+        offset: offset as u32,
+        len: fenix_link::files::READ_LEN,
+        path: path.to_string(),
+    };
+    let step = fenix_link::files::READ_LEN as usize;
+    // The first answer gives the size; then up to READ_WINDOW requests stay in flight.
+    link.send(req(0));
+    let mut data: Vec<u8> = Vec::new();
+    let mut total = None::<usize>;
+    let mut asked = step;
+    let mut last = Instant::now();
+    loop {
+        match link.recv_event(Duration::from_millis(100)) {
+            Some(Event::Msg(Msg::FileData {
+                offset,
+                total: t,
+                data: d,
+            })) => {
+                last = Instant::now();
+                let t = t as usize;
+                total.get_or_insert(t);
+                if offset as usize == data.len() {
+                    data.extend_from_slice(&d);
+                }
+                if data.len() >= t {
+                    break;
+                }
+                // A lost answer: ask again from what we have.
+                if offset as usize > data.len() {
+                    asked = data.len();
+                }
+                while asked < t && asked < data.len() + fenix_link::files::READ_WINDOW * step {
+                    link.send(req(asked));
+                    asked += step;
+                }
+            }
+            Some(Event::Msg(Msg::FileResult {
+                op: fenix_proto::file::OP_READ,
+                code,
+                text,
+                ..
+            })) => return file_failed("get", path, code, &text),
+            Some(Event::Msg(Msg::Error { code, text })) => {
+                eprintln!("board error {code}: {text}");
+                return 1;
+            }
+            Some(Event::Disconnected { .. }) => {
+                eprintln!("the board went away");
+                return 1;
+            }
+            _ => {
+                if last.elapsed() > Duration::from_secs(2) {
+                    if last.elapsed() > Duration::from_secs(10) {
+                        eprintln!(
+                            "no answer from the board (firmware 0.1.23 or later reads files)"
+                        );
+                        return 1;
+                    }
+                    asked = data.len();
+                    link.send(req(asked));
+                    asked += step;
+                }
+            }
+        }
+    }
+    if let Err(e) = std::fs::write(out, &data) {
+        eprintln!("{}: {e}", out.display());
+        return 1;
+    }
+    let s = t0.elapsed().as_secs_f32();
+    println!(
+        "{} B to {} in {s:.1} s ({:.0} KB/s)",
+        data.len(),
+        out.display(),
+        data.len() as f32 / 1024.0 / s.max(0.001)
+    );
+    0
+}
+
+fn files_put(opts: LinkOptions, local: &Path, path: &str) -> i32 {
+    if !fenix_link::files::path_ok(path) {
+        eprintln!("{path}: not a board path (relative to /sd/fenixos, e.g. fonts/cjk.ttf)");
+        return 2;
+    }
+    let data = match std::fs::read(local) {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("{}: {e}", local.display());
+            return 1;
+        }
+    };
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    let mut s = fenix_link::files::FileSend::new(path, data);
+    let t0 = Instant::now();
+    link.send(s.begin());
+    let (mut shown, mut said) = (0u8, false);
+    loop {
+        match s.poll() {
+            Ok(msgs) => {
+                for m in msgs {
+                    if matches!(m, Msg::FileEnd) {
+                        println!(
+                            "sent in {:.1} s; the board checks it",
+                            t0.elapsed().as_secs_f32()
+                        );
+                    }
+                    link.send(m);
+                }
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                return 1;
+            }
+        }
+        if !said && s.stage() == fenix_link::chunks::Stage::Sending {
+            said = true;
+            if s.resumed_at() > 0 {
+                println!("resuming at {} B", s.resumed_at());
+            }
+        }
+        if s.percent() / 10 > shown / 10 {
+            shown = s.percent();
+            println!("{shown}%");
+        }
+        let wait = if s.stage() == fenix_link::chunks::Stage::Sending {
+            5
+        } else {
+            100
+        };
+        match link.recv_event(Duration::from_millis(wait)) {
+            Some(Event::Msg(Msg::FileAck { next_offset })) => s.on_ack(next_offset),
+            Some(Event::Msg(Msg::FileResult {
+                op: fenix_proto::file::OP_WRITE,
+                code,
+                text,
+                ..
+            })) => {
+                if code != fenix_proto::file::OK {
+                    return file_failed("put", path, code, &text);
+                }
+                println!(
+                    "{} B to /sd/fenixos/{path} in {:.1} s",
+                    s.size(),
+                    t0.elapsed().as_secs_f32()
+                );
+                return 0;
+            }
+            Some(Event::Msg(Msg::Error { code, text })) => {
+                eprintln!("board error {code}: {text}");
+                return 1;
+            }
+            Some(e) => print_event(&e),
+            None => {}
+        }
+    }
+}
+
+fn files_rm(opts: LinkOptions, path: &str) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    link.send(Msg::FileDelete {
+        path: path.to_string(),
+    });
+    match wait_file(&link, 5, |m| {
+        matches!(
+            m,
+            Msg::FileResult {
+                op: fenix_proto::file::OP_DELETE,
+                ..
+            }
+        )
+    }) {
+        Some(Msg::FileResult { code, text, .. }) if code != fenix_proto::file::OK => {
+            file_failed("rm", path, code, &text)
+        }
+        Some(_) => {
+            println!("deleted /sd/fenixos/{path}");
+            0
+        }
+        None => 1,
     }
 }
 

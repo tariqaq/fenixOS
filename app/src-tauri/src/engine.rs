@@ -563,7 +563,7 @@ impl Engine {
                 }
                 let now = s.stage();
                 drop(g);
-                if now != before && now == OtaStage::Installing {
+                if now != before && now == OtaStage::Finishing {
                     self.set_update(app, "installing", 100, "");
                 }
                 true

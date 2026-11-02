@@ -6,6 +6,8 @@
 //! Usage: `let link = Link::spawn(LinkOptions::default());` then `link.send(msg)` and
 //! read `link.events()`.
 
+pub mod chunks;
+pub mod files;
 pub mod ota;
 
 use std::io::{Read, Write};

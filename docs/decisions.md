@@ -275,7 +275,7 @@ The user's request: an app added in the PC app installs both halves, the board h
 | Package size cap | 1 MB / **8 MB on SD, 256 KB on flash** | Changed (evening): **no fixed cap on SD, 128 KB on flash**. Was: **8 MB on SD** (user: "can be way higher than 1 mb surely"): install time (~42 KB/s over USB, ~3 min for 8 MB) and RAM per screen are the real limits, not the card. 256 KB on the flash fallback |
 | What else the card brings | (all picked) | Logs and crash records on SD; keep the previous firmware (roll back from Settings); bigger packages; ~30 apps (paged APP_LIST); last values while the PC is off; fonts from SD (LVGL Tiny TTF, `LV_TINY_TTF_FILE_SUPPORT`); screenshots to SD; UI sounds (speaker on IO26). Changed (evening): sounds dropped; settings backup, status page from the card, Home wallpaper, per-app data folder and a rescue firmware copy added |
 | Order | Plan only / **build the SD base now, plan the rest** | **SD base now** (P50, v0.1.20), the rest planned, then standby |
-| SD mount RAM | `max_files` 2 / **4** | **4** (P50): each costs 552 B; fonts from SD will hold a file open while an install, a log or a screenshot opens others |
+| SD mount RAM | `max_files` 2 / **4** | **4** (P50): each costs 552 B; fonts from SD will hold a file open while an install, a log or a screenshot opens others. Corrected (P53): **6**, for a PC file read and write next to a firmware part, an app package, the log and the wallpaper (+1.1 KB) |
 
 ## 2026-11-02 (evening): plan changes before the overnight run
 
@@ -327,4 +327,9 @@ Plan: `docs/plan-sd-ota.md`. Each row: the question, the options, what was chose
 | Firmware packages kept on the card (P52) | Two (new + running) / **three** | **Three**: new, running and the newest older one. Found on the board: with two, a rolled-back try left nothing to go back to |
 | A second `FW_BEGIN` while a transfer is open (P52) | `BUSY` until the 10 s timeout / **replace it** | **Replace**: one PC session at a time, so it is the same PC reconnecting; it goes on from the staged part |
 | An update during the 30 s trial (P52) | Refuse / **keep the running image, then update** | **Keep and update**: it ran well enough to take an update; `esp_ota_begin` refuses otherwise |
+| File message types (P53) | Plan's 0x60 to 0x67 / **0x60 to 0x6A** | **0x60 to 0x6A**: acks, results and `SHOT_SAVE` need their own types (`FILE_ACK`, `FILE_RESULT`); plan corrected |
+| Checking a written file (P53) | Hash while receiving / **read it back after `FILE_END`, in a short task** | **Read back**: a resumed write would need the hash state of the part already on the card; the read-back covers it and costs a 4 KB stack plus a 4 KB buffer for a few seconds |
+| Partial file writes on the card | Write in place / **`<path>.part` + `<path>.pin`** | **Part + pin**, as firmware staging: the old file stays whole until the new one is checked |
+| What the PC may read | Only its own folders / **anything under `/sd/fenixos`** | **Anything**: logs, crash records, shots, packages and the settings backup are what the PC reads; writes and deletes keep to their folders |
+| `mkdir`'s 32 KB FatFs buffer (P53, found on the board) | Make every folder once at mount / **cap FatFs's buffers at 4 KB** | **Cap** (`__wrap_ff_memalloc`): app data folders are made at any time, so a one-off pass would not cover them |
 | Package cap | 8 MB / **none** | **None** (user: no fixed SD cap). The content limits (24 KB images, 8 KB strings, 40 KB RAM) still bound real packages near 33 KB, so a 2 MB timing test needs a format that streams images (not in P51); registry download cap 64 MB |

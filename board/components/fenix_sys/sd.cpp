@@ -46,6 +46,18 @@ static void set(uint8_t state, uint32_t total_kb = 0, uint32_t free_kb = 0, uint
   link_post(LinkEv::SD_CHANGED);
 }
 
+// FatFs clears a new folder's cluster through a heap buffer of up to 32 KB (ff.c dir_clear,
+// MAX_MALLOC); with this card's 32 KB clusters a mkdir took the free heap from 63 to 29 KB for a
+// moment (P53, measured), enough to starve an LVGL allocation on the UI task. Refusing its
+// power-of-two asks over 4 KB makes it halve down to 4 KB. Other asks pass: the VFS context at
+// mount is ~6 KB and not a power of two (refusing it failed the mount with ESP_ERR_NO_MEM);
+// f_write_zero_mem (growing a file with ftruncate, unused here) would fail instead of halving.
+extern "C" void* __real_ff_memalloc(unsigned msize);
+extern "C" void* __wrap_ff_memalloc(unsigned msize) {
+  bool clear_buf = msize > 4096 && !(msize & (msize - 1));
+  return clear_buf ? nullptr : __real_ff_memalloc(msize);
+}
+
 static void unmount() {
   if (s_card) esp_vfs_fat_sdcard_unmount(SD_PATH, s_card);
   s_card = nullptr;
@@ -80,7 +92,9 @@ static void mount() {
   dev.host_id = SPI3_HOST;
   esp_vfs_fat_sdmmc_mount_config_t mc = {};
   mc.format_if_mount_failed = false;  // never format on its own
-  mc.max_files = 4;
+  // Open at once, worst case (P53): a file read and a file write from the PC, a firmware part, an
+  // app install or an opened package, the log, the wallpaper. 552 B each.
+  mc.max_files = 6;
   esp_err_t err = esp_vfs_fat_sdspi_mount(SD_PATH, &host, &dev, &mc, &s_card);
   if (err != ESP_OK) {
     s_card = nullptr;

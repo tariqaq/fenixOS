@@ -28,6 +28,10 @@ constexpr uint8_t HOST_STATE = 0x2A, APP_INDEX_REQ = 0x2B, APP_INDEX = 0x2C, APP
 constexpr uint8_t BIND_SET = 0x30, EVENT = 0x31;
 constexpr uint8_t STREAM_START = 0x40, STREAM_STOP = 0x41, STREAM_RECT = 0x42, STREAM_SYNC = 0x43, STREAM_INFO = 0x44;
 constexpr uint8_t FW_BEGIN = 0x50, FW_CHUNK = 0x51, FW_ACK = 0x52, FW_END = 0x53, FW_RESULT = 0x54;  // P52
+// Files under /sd/fenixos (P53)
+constexpr uint8_t FILE_LIST_REQ = 0x60, FILE_LIST = 0x61, FILE_READ_REQ = 0x62, FILE_DATA = 0x63, FILE_DELETE = 0x64;
+constexpr uint8_t FILE_WRITE_BEGIN = 0x65, FILE_CHUNK = 0x66, FILE_END = 0x67, FILE_ACK = 0x68, FILE_RESULT = 0x69;
+constexpr uint8_t SHOT_SAVE = 0x6A;
 }  // namespace ty
 
 namespace err {
@@ -43,6 +47,13 @@ constexpr uint8_t OK = 0, NO_SPACE = 1, BAD_HASH = 2, BAD_PACKAGE = 3, BUSY = 4,
 namespace fw {
 constexpr uint8_t OK = 0, NO_SPACE = 1, BAD_HASH = 2, BAD_SIGNATURE = 3, BUSY = 4, STORAGE = 5, OLDER = 6;
 }
+// FILE_RESULT (P53).
+namespace file {
+constexpr uint8_t OP_LIST = 1, OP_READ = 2, OP_DELETE = 3, OP_WRITE = 4, OP_SHOT = 5;
+constexpr uint8_t OK = 0, NOT_FOUND = 1, NOT_ALLOWED = 2, NO_CARD = 3, NO_SPACE = 4, BAD_HASH = 5, STORAGE = 6,
+                  BUSY = 7;
+}  // namespace file
+constexpr size_t PATH_LEN = 128;  // a path under /sd/fenixos, with its terminator (P53)
 // HOST_STATE: the app's PC half. Before P51 a bool (0 off or not ready, 1 running).
 namespace host {
 constexpr uint8_t OFF = 0, RUNNING = 1, NOT_HERE = 2, STARTING = 3;  // NOT_HERE: kept on the board only
