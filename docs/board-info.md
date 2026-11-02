@@ -2,14 +2,14 @@
 
 Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
 
-**Current state (2026-11-02): fenixOS v0.1.22** (flashed with `fenix flash`, the move to two OTA slots, P52; then reinstalled over the link from the PC app). Corrected: said v0.1.20.
+**Current state (2026-11-02): fenixOS v0.1.27** (flashed over USB with `fenix flash` after the P55 audit), Wi-Fi mode, 8 GB card in with the CJK font on it. Corrected (P56): said v0.1.22.
 
-Current numbers (v0.1.12 unless marked; the sections below are a dated log, so older numbers in them are history):
+Current numbers (the version is in each row; the sections below are a dated log, so older numbers in them are history):
 
 | What | Value |
 |---|---|
-| Firmware image | 1,177,600 B in a 1,900,544 B OTA slot (38% free, P52 dev build; two slots since P52, `docs/ota.md`); 1,155,568 B in the old 2 MB factory slot at v0.1.20; 1,117,296 B at v0.1.15; IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
-| Heap at boot, Wi-Fi joined | 70.6 KB free of 281 KB with the SD card mounted (v0.1.20, 50 s up; the mount takes 9.6 KB, P50); 79.9 KB at v0.1.19 without the card code; 81.8 KB at P40 |
+| Firmware image | 1,290,192 B in a 1,900,544 B OTA slot (32% free, v0.1.27; two slots since P52, `docs/ota.md`); 1,177,600 B at the P52 dev build; 1,155,568 B in the old 2 MB factory slot at v0.1.20; 1,117,296 B at v0.1.15; IRAM 111.8 of 128 KB, static DRAM 50.8 KB (P38) |
+| Heap at boot, Wi-Fi joined | 52.9 KB free of 262.5 KB on Home, lowest 47.9 KB, 5 min up (v0.1.27, card mounted, `fenix sysinfo`; app RAM: "App RAM with views and album art"); 70.6 KB with the SD card mounted (v0.1.20, 50 s up; the mount takes 9.6 KB, P50); 79.9 KB at v0.1.19 without the card code; 81.8 KB at P40 |
 | Heap at boot, radio off | 154.9 KB (P38, before the P40 trims) |
 | Animation fps (`fenix bench 15 nostream`) | 25.5 (P38) |
 | Stream over USB / Wi-Fi (`fenix bench 15`) | 25.0 fps, 43 KB/s / 25.8 fps, 53 KB/s; lowest heap in a Wi-Fi stream 23.9 KB (P40). Stream rate since P46: 10 fps over USB, 25 over Wi-Fi (table in the P46 section) |

@@ -1,6 +1,6 @@
 # fenixOS v0.1 build plan
 
-Status: **done; v0.1.0 released 2026-10-29, now v0.1.19.** Follow-ups after the release (P11 to P42: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, P37 fixes for taps and the stream over Wi-Fi, Bluetooth tried in P33 and removed in P38, app packages read in pieces and link buffers trimmed in P39 and P40, the P42 and P45 audits, the app repo template in P44, the Wi-Fi slot fix and per-link stream rate in P46, the Wi-Fi connect run in P47, Wi-Fi stalls no longer ending the link in P48) are in `tasks.md` (done ones in full: `docs/legacy/tasks-history.md`). This file is the v0.1.0 plan as built, with Corrected notes where later phases changed it; measured numbers live in `docs/board-info.md`.
+Status: **done; v0.1.0 released 2026-10-29, now v0.1.27.** Follow-ups after the release (P11 to P42: 3D board screen, CH340 crash fixes P16 and P23, stream sync, PC motion, sleep LED, burn-in protection, crash-safe flashing, Task manager, RAM and flash trims, radio manager with Wi-Fi scan and join, PC link over Wi-Fi (TCP, fenixos.local), SNTP time, Open-Meteo weather, phone status page, P37 fixes for taps and the stream over Wi-Fi, Bluetooth tried in P33 and removed in P38, app packages read in pieces and link buffers trimmed in P39 and P40, the P42 and P45 audits, the app repo template in P44, the Wi-Fi slot fix and per-link stream rate in P46, the Wi-Fi connect run in P47, Wi-Fi stalls no longer ending the link in P48; then, with the SD card, P50 to P55: the card in Settings › Storage, apps on the card with on/off and Sync, signed firmware updates with two OTA slots, card extras (files, logs and core dumps, screenshots, last app values, a settings backup, a status page from the card), Chinese, Japanese and Korean text from a font on the card, the Morpheus app features (views, `show`, a bound image, bindable button text and icons, Latin-1, label overflow, `secret` settings; `docs/plan-sd-ota.md`) and the P55 audit, `docs/audit-2026-11.md`) are in `tasks.md` (done ones in full: `docs/legacy/tasks-history.md`). This file is the v0.1.0 plan as built, with Corrected notes where later phases changed it; measured numbers live in `docs/board-info.md`.
 
 Sources of truth, in order:
 1. The mock-up canvas (https://claude.ai/artifact/4iSeRZ1tZLgcRxiS42vYji, list in `docs/mockups.md`). The user approved it on 2026-10-29: "follow it exactly as it is". Every screen is built to match its artboard.
@@ -95,7 +95,7 @@ docs/, pics/
   - Corrected (P27): there is no background worker. Installs write LittleFS in the link task (`store_chunk`), while the UI keeps running in `main`.
 - **Console:** UART0 console logs off (PoC finding). Logs go out as `LOG` frames.
 - **Display:**
-  - LovyanGFX drives the ILI9341 (HSPI, DMA) and the XPT2046 (VSPI, `bus_shared = false`, raw range 300–3900 / 200–3900 until calibrated).
+  - LovyanGFX drives the ILI9341 (HSPI, DMA) and the XPT2046 (VSPI, `bus_shared = false`, raw range 300–3900 / 200–3900 until calibrated). Corrected (P50): the touch is read by software SPI on its own pins (`fenix_hal/include/fenix_touch.hpp`), so SPI3 serves the SD card.
   - LVGL 9 runs in partial render mode with two draw buffers. The flush callback DMA-pushes each area through LovyanGFX.
   - The draw buffer size is picked in spike S1.
 - **Frame rate:** capped at the measured full-push limit (about 45 fps, C5).
@@ -108,7 +108,7 @@ docs/, pics/
   - Phosphor glyph subsets, fill and regular, are built as LVGL fonts.
 - **Navigation:**
   - Top nav bar (`< Home`, centred title).
-  - App open = scale and fade from the tile; push and pop = slide.
+  - App open = scale and fade from the tile; push and pop = slide. Corrected (P50-M): app open deletes Home first and fades the app in from black (`DESIGN.md` Motion).
   - Session is a sheet over the current screen.
 - **Settings store:** NVS. Rotation, brightness, dim level, dim delay, touch calibration, home style, burn-in protection, debug. New fields are appended, so an older, shorter blob still loads.
 - **Clock:**
@@ -132,7 +132,7 @@ docs/, pics/
   - The PC opens the port with DTR and RTS released.
   - Bytes are dropped until a valid frame arrives.
   - A disconnect is declared after 3 s without a valid frame.
-- **Baud:** starts at 460800. Spike S3 tries 921600–2M with CRC error counting and the fastest clean rate wins.
+- **Baud:** starts at 460800. Spike S3 tries 921600–2M with CRC error counting and the fastest clean rate wins. Result: 921600 (`BAUD` in `fenix-proto` and `fenix_proto.h`); 460800 stays the flashing speed.
 - **New magic:** `"FNXO"`. Full spec in `proto/spec.md`, written in P3.
 
 | Group | Messages |
@@ -140,7 +140,7 @@ docs/, pics/
 | Session | `HELLO` (P→B: magic, proto ver), `HELLO_ACK` (B→P: magic, proto ver, fw version, panel size, rotation, free heap, app storage used/free, MAC), `PING`/`PONG`, `LOG`, `ERROR`, `STATS` |
 | System | `TIME_SET` (UTC epoch s), `REBOOT`, `BOARD_STATE` (B→P: screen, open app, dimmed, uptime); added later without a proto bump: `TOUCH` (P→B), `SYSINFO_REQ` / `SYSINFO` (P27, Task manager) |
 | Apps | `APP_LIST_REQ`/`APP_LIST` (id, version, sha256 per installed app), `APP_INSTALL_BEGIN` (id, version, size, sha256), `APP_CHUNK` (offset, data), `APP_INSTALL_END` → `APP_RESULT`, `APP_REMOVE`, `APP_OPENED`/`APP_CLOSED` (B→P), `HOST_STATE` (P→B: per app, PC half running or not) |
-| Bindings | `BIND_SET` (P→B: app, binding id, typed value: int, bool, string, image ref; corrected: proto 1 has int, bool and text only, an image binding is planned for P50-M, `docs/requests/morpheus.md`), `EVENT` (B→P: app, element id, kind tap/long/change, value) |
+| Bindings | `BIND_SET` (P→B: app, binding id, typed value: int, bool, string, image ref; corrected: proto 1 has int, bool and text only, since v0.1.25 (P50-M) a bound image's pixels come in `BIND_IMAGE` 0x32, `proto/spec.md`), `EVENT` (B→P: app, element id, kind tap/long/change, value) |
 | Stream | `STREAM_START` (P→B: target fps), `STREAM_STOP`, `STREAM_RECT` (B→P: x, y, w, h, codec, chunk), `STREAM_SYNC`, `STREAM_INFO`. Corrected: no frame number or `STREAM_FRAME_END` in proto 1; since P14 the board also sends `STREAM_START` / `STREAM_STOP` as state reports (`proto/spec.md`) |
 
 - The max payload stays about 1200 B. Larger items are chunked.
@@ -167,7 +167,7 @@ docs/, pics/
   - Fonts are the built-in Inter sizes only.
 - **Source and limits:**
   - Source format: `app.toml` + `layout.json`, compiled by `fenix-pkg build`.
-  - Limits checked at compile time and again on the board: 64 KB per package (corrected 2026-10-29 from 256 KB; since P39 the board reads it in pieces), element count, and an RAM estimate.
+  - Limits checked at compile time and again on the board: 64 KB per package (corrected 2026-10-29 from 256 KB; since P39 the board reads it in pieces), element count, and an RAM estimate. Corrected (P51): no size cap on the card, 128 KB a package on flash (`docs/packages.md` "Limits").
 - **Board runtime:**
   - One host app is open at a time.
   - Its LVGL objects are built from the package when it opens and freed when it closes. Corrected (P45): the package itself is freed when the app screen is deleted, after its slide out (labels point into it).
@@ -181,12 +181,13 @@ docs/, pics/
   - Switching an app off on the PC sends `HOST_STATE` off, then `APP_REMOVE`.
   - If the app is open on the board, the board shows 6b for 2 s, returns Home and fades the tile out.
   - If the board was unplugged, the next `APP_LIST` reconcile removes the app. The PC is the source of truth.
+  - Corrected (P51, v0.1.21): switching off sends `HOST_STATE` off only and keeps the board half (faded tile, Turn on on the board); Remove app removes both halves. At connect the PC lists differences under Apps › Sync with board and changes nothing until the user clicks Sync (`APP_INDEX`, `docs/packages.md`).
 
 ### 3.5 PC engine (Rust, always running while fenixOS runs)
 
 - **Link manager:**
   - Scans CH340 ports (VID 0x1A86, PID 0x7523) and does the `HELLO` handshake; with no USB board it tries the board over Wi-Fi at `fenixos.local` (P34). Corrected (P42): ports are listed once a second, a CH340 that fails two handshakes waits 10 s, and the Wi-Fi try runs only for a board last seen with Wi-Fi on (`board_wifi` in the app config).
-  - Reconnects, reconciles apps, sends time sync on connect and hourly.
+  - Reconnects, reconciles apps, sends time sync on connect and hourly. Corrected (P51): the app reconcile became the Sync with board card (§3.4).
   - Single-thread serial I/O: batch write, then read. Corrected (P16): reads never wait (COMMTIMEOUTS `MAXDWORD, 0, 0`) and the link polls every 2 to 10 ms; a read timeout crashes the CH340 driver (`docs/board-info.md`).
   - Background scanning never resets a board.
 - **App manager:**
@@ -269,7 +270,7 @@ Shown on the first launch, and again from PC Settings › Show welcome again or,
 
 ## 4. Budgets and targets
 
-All numbers are targets to measure, not facts (latest measured: 82 KB free at boot in Wi-Fi mode, v0.1.12; v0.1.25 with the CJK font on the card: ~54 KB on Home, `docs/board-info.md` "App RAM with views and album art"). Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
+All numbers are targets to measure, not facts (latest measured: ~54 KB free on Home with Wi-Fi on and the CJK font on the card, v0.1.25, `docs/board-info.md` "App RAM with views and album art"; 52.6 KB at boot on v0.1.27. Corrected (P50-M): was 82 KB, the v0.1.12 number). Each result goes into `docs/board-info.md` or `docs/toolchain.md`. Policy (user, 2026-10-29): PC targets are realistic guides, not a reason to hyper-optimise; on the board, squeeze for efficiency.
 
 ### 4.1 Board RAM (~260 KB heap at start, no PSRAM)
 
