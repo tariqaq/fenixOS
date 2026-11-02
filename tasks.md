@@ -195,7 +195,7 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 5. Docs (packages, registry, template copies, Morpheus answer), tests, release v0.1.26
     - Done: VERSION 0.1.26 (`tools/version.py`), template pinned to v0.1.26, README status and app features, `docs/requests/morpheus.md` "Shipped in fenixOS v0.1.26". All checks and `cargo test --workspace` pass, 41 sim shots match. Release build: firmware 0x13af50, signed `fenixOS_0.1.26.fwp` (1259 KB), PC app 0.1.26 installed, board flashed over USB: heap 54.2 KB on Home; the view-app with the long accented title on the board looks like the sim (47.8 KB free with it open, 40.6 KB lowest); view-app removed again (board keeps only the sample app). Not clicked through by hand: the `secret` field in App settings (svelte-check and the Rust tests only)
 
-- [~] P55 Full audit after the run (user: "go thru all files literally everything and audit for bugs", security excluded)
+- [x] P55 Full audit after the run (user: "go thru all files literally everything and audit for bugs", security excluded)
   - [x] 1. Board: every file under `board/components/fenix_*`, `board/main`, `board/sim` read whole; bugs fixed with host or sim tests where possible
     - Log: `docs/audit-2026-11.md` (started 2026-11-02 after v0.1.26). Done: all board files read. Fixed B1 update screen timer (sim shot `update_closed`, 42 goldens), B4 status light for updates, B5 backlight guard, B2/B3/B6/B7 stale comments and the 460800 baud slip. Firmware 0x13afd0 builds, 42 sim screens match
   - [x] 2. Crates: every file under `crates/` read whole; fixes with cargo tests
@@ -204,8 +204,8 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
     - Done: A1 remove during a board install, A2 unreadable config kept as `config.bad.json`, A3 download timeout scales with size, A4 comments. App cargo tests 12/12, svelte-check 0/0
   - [x] 4. Tools, templates, registry, workflows (`tools/`, `templates/`, `registry/`, `.github/`) read whole
     - Done: no bug found (log in `docs/audit-2026-11.md`)
-  - [~] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed
-    - In progress: release v0.1.27 (VERSION, template pins, README; checks, tests, sim; firmware, bundle, installer; install, flash, tag)
+  - [x] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed
+    - Done: v0.1.27. VERSION, template pins, README status; all checks, `cargo test --workspace`, C++ host test, 42 sim shots, svelte-check pass. Firmware 0x13afd0, signed `fenixOS_0.1.27.fwp` (1260 KB), installer built and installed (/S), board flashed over USB: v0.1.27, 52.6 KB free at boot. Tag v0.1.27 (annotated)
 - [ ] P56 Docs sweep: every current `.md` (root, `docs/` except `legacy/`, `vendor/`, `tempcrashlogs/`; `proto/`, `board/`, `app/`, `tools/`, `registry/`, `templates/`) checked against the code; stale facts fixed with Corrected notes; tasks.md Done list trimmed into the history file
 
 - [ ] P36 Later

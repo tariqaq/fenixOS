@@ -6,7 +6,7 @@
   python tools/app.py release TAG      dist/<id>.json: the manifest with release URLs, sha256 and sizes, for the
                                        registry PR on tariqaq/fenixOS (registry/apps/<id>.json)
 
-The manifest rules below are copied from fenixOS tools/registry.py (v0.1.26); the registry's CI runs the
+The manifest rules below are copied from fenixOS tools/registry.py (v0.1.27); the registry's CI runs the
 same checks.
 """
 import argparse
