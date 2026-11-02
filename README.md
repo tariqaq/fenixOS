@@ -6,7 +6,7 @@ A small operating system for the ESP32-2432S028R ("Cheap Yellow Display", 2.8" 3
 - **PC app:** Rust + Tauri 2 + Svelte 5. Lives in the tray, finds the board over USB (or Wi-Fi at fenixos.local), installs and switches apps, mirrors the board's screen, shows the board's load live (Task manager: CPU per core, memory, storage, the link, threads), keeps the board's firmware and time in step.
 - **Design:** Apple-style dark theme (`DESIGN.md`), Inter and Phosphor icons.
 
-Status: **v0.1.25.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress: `tasks.md`.
+Status: **v0.1.26.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress: `tasks.md`.
 
 <p>
   <img src="docs/screens/board/home.png" width="320" alt="Home screen with the time, date and app tiles">
@@ -36,7 +36,7 @@ Checked file by file in P42 and P45 (2026-11-01), with games that use kernel ant
 
 An app has two halves:
 
-- **Board half:** a small package (`.fxp`) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. Since v0.1.25 a layout can hold several screens (a `view` shows the one the PC picks, built only while shown), show or hide parts, change a button's text or icon, and show one picture the PC sends (album art, up to 96 × 96). The board draws it with the system theme. Spec: `docs/packages.md`.
+- **Board half:** a small package (`.fxp`) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. Since v0.1.25 a layout can hold several screens (a `view` shows the one the PC picks, built only while shown), show or hide parts, change a button's text or icon, and show one picture the PC sends (album art, up to 96 × 96). Since v0.1.26 labels can end in `...` after a set number of lines or scroll one line round, and the fonts hold accented Latin letters (Latin-1). The board draws it with the system theme. Spec: `docs/packages.md`.
 - **PC half (optional):** a Windows program that fenixOS starts while the app is switched on. It sets binding values ("cpu = 42") and pictures, and gets the board's taps and slider moves over named pipes. Rust apps use `crates/fenix-sdk`; the protocol is in `docs/sidecars.md`.
 
 Apps come from the registry (`registry/`, rules in `docs/registry.md`). Adding an app installs its package on the board (on the SD card when one is in) and starts its PC half; switching it off stops the PC half and fades its tile on the board, which offers Turn on; Remove app removes both. When the board and the PC differ, the Apps page lists it under Sync with board. `tools/sample-app` is a complete example.

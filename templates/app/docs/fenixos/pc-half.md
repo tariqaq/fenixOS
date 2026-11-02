@@ -15,7 +15,7 @@ Copied from fenixOS `docs/sidecars.md`, cut for app authors. Skip this file if t
 `app/pc/Cargo.toml` takes it from the fenixOS repo at a release tag:
 
 ```toml
-fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.25" }
+fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.26" }
 ```
 
 | API | What it does |

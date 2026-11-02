@@ -1,5 +1,5 @@
 # Build the app into dist/: app.fxp (board half) and, when app/pc exists, app.exe (PC half).
-# Needs fenix-pkg: cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.25 fenix-pkg
+# Needs fenix-pkg: cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.26 fenix-pkg
 # Usage: pwsh tools/build.ps1
 $ErrorActionPreference = "Stop"
 Push-Location "$PSScriptRoot/.."

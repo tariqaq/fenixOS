@@ -99,6 +99,14 @@ CJK is likely too big for flash. Say so if it is.
 
 Until requests 1 and 2 ship, Morpheus can only be one generic card whose text, bar and buttons change with the context. Once fenixOS ships them, Morpheus sets `min_fenixos` to that release.
 
+## Shipped in fenixOS v0.1.26 (2026-11-02)
+
+Request 5 and the settings answer. Set `min_fenixos = "0.1.26"` in `app.toml` (and in the manifest when you use `secret`: the registry checks it). The template is pinned to v0.1.26.
+
+- **Titles in any language:** the board's text fonts now hold Latin-1 (accented letters such as `é ñ ü Å ß`), firmware +50.5 KB. Chinese, Japanese and Korean show when the user has the CJK font on the card (v0.1.24). For the rest, `fenix_sdk::text::fit(title, cjk_font)` transliterates (`Привет` to `Privet`, `Łódź` to `Lódz`, `北京` to `Bei Jing` without the CJK font) and puts one `?` per emoji. `cjk_font` is yours to decide (for example a toggle setting "CJK font installed"); the board does not report it yet. Reference: `docs/sidecars.md`, `docs/packages.md` (fonts).
+- **Long titles:** a label with a width takes `"overflow": "ellipsis"` and `"max_lines": 2` (ends in `...`), `"clip"`, or `"scroll"` (one line that scrolls round). Older boards ignore them and wrap. Example: the title in `tools/view-app`, simulator shot `app_view`.
+- **API key:** a setting `{"key": "deepseek_key", "type": "secret", "label": "DeepSeek API key"}` (no `default`). The App settings page shows a password field (empty, "Saved, type to replace", Clear); `config.json` holds it DPAPI-encrypted for the Windows user; it is never logged; your PC half gets it in `settings` as plain text (`""` until set). Do not log it or `set` it on the board. Reference: `docs/registry.md` (settings).
+
 ## Shipped in fenixOS v0.1.25 (2026-11-02)
 
 Requests 1 to 4 and the `opened` burst are in v0.1.25; set `min_fenixos = "0.1.25"` (`fenix-pkg build` refuses `view`, `show`, a bound image or the new icons without it, and the registry refuses `screen`). The app template is pinned to v0.1.25 (`fenix-pkg`, `fenix-sdk`). Reference: `docs/packages.md`, `docs/sidecars.md`, `proto/spec.md` 0x32, `docs/registry.md`; a working example layout is `tools/view-app` (simulator shots `app_view`, `app_view_call`).
