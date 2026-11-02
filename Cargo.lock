@@ -1316,6 +1316,7 @@ dependencies = [
 name = "fenixos"
 version = "0.1.25"
 dependencies = [
+ "base64 0.22.1",
  "fenix-flash",
  "fenix-font",
  "fenix-link",

@@ -43,7 +43,7 @@ The PC app adds two permission rows itself: "Runs its own helper program while s
 
 ## Settings
 
-Each entry: `key` (letters, digits, `_` `-`, ≤ 32, unique), `type`, `label` (≤ 40 chars) and, except `button`, a `default`. Values reach the PC half as `settings`.
+Each entry: `key` (letters, digits, `_` `-`, ≤ 32, unique), `type`, `label` (≤ 40 chars) and, except `button` and `secret`, a `default`. Values reach the PC half as `settings`.
 
 | `type` | Extra fields | Value |
 |---|---|---|
@@ -51,6 +51,7 @@ Each entry: `key` (letters, digits, `_` `-`, ≤ 32, unique), `type`, `label` (�
 | `slider` | `min`, `max`, `step`, `unit` (optional) | number |
 | `choice` | `options`: `[{ "value": "1", "label": "1 s" }]`; `default` is one of the values | string |
 | `text` | `placeholder` (optional), `max_len` (default 100) | string |
+| `secret` | `placeholder` (optional), `max_len` (1 to 1000, default 200); no `default`; needs `min_fenixos` 0.1.26 | string, `""` until set. For API keys and passwords: shown masked, stored encrypted for the Windows user, never logged; only your PC half gets it. Never log it or `set` it yourself |
 | `button` | | none: the PC half gets `button {key}` |
 
 The board half never sees settings; the PC half applies them (for example by changing what it `set`s).

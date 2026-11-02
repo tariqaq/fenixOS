@@ -22,6 +22,7 @@ fenix-sdk.workspace = true
 fenix-flash.workspace = true
 fenix-font.workspace = true
 sha2 = "0.10"
+base64 = "0.22"
 ureq = "3"
 windows-sys = { version = "0.61", features = [
   "Win32_Foundation",

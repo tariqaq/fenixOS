@@ -22,7 +22,9 @@ TILES = {"gray", "indigo", "blue", "teal", "green", "orange", "red", "purple", "
 PERMISSIONS = {"keys", "media", "system-stats", "network", "files", "programs", "screen"}
 # Permissions an older fenixOS PC app does not know (it would refuse the manifest): need min_fenixos.
 PERMISSION_SINCE = {"screen": (0, 1, 25)}
-SETTING_TYPES = {"toggle", "slider", "choice", "text", "button"}
+SETTING_TYPES = {"toggle", "slider", "choice", "text", "secret", "button"}
+# Setting types an older fenixOS PC app does not know (it would refuse the manifest): need min_fenixos.
+SETTING_SINCE = {"secret": (0, 1, 26)}
 ALLOWED_URL = "https://github.com/tariqaq/"
 MAX_BOARD = 64 * 1024 * 1024  # P51: no package cap; the board checks its content limits
 
@@ -110,6 +112,16 @@ def check(m, local=False):
             need(ok and d in [o["value"] for o in opts], f"{where}: options [{{value, label}}], default is one of the values")
         elif t == "text":
             need(isinstance(d, str) and len(d) <= s.get("max_len", 100), f"{where}.default: string <= max_len")
+        elif t == "secret":
+            # P51-M: a token or password; stored encrypted by the PC app, never given a default.
+            need("default" not in s, f"{where}: a secret has no default")
+            ml = s.get("max_len", 200)
+            need(isinstance(ml, int) and not isinstance(ml, bool) and 1 <= ml <= 1000, f"{where}.max_len: 1..1000")
+        since = SETTING_SINCE.get(t)
+        if since:
+            mf = m.get("min_fenixos")
+            ok = isinstance(mf, str) and VER_RE.match(mf) and tuple(int(x) for x in mf.split(".")) >= since
+            need(ok, f"{where}: {t} needs min_fenixos {'.'.join(map(str, since))}")
     return errs
 
 

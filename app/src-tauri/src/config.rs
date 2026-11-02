@@ -40,6 +40,9 @@ pub struct AppCfg {
     pub enabled: bool,
     #[serde(default)]
     pub settings: Map<String, Value>,
+    /// `secret` settings (P51-M): DPAPI-encrypted in this file, see `secret.rs`.
+    #[serde(default, skip_serializing_if = "crate::secret::Secrets::is_empty")]
+    pub secrets: crate::secret::Secrets,
 }
 
 fn yes() -> bool {

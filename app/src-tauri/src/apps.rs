@@ -109,7 +109,10 @@ pub struct AppView {
     pub has_pc: bool,
     pub elevated: bool,
     pub settings: Vec<Value>,
+    /// Setting values, without `secret` ones (P51-M): those never go to the UI.
     pub values: Map<String, Value>,
+    /// Keys of the `secret` settings that hold a value.
+    pub secrets_set: Vec<String>,
     /// Where the board half lives: `sd`, `flash`, `card_missing` (its SD card is out), or empty
     /// (not on the board, or no board).
     pub place: String,
@@ -289,6 +292,22 @@ pub fn root() -> PathBuf {
         .unwrap_or_else(std::env::temp_dir)
         .join("fenixOS")
         .join("apps")
+}
+
+/// What the PC half gets as `settings`: the values plus every `secret` setting in plain text
+/// (`""` until the user sets it; P51-M).
+fn sidecar_values(m: Option<&Manifest>, c: &AppCfg) -> Map<String, Value> {
+    let mut v = c.settings.clone();
+    for s in m.map_or(&[][..], |m| &m.settings[..]) {
+        if s.get("type").and_then(Value::as_str) != Some("secret") {
+            continue;
+        }
+        if let Some(k) = s.get("key").and_then(Value::as_str) {
+            let val = c.secrets.0.get(k).cloned().unwrap_or_else(|| "".into());
+            v.insert(k.to_string(), val);
+        }
+    }
+    v
 }
 
 fn app_dir(root: &Path, id: &str, version: &str) -> PathBuf {
@@ -485,6 +504,13 @@ impl Apps {
                     elevated: m.pc.as_ref().is_some_and(|p| p.elevated),
                     settings: m.settings.clone(),
                     values: c.settings.clone(),
+                    secrets_set: c
+                        .secrets
+                        .0
+                        .iter()
+                        .filter(|(_, v)| v.as_str().is_some_and(|s| !s.is_empty()))
+                        .map(|(k, _)| k.clone())
+                        .collect(),
                     place: place.into(),
                 })
             })
@@ -544,8 +570,18 @@ impl Apps {
                 let Some(c) = self.cfg.apps.get_mut(&id) else {
                     return false;
                 };
-                c.settings.insert(key, value);
-                let values = c.settings.clone();
+                let m = self.installed.get(&id).map(|i| &i.manifest);
+                if m.is_some_and(|m| registry::is_secret(m, &key)) {
+                    // "" clears it (the UI's Clear): nothing is kept, encrypted or not.
+                    if value.as_str().is_some_and(|v| !v.is_empty()) {
+                        c.secrets.0.insert(key, value);
+                    } else {
+                        c.secrets.0.remove(&key);
+                    }
+                } else {
+                    c.settings.insert(key, value);
+                }
+                let values = sidecar_values(m, c);
                 self.save();
                 self.to_sidecar(&id, Down::Settings { values });
                 true
@@ -593,10 +629,16 @@ impl Apps {
         };
         // Keep the user's values for settings that still exist; new ones start at their default.
         let mut settings = registry::default_settings(&m);
+        let mut secrets = crate::secret::Secrets::default();
         if let Some(o) = &old {
             for (k, v) in &o.settings {
                 if settings.contains_key(k) {
                     settings.insert(k.clone(), v.clone());
+                }
+            }
+            for (k, v) in &o.secrets.0 {
+                if registry::is_secret(&m, k) {
+                    secrets.0.insert(k.clone(), v.clone());
                 }
             }
             if o.version != m.version {
@@ -610,6 +652,7 @@ impl Apps {
                 version: m.version.clone(),
                 enabled: false,
                 settings,
+                secrets,
             },
         );
         self.cfg.kept_on_board.remove(&id);
@@ -1097,7 +1140,7 @@ impl Apps {
                 protocol: fenix_sdk::wire::PROTOCOL,
             },
             settings: Down::Settings {
-                values: c.settings.clone(),
+                values: sidecar_values(Some(&i.manifest), c),
             },
         };
         let inbox = self.inbox.clone();

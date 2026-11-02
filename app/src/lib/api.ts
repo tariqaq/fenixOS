@@ -91,7 +91,7 @@ export interface Silent {
 
 export interface Setting {
   key: string;
-  type: "toggle" | "slider" | "choice" | "text" | "button";
+  type: "toggle" | "slider" | "choice" | "text" | "secret" | "button";
   label: string;
   default?: unknown;
   min?: number;
@@ -120,6 +120,8 @@ export interface AppView {
   elevated: boolean;
   settings: Setting[];
   values: Record<string, unknown>;
+  /** Keys of `secret` settings that hold a value (their values never reach the UI, P51-M). */
+  secrets_set: string[];
   /** Where the board half lives (P51); empty when it is not on the board. */
   place: "" | "sd" | "flash" | "card_missing";
 }

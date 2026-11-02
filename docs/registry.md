@@ -66,7 +66,7 @@ Two rows are added from the manifest itself: "Runs its own helper program while 
 
 ### Settings
 
-Every entry has `key` (letters, digits, `_` `-`; ≤ 32, unique), `type`, `label` (≤ 40 chars) and, except `button`, a `default`. Corrected (P45): the key and label limits were missing here (`tools/registry.py` checks them).
+Every entry has `key` (letters, digits, `_` `-`; ≤ 32, unique), `type`, `label` (≤ 40 chars) and, except `button` and `secret`, a `default`. Corrected (P45): the key and label limits were missing here (`tools/registry.py` checks them).
 
 | `type` | Extra fields | Value sent to the PC half |
 |---|---|---|
@@ -74,6 +74,7 @@ Every entry has `key` (letters, digits, `_` `-`; ≤ 32, unique), `type`, `label
 | `slider` | `min`, `max`, `step`, `unit` (optional) | number |
 | `choice` | `options`: list of `{value, label}` | the option's `value` (string) |
 | `text` | `placeholder` (optional), `max_len` (default 100) | string |
+| `secret` | `placeholder` (optional), `max_len` (1 to 1000, default 200); no `default`. Since 0.1.26 (P51-M): `min_fenixos` must be 0.1.26 or newer (`tools/registry.py` checks) | string, `""` until set. For an API key or password: the App settings page never shows it (a password field and Clear), `config.json` holds it DPAPI-encrypted for the Windows user (`dpapi:<base64>`, `app/src-tauri/src/secret.rs`), it is never logged, and only the PC half gets it in plain text |
 | `button` | | none: pressing it sends a `button` message with the key |
 
 ## Local registry (testing)

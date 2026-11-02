@@ -31,6 +31,15 @@
     const v = (e.target as HTMLInputElement).value.slice(0, s.max_len ?? 100);
     if (v !== value(s)) setAppSetting(app.id, s.key, v);
   }
+  // A secret (P51-M) is never shown, not even to the UI: the field starts empty each time and
+  // is sent once, when it loses focus or Enter is pressed, then cleared again.
+  function commitSecret(s: Setting, e: Event) {
+    const el = e.target as HTMLInputElement;
+    const v = el.value.slice(0, s.max_len ?? 200);
+    el.value = "";
+    if (v) setAppSetting(app.id, s.key, v);
+  }
+  const isSet = (s: Setting) => app.secrets_set.includes(s.key);
   // Where the board half lives (P51).
   function placeText(p: AppView["place"]): string {
     switch (p) {
@@ -125,6 +134,23 @@
                 value={value(s)}
                 onchange={(e) => commitText(s, e)}
               />
+            {:else if s.type === "secret"}
+              <label for="set-{s.key}">{s.label}</label>
+              <span class="end secret">
+                {#if isSet(s)}
+                  <button type="button" class="action" onclick={() => setAppSetting(app.id, s.key, "")}>Clear</button>
+                {/if}
+                <input
+                  id="set-{s.key}"
+                  class="text"
+                  type="password"
+                  autocomplete="off"
+                  spellcheck="false"
+                  maxlength={s.max_len ?? 200}
+                  placeholder={isSet(s) ? "Saved, type to replace" : (s.placeholder ?? "Not set")}
+                  onchange={(e) => commitSecret(s, e)}
+                />
+              </span>
             {:else if s.type === "button"}
               <button type="button" class="action" onclick={() => appButton(app.id, s.key)}>{s.label}</button>
             {/if}
@@ -270,6 +296,11 @@
   input:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
+  }
+  .secret {
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
   .slider {
     display: flex;

@@ -143,7 +143,7 @@ Details:
 
 Questions:
 
-1. **Settings storage:** values are plain JSON in `%APPDATA%\fenixOS\config.json`, not encrypted. They are not written to logs (`apps.rs`), and there is no export. The App settings page shows `text` values unmasked. A `secret` type (masked, DPAPI user scope, never logged) is planned in P51-M (user, 2026-11-02: yes).
+1. **Settings storage:** values are plain JSON in `%APPDATA%\fenixOS\config.json`, not encrypted. They are not written to logs (`apps.rs`), and there is no export. The App settings page shows `text` values unmasked. A `secret` type (masked, DPAPI user scope, never logged) is planned in P51-M (user, 2026-11-02: yes). Built: see "Shipped in fenixOS v0.1.26" above.
 2. **Elevated helper:** stop is the `stop` message plus the closed pipe; `TerminateProcess` fails on an elevated process, so a helper that hangs without reading its pipe keeps running. If fenixOS dies, the pipe breaks and `fenix-sdk` exits. Every crash restart (1 s, 5 s, 15 s) goes through UAC again, and a declined prompt ends the retries. Better: no elevation. ETW frame timing (PresentMon) works for members of the Performance Log Users group; add the user once (sign out after), no prompt per start.
 3. **Permissions:** `media`, `keys`, `system-stats`, `network`, `screen` fits. `keys` covers the simulated Discord keybinds. Screen capture and ETW next to games with kernel anti-cheat: unverified, say so in Morpheus's README.
 

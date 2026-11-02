@@ -168,14 +168,22 @@ pub fn check(m: &Manifest, local: bool) -> Result<(), String> {
             .get("key")
             .and_then(Value::as_str)
             .is_some_and(|k| !k.is_empty() && k.len() <= 32);
-        if !["toggle", "slider", "choice", "text", "button"].contains(&t) || !key_ok {
+        if !["toggle", "slider", "choice", "text", "secret", "button"].contains(&t) || !key_ok {
             return Err("bad setting".into());
         }
     }
     Ok(())
 }
 
-/// Default values of a manifest's settings (buttons have none).
+/// Whether `key` is one of the manifest's `secret` settings (P51-M).
+pub fn is_secret(m: &Manifest, key: &str) -> bool {
+    m.settings.iter().any(|s| {
+        s.get("key").and_then(Value::as_str) == Some(key)
+            && s.get("type").and_then(Value::as_str) == Some("secret")
+    })
+}
+
+/// Default values of a manifest's settings (buttons and secrets have none).
 pub fn default_settings(m: &Manifest) -> serde_json::Map<String, Value> {
     m.settings
         .iter()

@@ -9,6 +9,7 @@ mod engine;
 mod font;
 mod logs;
 mod registry;
+mod secret;
 mod sidecar;
 mod tray;
 mod update;
