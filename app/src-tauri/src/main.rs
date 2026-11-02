@@ -6,6 +6,7 @@
 mod apps;
 mod config;
 mod engine;
+mod font;
 mod logs;
 mod registry;
 mod sidecar;
@@ -199,6 +200,39 @@ async fn board_shot(app: AppHandle) -> Result<Shot, String> {
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Size of the CJK font on the board's card (P54), or null.
+#[tauri::command]
+async fn board_font(app: AppHandle) -> Result<Option<u32>, String> {
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || font::installed(&e))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Download, draw and send the CJK font (P54); progress as `font_progress` events.
+#[tauri::command]
+async fn board_font_install(app: AppHandle) -> Result<(), String> {
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    let a = app.clone();
+    let r = tauri::async_runtime::spawn_blocking(move || font::install(&e, &a))
+        .await
+        .map_err(|e| e.to_string())?;
+    let e = app.state::<Arc<Engine>>();
+    match &r {
+        Ok(()) => e.log(&app, Source::Pc, false, "CJK font installed on the board's card"),
+        Err(err) => e.log(&app, Source::Pc, true, format!("CJK font install failed: {err}")),
+    }
+    r
+}
+
+#[tauri::command]
+async fn board_font_remove(app: AppHandle) -> Result<(), String> {
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || font::remove(&e))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -643,6 +677,9 @@ fn main() {
             board_card_logs,
             board_card_file,
             board_shot,
+            board_font,
+            board_font_install,
+            board_font_remove,
             open_shot_folder,
             get_autostart,
             set_autostart,

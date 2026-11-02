@@ -41,10 +41,21 @@ export function sdText(sd: SdState | null): string {
   return ["No card", "", "Not FAT32", "Not readable"][sd.state] ?? "Unknown";
 }
 
-function sizeText(kb: number): string {
+export function sizeText(kb: number): string {
   if (kb < 1024 * 1024) return `${Math.floor(kb / 1024)} MB`;
   const gb = kb / (1024 * 1024);
   return gb < 10 ? `${(Math.floor(gb * 10) / 10).toFixed(1)} GB` : `${Math.floor(gb)} GB`;
+}
+
+/** "0.1.24" >= "0.1.23": dotted numbers compared part by part. */
+export function versionAtLeast(v: string, min: string): boolean {
+  const a = v.split(".").map(Number);
+  const b = min.split(".").map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const d = (a[i] ?? 0) - (b[i] ?? 0);
+    if (d !== 0) return d > 0;
+  }
+  return true;
 }
 
 /** RADIO_STATE (proto/spec.md). mode: 0 off, 2 Wi-Fi (1 was Bluetooth, removed in P38). state: 0 off, 1 starting,
@@ -188,6 +199,17 @@ export interface CardLog {
 }
 export const boardCardLogs = () => invoke<CardLog[]>("board_card_logs");
 export const boardCardFile = (path: string) => invoke<string>("board_card_file", { path });
+
+/** The CJK font on the board's card (P54, docs/fonts.md): its size in bytes, or null. */
+export const boardFont = () => invoke<number | null>("board_font");
+export const boardFontInstall = () => invoke<void>("board_font_install");
+export const boardFontRemove = () => invoke<void>("board_font_remove");
+export interface FontProgress {
+  stage: "download" | "drawing" | "sending";
+  percent: number;
+}
+export const onFontProgress = (cb: (p: FontProgress) => void): Promise<UnlistenFn> =>
+  listen<FontProgress>("font_progress", (e) => cb(e.payload));
 
 /** A screenshot the board saved on its card (P53): its path there and the copy on this PC. */
 export interface Shot {

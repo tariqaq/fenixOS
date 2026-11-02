@@ -217,11 +217,27 @@ pub fn write(
     path: &str,
     data: Vec<u8>,
 ) -> Result<(), String> {
+    write_with(send, recv, path, data, &mut |_| {})
+}
+
+/// `write` that reports the percent acknowledged (0 to 100) each time it changes (P54: a font).
+pub fn write_with(
+    send: &dyn Fn(Msg),
+    recv: &mut dyn FnMut(Duration) -> Option<Msg>,
+    path: &str,
+    data: Vec<u8>,
+    progress: &mut dyn FnMut(u8),
+) -> Result<(), String> {
     let mut s = FileSend::new(path, data);
     send(s.begin());
+    let mut shown = u8::MAX;
     loop {
         for m in s.poll()? {
             send(m);
+        }
+        if s.percent() != shown {
+            shown = s.percent();
+            progress(shown);
         }
         let wait = if s.stage() == Stage::Sending { 5 } else { 100 };
         match recv(Duration::from_millis(wait)) {

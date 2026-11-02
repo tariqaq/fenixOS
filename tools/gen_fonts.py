@@ -18,6 +18,9 @@ TEXT = "0x20-0x7E,0xB0,0xB7,0xD7,0x2013,0x2014,0x2019,0x2022,0x2026,0x2039,0x203
 CLOCK = "0x30-0x3A,0x2D,0x20"  # digits, colon, hyphen (for --:--), space
 
 # (C name, ttf, size, range)
+# The text fonts (not the clocks) fall back to the CJK font from the SD card for characters Inter
+# lacks (P54, board/components/fenix_ui/cjk.cpp): 13 px for 12 and 13, 16 for 15 and 17, 20 for 22.
+CJK = {22: "fx_cjk_20", 17: "fx_cjk_16", 15: "fx_cjk_16", 13: "fx_cjk_13", 12: "fx_cjk_13"}
 TEXT_FONTS = [
     ("fx_font_clock_64", "inter/InterDisplay-SemiBold.ttf", 64, CLOCK),
     ("fx_font_clock_56", "inter/InterDisplay-SemiBold.ttf", 56, CLOCK),
@@ -66,9 +69,25 @@ def conv(name, ttf, size, rng):
     subprocess.run(cmd, check=True, cwd=ROOT, shell=(sys.platform == "win32"))
 
 
+def set_fallback(name, size):
+    """Point a text font's `.fallback` at its CJK size (lv_font_conv writes NULL). Idempotent."""
+    if name.startswith("fx_font_clock"):
+        return
+    p = OUT / f"{name}.c"
+    s = p.read_text(encoding="utf-8")
+    cjk = CJK[size]
+    s = re.sub(r"\.fallback = [^,]+,", f".fallback = &{cjk},", s, count=1)
+    decl = f"extern const lv_font_t {cjk};  /* fenix_ui/cjk.cpp (P54) */\n"
+    marker = "/*Initialize a public general font descriptor*/"
+    if decl not in s:
+        s = s.replace(marker, decl + "\n" + marker, 1)
+    p.write_text(s, encoding="utf-8", newline="\n")
+
+
 def main():
     for name, ttf, size, rng in TEXT_FONTS:
         conv(name, ttf, size, rng)
+        set_fallback(name, size)
     fill = codepoints("fill.css", FILL_ICONS)
     bold = codepoints("bold.css", BOLD_ICONS)
     for s in FILL_SIZES:
@@ -80,6 +99,7 @@ def main():
     # The fonts are C; C linkage keeps the names unmangled under MSVC too (board/sim).
     lines += ["#ifdef __cplusplus", 'extern "C" {', "#endif"]
     lines += [f"LV_FONT_DECLARE({n})" for n in names]
+    lines += [f"LV_FONT_DECLARE({n})  // CJK from the SD card, the text fonts' fallback (P54)" for n in sorted(set(CJK.values()))]
     lines += ["#ifdef __cplusplus", "}", "#endif", ""]
     lines.append("// Icon glyphs as UTF-8 strings (Phosphor private-use code points).")
     for n, c in list(fill.items()) + list(bold.items()):

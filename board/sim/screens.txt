@@ -2,7 +2,7 @@
 # Run: python tools/sim_shots.py  (builds the simulator and build/sample.fxp, then compares).
 # Verbs: tap x y | swipe x1 y1 x2 y2 | wait ms | shot name | install file | remove id
 #        set id name=value... | host id on|off|gone|starting | card in|out | stream on fps | stream off
-#        connect | disconnect | ota offer <update|-> <back|-> | ota failed_version <v|->
+#        font file | connect | disconnect | ota offer <update|-> <back|-> | ota failed_version <v|->
 #        ota idle|receiving|checking|writing|restarting|failed [pct] [version]
 # Taps wait 1 s and swipes 1.2 s of virtual time afterwards, so animations have finished.
 # The simulator starts connected to a pretend PC, with an empty store and default settings.
@@ -83,6 +83,10 @@ shot home_page2
 tap 58 182
 set io.github.tariqaq.sample cpu=42 "cpu_text=42 %" mem=63 "mem_text=5.1 GB" on=true level=80
 shot app
+font fonts/cjk-sample.fxf                 # a subset of the card's CJK font (P54): Inter lacks these
+set io.github.tariqaq.sample "cpu_text=中文 かな 한글"
+shot app_cjk
+set io.github.tariqaq.sample "cpu_text=42 %"
 host io.github.tariqaq.sample off
 shot app_host_off                         # with Turn on
 host io.github.tariqaq.sample starting

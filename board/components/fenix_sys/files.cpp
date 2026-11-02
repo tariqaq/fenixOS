@@ -32,6 +32,7 @@ static constexpr int64_t IDLE_US = 10000000;   // a write or read with no messag
 static constexpr size_t CHECK_BUF = 4096;
 
 static const char* const WRITE_DIRS[] = {"fonts", "data", "web"};
+static void (*s_font_release)();  // the UI's CJK font (P54): closed before a file in fonts/ changes
 static const char* const DELETE_DIRS[] = {"fonts", "data", "web", "logs", "crash", "shots"};
 
 // ---- Paths ----
@@ -246,6 +247,16 @@ static void read(fnx::Reader& r) {
   link_send(fnx::ty::FILE_DATA, b.get(), 8 + got);
 }
 
+// ---- Fonts (P54) ----
+
+void fonts_hook(void (*release)()) { s_font_release = release; }
+
+void fonts_release() {
+  if (s_font_release) s_font_release();
+}
+
+static bool in_fonts(const char* p) { return !strncasecmp(p, "fonts/", 6); }
+
 // ---- Delete ----
 
 static void remove(fnx::Reader& r) {
@@ -263,9 +274,14 @@ static void remove(fnx::Reader& r) {
   struct stat st;
   if (stat(full, &st)) return result(file::OP_DELETE, file::NOT_FOUND, path);
   bool dir = S_ISDIR(st.st_mode);
-  if (dir ? rmdir(full) : unlink(full))
+  bool font = !dir && in_fonts(path);
+  if (font) fonts_release();
+  if (dir ? rmdir(full) : unlink(full)) {
+    if (font) link_post(LinkEv::FONTS);
     return result(file::OP_DELETE, file::STORAGE, path, dir ? "the folder is not empty" : "");
+  }
   sd_update_free();
+  if (font) link_post(LinkEv::FONTS);
   result(file::OP_DELETE, file::OK, path);
 }
 
@@ -372,9 +388,12 @@ static void check_task(void*) {
   }
   buf.reset();
   if (code == file::OK) {
+    bool font = in_fonts(s_job.path);
+    if (font) fonts_release();  // the UI may hold the old one open
     unlink(full);  // FAT's rename does not replace
     if (rename(part, full)) code = file::STORAGE;
     else unlink(pin);
+    if (font) link_post(LinkEv::FONTS);
   } else if (code == file::BAD_HASH) {
     unlink(part);
     unlink(pin);

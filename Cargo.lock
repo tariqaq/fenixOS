@@ -1308,6 +1308,7 @@ name = "fenixos"
 version = "0.1.23"
 dependencies = [
  "fenix-flash",
+ "fenix-font",
  "fenix-link",
  "fenix-pkg",
  "fenix-proto",

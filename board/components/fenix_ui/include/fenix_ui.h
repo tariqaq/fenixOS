@@ -43,6 +43,10 @@ void nav_root(Builder b, bool animate);  // replace the whole stack
 void nav_push(Builder b, bool fade = false);  // slide in, or fade in (app open)
 void nav_pop();
 void nav_rebuild();  // rebuild the top screen in place (rotation, setting changes)
+
+// CJK text from the SD card (P54, cjk.cpp): fonts/cjk.fxf as the text fonts' fallback. UI task.
+void cjk_load(const char* path = nullptr);  // (re)open it: FONTS event; `path`: the simulator's
+void cjk_sd_changed();                      // SD_CHANGED: open it when a card came, close when gone
 Builder nav_top();
 int nav_depth();
 

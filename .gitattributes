@@ -10,3 +10,4 @@
 *.DLL binary
 *.VXD binary
 *.zip binary
+*.fxf binary

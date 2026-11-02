@@ -23,7 +23,7 @@ set(FENIX_VERSION "0.0.0")
 file(GLOB FONT_SRCS ${COMP}/fenix_ui/fonts/*.c)
 add_executable(fenix_sim
   sim_main.cpp sim_platform.cpp sim_sys.cpp sim_png.cpp
-  ${COMP}/fenix_ui/ui_core.cpp ${COMP}/fenix_ui/widgets.cpp ${COMP}/fenix_ui/nav.cpp ${FONT_SRCS}
+  ${COMP}/fenix_ui/ui_core.cpp ${COMP}/fenix_ui/widgets.cpp ${COMP}/fenix_ui/nav.cpp ${COMP}/fenix_ui/cjk.cpp ${FONT_SRCS}
   ${COMP}/fenix_apps/shell.cpp ${COMP}/fenix_apps/home.cpp ${COMP}/fenix_apps/settings_ui.cpp
   ${COMP}/fenix_apps/session.cpp ${COMP}/fenix_apps/stream_ui.cpp ${COMP}/fenix_apps/led.cpp
   ${COMP}/fenix_apps/app_pkg.cpp

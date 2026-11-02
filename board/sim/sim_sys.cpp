@@ -258,6 +258,8 @@ bool app_state_write(const char*, const uint8_t*, size_t) { return false; }
 size_t app_state_read(const char*, uint8_t*, size_t) { return 0; }
 void app_state_forget(const char*) {}
 void shot_save() {}
+void fonts_hook(void (*)()) {}
+void fonts_release() {}
 // Settings backup (P53): `backup offer <ssid|->` shows the sheet; the answers only clear it.
 std::string s_backup_ssid;
 bool s_backup_on;

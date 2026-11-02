@@ -59,6 +59,7 @@ extern "C" void* __wrap_ff_memalloc(unsigned msize) {
 }
 
 static void unmount() {
+  fonts_release();  // the UI's CJK font file (P54)
   if (s_card) esp_vfs_fat_sdcard_unmount(SD_PATH, s_card);
   s_card = nullptr;
 }

@@ -151,6 +151,11 @@ static int run_script(const std::string& path, const std::string& out) {
                                     : fnx::host::STARTING;
       sim::post(sys::LinkEv::HOST_STATE, st, w[1].c_str());
       run_for(300);
+    } else if (v == "font" && w.size() == 2) {  // a CJK font file in place of the card's (P54)
+      static std::string font;
+      font = (base / w[1]).string();
+      ui::cjk_load(font.c_str());
+      run_for(300);
     } else if (v == "card" && w.size() == 2 && (w[1] == "in" || w[1] == "out")) {
       sim::set_card(w[1] == "in");
       run_for(600);

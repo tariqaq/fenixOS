@@ -1,10 +1,26 @@
 <script lang="ts">
   // Artboard 11 (PcBoard): live mirror, facts and actions. The Logs row opens the log sheet
   // (artboard 16); "Reinstall firmware" opens the update dialog (artboard 12). "Screenshot to the
-  // card" (P53) has the board save its screen on its SD card; the app keeps a copy.
+  // card" (P53) has the board save its screen on its SD card; the app keeps a copy. "Chinese,
+  // Japanese and Korean text" (P54) puts the CJK font on the card (docs/fonts.md).
   import Icon from "../lib/Icon.svelte";
   import Mirror from "../lib/Mirror.svelte";
-  import { boardShot, linkText, openShotFolder, rebootBoard, sdText, uptime, type Board } from "../lib/api";
+  import {
+    boardFont,
+    boardFontInstall,
+    boardFontRemove,
+    boardShot,
+    linkText,
+    onFontProgress,
+    openShotFolder,
+    rebootBoard,
+    sdText,
+    sizeText,
+    uptime,
+    versionAtLeast,
+    type Board,
+    type FontProgress,
+  } from "../lib/api";
 
   let {
     board,
@@ -38,6 +54,45 @@
       shotNote = `${e}`;
     }
     shooting = false;
+  }
+
+  // CJK font: firmware 0.1.24 shows it; the card must be in.
+  const fontOk = $derived(board.sd?.state === 1 && versionAtLeast(board.firmware, "0.1.24"));
+  let font = $state<number | null | undefined>(undefined); // undefined: not asked yet
+  let fontJob = $state<FontProgress | null>(null);
+  let fontError = $state("");
+  $effect(() => {
+    if (!fontOk) return;
+    boardFont().then((n) => (font = n)).catch(() => (font = undefined));
+  });
+  $effect(() => {
+    const off = onFontProgress((p) => (fontJob = p));
+    return () => void off.then((f) => f());
+  });
+  const fontText = $derived(
+    fontJob
+      ? `${{ download: "Downloading", drawing: "Preparing", sending: "Sending to the board" }[fontJob.stage]} ${fontJob.percent} %`
+      : font === undefined
+        ? "…"
+        : font === null
+          ? "Not installed"
+          : `Installed (${sizeText(Math.round(font / 1024))})`,
+  );
+  async function fontAction() {
+    fontError = "";
+    fontJob = { stage: font ? "sending" : "download", percent: 0 };
+    try {
+      if (font) {
+        fontJob = null;
+        await boardFontRemove();
+      } else {
+        await boardFontInstall();
+      }
+    } catch (e) {
+      fontError = `${e}`;
+    }
+    fontJob = null;
+    font = await boardFont().catch(() => undefined);
   }
 </script>
 
@@ -84,6 +139,24 @@
           </button>
         {/if}
       </div>
+      {#if fontOk}
+        <div class="group">
+          <div class="row"><p>Chinese, Japanese and Korean text</p><p class="value">{fontText}</p></div>
+          {#if font !== undefined}
+            <button type="button" class="row" disabled={fontJob !== null} onclick={fontAction}>
+              <Icon name={font ? "x" : "download-simple"} size={18} color="var(--accent)" />
+              <span>{font ? "Remove the font" : "Install the font"}</span>
+            </button>
+          {/if}
+        </div>
+        <p class="hint plain" role="status">
+          {#if fontError}
+            <span>{fontError}</span>
+          {:else}
+            <span>Noto Sans CJK, drawn for the board: 13 MB on its card. Installing downloads 16 MB once and takes about 4 minutes over USB.</span>
+          {/if}
+        </p>
+      {/if}
       {#if shotNote}
         <p class="hint plain" role="status">
           <span>{shotNote}</span>

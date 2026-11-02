@@ -27,6 +27,9 @@ LV_FONT_DECLARE(fx_icon_fill_28)
 LV_FONT_DECLARE(fx_icon_fill_40)
 LV_FONT_DECLARE(fx_icon_bold_10)
 LV_FONT_DECLARE(fx_icon_bold_14)
+LV_FONT_DECLARE(fx_cjk_13)  // CJK from the SD card, the text fonts' fallback (P54)
+LV_FONT_DECLARE(fx_cjk_16)  // CJK from the SD card, the text fonts' fallback (P54)
+LV_FONT_DECLARE(fx_cjk_20)  // CJK from the SD card, the text fonts' fallback (P54)
 #ifdef __cplusplus
 }
 #endif

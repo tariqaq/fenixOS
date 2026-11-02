@@ -63,6 +63,8 @@ def board():
         {"name": "littlefs (in esp_littlefs)", "version": "", "license": "BSD-3-Clause"},
         {"name": "mDNS (espressif/mdns)", "version": locked("espressif/mdns"), "license": "Apache-2.0"},
         {"name": "Inter (board fonts)", "version": "", "license": "OFL-1.1"},
+        # P54: downloaded by the PC app on request and drawn onto the board's card (docs/fonts.md)
+        {"name": "Noto Sans CJK SC (CJK text, from the card)", "version": "Sans2.004", "license": "OFL-1.1"},
         {"name": "Phosphor Icons (board icons)", "version": "", "license": "MIT"},
     ]
 

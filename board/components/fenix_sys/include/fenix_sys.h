@@ -100,6 +100,7 @@ enum class LinkEv : uint8_t {
   SD_CHANGED,    // the microSD card came, went or changed (sd_info)
   OTA,           // a firmware update started or failed (ota_status)
   SHOT,          // the PC asked for a screenshot on the card (SHOT_SAVE): the UI task calls shot_save
+  FONTS,         // a file in fonts/ was written or deleted (P54): the UI opens its CJK font again
 };
 struct LinkEvent {
   LinkEv type;
@@ -215,6 +216,11 @@ void app_state_forget(const char* id);
 // ---- Board log and crash records on the card (P53, logs.cpp) ----
 void logs_line(uint8_t level, const char* text, size_t n);  // any task (link_log calls it)
 // A line for the card only, for what the PC logs on its side anyway (sessions, installs).
+// The UI keeps fonts/cjk.fxf open (P54, fenix_ui/cjk.cpp) and registers how to close it. A task
+// about to replace or delete a file in fonts/, or unmount the card, calls fonts_release() first; it
+// waits while a glyph is read. The UI opens the font again at SD_CHANGED or FONTS.
+void fonts_hook(void (*release)());
+void fonts_release();
 void logs_note(uint8_t level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 void logs_tick(int64_t now_us);  // link task: writes waiting lines to /sd/fenixos/logs/<boot>.txt
 void logs_mounted();             // sd task, after a mount: this boot's file; copies a core dump
