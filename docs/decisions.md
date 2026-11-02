@@ -275,7 +275,7 @@ The user's request: an app added in the PC app installs both halves, the board h
 | Package size cap | 1 MB / **8 MB on SD, 256 KB on flash** | Changed (evening): **no fixed cap on SD, 128 KB on flash**. Was: **8 MB on SD** (user: "can be way higher than 1 mb surely"): install time (~42 KB/s over USB, ~3 min for 8 MB) and RAM per screen are the real limits, not the card. 256 KB on the flash fallback |
 | What else the card brings | (all picked) | Logs and crash records on SD; keep the previous firmware (roll back from Settings); bigger packages; ~30 apps (paged APP_LIST); last values while the PC is off; fonts from SD (LVGL Tiny TTF, `LV_TINY_TTF_FILE_SUPPORT`); screenshots to SD; UI sounds (speaker on IO26). Changed (evening): sounds dropped; settings backup, status page from the card, Home wallpaper, per-app data folder and a rescue firmware copy added |
 | Order | Plan only / **build the SD base now, plan the rest** | **SD base now** (P50, v0.1.20), the rest planned, then standby |
-| SD mount RAM | `max_files` 2 / **4** | **4** (P50): each costs 552 B; fonts from SD will hold a file open while an install, a log or a screenshot opens others. Corrected (P53): **6**, for a PC file read and write next to a firmware part, an app package, the log and the wallpaper (+1.1 KB) |
+| SD mount RAM | `max_files` 2 / **4** | **4** (P50): each costs 552 B; fonts from SD will hold a file open while an install, a log or a screenshot opens others. Corrected (P53): **6**, for a PC file read and write next to a firmware part, an app package, the log and the wallpaper (+1.1 KB). Corrected (step 7): the wallpaper was dropped; the sixth is a font from the card (P54) |
 
 ## 2026-11-02 (evening): plan changes before the overnight run
 
@@ -301,7 +301,8 @@ The user reviewed the plan, asked for these changes and set the whole plan (P51 
 | Wi-Fi password in the settings backup | **Yes, plaintext** / no | **Yes, plaintext** (matches the earlier no-encryption choice; anyone with the card can read it) |
 | Fonts from the card | **Chinese, Japanese, Korean** / plus more scripts / Japanese only | **CJK**: one Noto Sans CJK font (OFL) installed by the PC app; split per script if one font is too slow |
 | UI sounds | Plan them / **drop** | **Dropped** (user: "i hav no idea of adding speaker for now") |
-| More SD ideas | (all) | **All in P53**: settings backup, status page from the card, Home wallpaper (measured first), per-app data folder, rescue firmware copy (the kept `.fwp`) |
+| More SD ideas | (all) | **All in P53**: settings backup, status page from the card, Home wallpaper (measured first), per-app data folder, rescue firmware copy (the kept `.fwp`). Corrected: the wallpaper was dropped after the measurement (next row) |
+| Home wallpaper from the card (P53) | Keep it / **drop it** | **Drop**: drawn from the card by LVGL's file decoder (RGB565, a row at a time), a full Home redraw took 321 ms against 30 ms. The card gives about 1 MB/s through FAT and LVGL's reads; a bigger read cache (8 KB) was slower (361 ms). Home is redrawn in full every minute by the burn-in shift, and the board has no RAM to hold 150 KB. `wallpaper/` is no longer a folder the PC may write |
 | Home with 32 apps | Wait for a mock-up review / **agent designs it** | **Agent designs it** under DESIGN.md (swipe pages, page dots); sim screenshots in `docs/screens/board/` for the user |
 | Morpheus in the run | **Yes** / stop after P54 | **Yes**: P50-M (v0.1.25) and P51-M (v0.1.26) after P54 |
 | Morpheus: `view` or `show` | **Both** / view only | **Both**: `view` for screens, a bindable bool `show` on every element |

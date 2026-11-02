@@ -1,7 +1,7 @@
 //! Files on the board's SD card, under `/sd/fenixos` (P53, `proto/spec.md` "Files (0x6_)").
 //! Paths are relative to that folder, split by `/`. The board lists and reads anything there,
-//! deletes in `fonts/ data/ wallpaper/ web/ logs/ crash/ shots/`, and takes writes only into
-//! `fonts/ data/ wallpaper/ web/`.
+//! deletes in `fonts/ data/ web/ logs/ crash/ shots/`, and takes writes only into
+//! `fonts/ data/ web/`.
 //!
 //! A write is `FILE_WRITE_BEGIN` (size and sha256), chunks as firmware updates send them
 //! (`chunks.rs`), `FILE_END`; the board checks the sha256 and answers `FILE_RESULT`. A cut write

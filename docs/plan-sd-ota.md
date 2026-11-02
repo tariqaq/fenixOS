@@ -17,7 +17,7 @@ Rules for every phase:
 | App on/off and where-stored flags (P51) | ≤ 0.3 KB |
 | OTA (P52) | 0 at idle; ≤ 12 KB while an update runs (4 KB copy buffer, SHA-256, ECDSA verify) |
 | Logs to SD (P53) | ≤ 1 KB (512 B line buffer, flushed every 5 s and on errors) |
-| Wallpaper (P53) | 0: drawn from the card in rows, never held whole (a full screen is 150 KB) |
+| Wallpaper (P53) | 0: drawn from the card in rows, never held whole (a full screen is 150 KB). Corrected: dropped, too slow (step 7, below) |
 | Fonts from SD (P54) | 0 until a screen uses one; glyph cache ≤ 12 KB while it shows (measured) |
 
 ## P51: apps on the SD card, on/off, sync (v0.1.21)
@@ -129,13 +129,13 @@ Signature host test (good, bad signature, bad hash, wrong key), updates over USB
 
 ## P53: SD extras (v0.1.23)
 
-- **Files over the link:** `FILE_LIST_REQ`, `FILE_LIST`, `FILE_READ_REQ`, `FILE_DATA`, `FILE_DELETE`, `FILE_WRITE_BEGIN`/`FILE_CHUNK`/`FILE_END` (0x60 to 0x67), only under `/sd/fenixos`; writes only to `fonts/`, `data/`, `wallpaper/`. Chunked and resumable like app installs. `fenix files ls|get|put|rm`. Corrected (built): 0x60 to 0x6A, with `FILE_ACK`, `FILE_RESULT` and `SHOT_SAVE` (`proto/spec.md` "Files (0x6_)"); writes also reach `web/` (step 6).
+- **Files over the link:** `FILE_LIST_REQ`, `FILE_LIST`, `FILE_READ_REQ`, `FILE_DATA`, `FILE_DELETE`, `FILE_WRITE_BEGIN`/`FILE_CHUNK`/`FILE_END` (0x60 to 0x67), only under `/sd/fenixos`; writes only to `fonts/`, `data/`, `wallpaper/`. Chunked and resumable like app installs. `fenix files ls|get|put|rm`. Corrected (built): 0x60 to 0x6A, with `FILE_ACK`, `FILE_RESULT` and `SHOT_SAVE` (`proto/spec.md` "Files (0x6_)"); writes also reach `web/` (step 6); `wallpaper/` was taken out with the wallpaper (step 7).
 - **Logs and crash records:** board log lines (the `link_log` text, boot reason, heap) also go to `/sd/fenixos/logs/<boot>.txt` (512 B buffer, 10 newest kept, 256 KB each). The core dump partition (56 KB gap) is copied to `/sd/fenixos/crash/` at the next boot, if a dump of this firmware fits it (measured). The PC's log sheet and `fenix logs --board` read them.
 - **Screenshots, from the PC only** (user): a button on the PC's Board page and `fenix shot --sd` make the board save `/sd/fenixos/shots/<time>.bmp` (RGB565, read from the LCD in 16-row bands; `cfg.readable` is on). The PC lists and downloads them. Built: `docs/sd-card.md` "Screenshots" (corrected: 8-row bands, see `docs/board-info.md`).
 - **Last values while the PC is off:** the board saves an app's last bound values to `/sd/fenixos/state/<id>.bin` when it closes (and every 60 s while open). With no PC linked, the app opens on them, dimmed, with "PC not connected", instead of the empty "Waiting for host PC". Built: `docs/sd-card.md` "Last app values".
 - **Settings backup:** every settings change also writes `/sd/fenixos/backup/settings.bin` (all NVS settings, **Wi-Fi password included, plaintext**, user). A board with empty settings and a card holding a backup offers "Restore settings from the SD card" at boot. Built: `docs/sd-card.md` "Settings backup" (the backup also holds the weather place; "empty" means no settings and no Wi-Fi network).
 - **Status page from the card:** `web.cpp` serves `/sd/fenixos/web/` when present (a richer page without flash cost; the built-in page stays the fallback).
-- **Home wallpaper:** an image in `/sd/fenixos/wallpaper/` (LVGL binary RGB565, 320×240), set from the PC; drawn from the card in rows (LVGL file image decoder), never held whole. Measured first: draw time of a full redraw and the burn-in shift with it. Dropped if it slows Home.
+- **Home wallpaper:** an image in `/sd/fenixos/wallpaper/` (LVGL binary RGB565, 320×240), set from the PC; drawn from the card in rows (LVGL file image decoder), never held whole. Measured first: draw time of a full redraw and the burn-in shift with it. Dropped if it slows Home. **Dropped (measured 2026-11-02):** a full Home redraw took 321 ms with it against 30 ms without (LVGL's file decoder, 2 KB read cache; 361 ms with 8 KB). The burn-in shift redraws Home every minute, and any change under the clock reads its rows again. `docs/decisions.md`.
 - **Per-app data folder:** `/sd/fenixos/data/<id>/`, written and read by the app's PC half through the SDK (`app.put_file(name, bytes)`, `app.get_file(name)`), for history and offline data. Removed with the app.
 
 ## P54: fonts from the card (v0.1.24)

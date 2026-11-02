@@ -8,7 +8,7 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `firmware/` | Kept firmware packages `<v>.fwp`, a staged `<v>.part` | Firmware updates (`docs/ota.md`) | P52, v0.1.22 |
 | `logs/` | The board log, `<n>.txt` per boot | The board | P53, v0.1.23 |
 | `crash/` | Crash records `<n>.elf` and `<n>.txt` | The board, at the next mount after a crash | P53 |
-| `fonts/` `data/` `wallpaper/` `web/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
+| `fonts/` `data/` `web/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
 | `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
 | `state/` | Last bound values per app, `<id>.bin` | The board | P53 |
 | `backup/` | `settings.bin`: settings, the Wi-Fi network, the weather place | The board | P53 |
@@ -19,8 +19,8 @@ Messages: `proto/spec.md` "Files (0x6_)". Board: `board/components/fenix_sys/fil
 
 - **What the PC may do.**
   - List and read: anything under `/sd/fenixos`.
-  - Delete: inside `fonts/ data/ wallpaper/ web/ logs/ crash/ shots/`; a folder only when it is empty.
-  - Write: inside `fonts/ data/ wallpaper/ web/`. Folders on the way are made.
+  - Delete: inside `fonts/ data/ web/ logs/ crash/ shots/`; a folder only when it is empty.
+  - Write: inside `fonts/ data/ web/`. Folders on the way are made.
 - **Paths** are relative to `/sd/fenixos`, split by `/`, shorter than 128 bytes. No part may be empty, `.` or `..`, or end in a dot or a space (FAT drops those, so two names would mean one file). `\ : * ? " < > |` are refused.
 - **A write** goes to `<path>.part`, with `<path>.pin` (size and sha256) beside it. After `FILE_END` the board reads the part back in a short task, checks the sha256, then puts it in place of any old file. A cut write goes on from where it stopped when the same file (same size and sha256) is sent again. A damaged one is deleted.
 - **Timeouts.** A write or read with no message for 10 s is closed, and so is one whose link dropped. The part stays on the card.

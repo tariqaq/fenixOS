@@ -317,6 +317,7 @@ The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, me
   - The image grew to 0x124770 (+5.1 KB over step 2).
 - **Settings backup (step 5):**
   - Found: a sheet posted at the mount (0.55 s after boot) never showed. The boot screen was still up, and `nav.cpp` closes any sheet when a screen changes; Home also rebuilds when the card's apps arrive. The offer is now a state that the shell's tick shows on Home until it is answered.
+  - (Step 7) Reading the card through LVGL's file driver (`LV_USE_FS_STDIO`) runs at about 1 MB/s: a 320 x 240 RGB565 image (150 KB) drawn from the card by the bin decoder, one 640 B row per read, made a full Home redraw 321 ms (30 ms without it). A 2 KB LVGL read cache gave 321 ms, 8 KB gave 361 ms, so the cost is the card and FAT, not the number of reads. Matters for P54: glyphs read from a font on the card must be cached. The wallpaper was dropped.
   - (Step 6) Three phones downloading a 405 KB file from the card's web folder at once took the heap low point to 35.9 KB, the lowest seen in P53; one download, 44.6 KB. The cost is lwIP's per-socket buffers, not the 1 KB send buffer (the server sends from one task). `max_open_sockets` stays 3.
   - Erasing NVS also clears the `ota` `layout` key, so the next boot erases the flash `apps` partition (`ota_boot`) and rebuilds the card's app index. Nothing is lost while apps live on the card.
 

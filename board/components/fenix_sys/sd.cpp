@@ -93,7 +93,7 @@ static void mount() {
   esp_vfs_fat_sdmmc_mount_config_t mc = {};
   mc.format_if_mount_failed = false;  // never format on its own
   // Open at once, worst case (P53): a file read and a file write from the PC, a firmware part, an
-  // app install or an opened package, the log, the wallpaper. 552 B each.
+  // app install or an opened package, the log, a font (P54). 552 B each.
   mc.max_files = 6;
   esp_err_t err = esp_vfs_fat_sdspi_mount(SD_PATH, &host, &dev, &mc, &s_card);
   if (err != ESP_OK) {

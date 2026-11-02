@@ -108,5 +108,5 @@ The link task receives; an `ota` task (6 KB stack) checks and installs. The UI r
 
 Not tried on the board yet:
 
-- "Update to vX" from a package on the card's root. The PC's file writes (P53) reach only `fonts/ data/ wallpaper/ web/`, so this needs a `.fwp` copied to the card on a PC.
+- "Update to vX" from a package on the card's root. The PC's file writes (P53) reach only `fonts/ data/ web/`, so this needs a `.fwp` copied to the card on a PC.
 - A power cut during the copy. The old slot stays the boot slot until `esp_ota_set_boot_partition`, so a cut copy only leaves a half-written spare slot.
