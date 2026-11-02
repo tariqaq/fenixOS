@@ -1,7 +1,9 @@
 # Fonts
 
-The board's text fonts are Inter (Latin, a few marks), built into the firmware by
-`tools/gen_fonts.py`. Chinese, Japanese and Korean text comes from a bitmap font file on the SD
+The board's text fonts are Inter (printable ASCII, Latin-1 U+00A0 to U+00FF since v0.1.26, and
+`– — ’ • … ‹ ›`), built into the firmware by `tools/gen_fonts.py`. Their line height and baseline
+are those of ASCII alone (`METRICS`), so Latin-1 moved no screen; an accent on a capital (`É Ñ Å`)
+can draw up to 2 px above the line (P51-M). Chinese, Japanese and Korean text comes from a bitmap font file on the SD
 card (P54, v0.1.24): `/sd/fenixos/fonts/cjk.fxf`.
 
 ## How the board uses it

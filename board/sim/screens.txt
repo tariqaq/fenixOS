@@ -115,9 +115,9 @@ remove io.github.tariqaq.sample
 # shows an element while its bool binding is true. Home turns to the new tile's page.
 install build/views.fxp
 tap 58 182
-set io.github.tariqaq.views "title=Night Drive" seek=420 playing=21 like=Liked
+set io.github.tariqaq.views "title=Élise à Ñandú" seek=420 playing=21 like=Liked
 image io.github.tariqaq.views art           # a test picture in the bound image (P50-M)
-shot app_view                             # mode not set: the first child; pause glyph, button text bound
+shot app_view                             # mode not set: the first child; pause glyph, button text bound; Latin-1 title (P51-M)
 set io.github.tariqaq.views mode=1 timer=12:48 muted=true mic=27 hint=true
 shot app_view_call                        # the second child; the muted row (microphone-slash) and the hint
 tap 30 16

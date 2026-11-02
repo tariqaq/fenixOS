@@ -13,9 +13,14 @@ OUT = ROOT / "board/components/fenix_ui/fonts"
 HDR = ROOT / "board/components/fenix_ui/include/fenix_fonts.h"
 CONV = "lv_font_conv@1.5.3"
 
-# Basic Latin + the few typographic marks the UI uses (… – — ° × · ’ › ‹ •).
-TEXT = "0x20-0x7E,0xB0,0xB7,0xD7,0x2013,0x2014,0x2019,0x2022,0x2026,0x2039,0x203A"
+# Basic Latin, Latin-1 Supplement (P51-M: accented letters in titles, ° · ×) and the few typographic
+# marks the UI uses (… – — ’ › ‹ •). 0xA0 is the no-break space; 0xAD (soft hyphen) has no glyph.
+TEXT = "0x20-0x7E,0xA0-0xFF,0x2013,0x2014,0x2019,0x2022,0x2026,0x2039,0x203A"
 CLOCK = "0x30-0x3A,0x2D,0x20"  # digits, colon, hyphen (for --:--), space
+# Line metrics come from this range, not TEXT: accented capitals (Á Å) raise lv_font_conv's line
+# height (13 px: 15 to 16, 22 px: 26 to 28), which moved every screen. Their accents may draw up to
+# 2 px into the line above, or be cut at a label's top edge (P51-M, `docs/board-info.md`).
+METRICS = "0x20-0x7E"
 
 # (C name, ttf, size, range)
 # The text fonts (not the clocks) fall back to the CJK font from the SD card for characters Inter
@@ -72,6 +77,21 @@ def conv(name, ttf, size, rng):
     subprocess.run(cmd, check=True, cwd=ROOT, shell=(sys.platform == "win32"))
 
 
+def keep_metrics(name, ttf, size):
+    """Set a text font's line_height and base_line to what the METRICS range alone gives."""
+    tmp = f"{name}_metrics"
+    conv(tmp, ttf, size, METRICS)
+    t = OUT / f"{tmp}.c"
+    ref = t.read_text(encoding="utf-8")
+    t.unlink()
+    p = OUT / f"{name}.c"
+    s = p.read_text(encoding="utf-8")
+    for field in ("line_height", "base_line"):
+        v = re.search(rf"\.{field} = (-?\d+),", ref).group(1)
+        s = re.sub(rf"\.{field} = -?\d+,", f".{field} = {v},", s, count=1)
+    p.write_text(s, encoding="utf-8", newline="\n")
+
+
 def set_fallback(name, size):
     """Point a text font's `.fallback` at its CJK size (lv_font_conv writes NULL). Idempotent."""
     if name.startswith("fx_font_clock"):
@@ -90,6 +110,8 @@ def set_fallback(name, size):
 def main():
     for name, ttf, size, rng in TEXT_FONTS:
         conv(name, ttf, size, rng)
+        if rng == TEXT:
+            keep_metrics(name, ttf, size)
         set_fallback(name, size)
     fill = codepoints("fill.css", FILL_ICONS)
     bold = codepoints("bold.css", BOLD_ICONS)

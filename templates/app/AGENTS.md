@@ -23,7 +23,7 @@ These four files are copies from fenixOS (version in `README.md`). Where they di
 2. Downloads must be GitHub release assets under `https://github.com/tariqaq/`; the registry rejects anything else. So the app repo lives under `tariqaq`.
 3. Stay inside the limits in `app-format.md` (200 elements, 24 KB images, 8 KB strings, 32 KB RAM estimate, depth 8; no package cap). `fenix-pkg build` checks them; fix the layout, never work around a check.
 4. Design: dark only, `bg` black screen, `surface_1` cards with radius 12, text in `label` / `label_2`, one accent. Touch targets at least 40 px tall. Lay out for **both** landscape (320 × 208 under the nav bar) and portrait (240 × 288) with `portrait` overrides.
-5. Text: sentence case, no letter-spaced capitals, short. The board fonts hold printable ASCII plus `° · × – — ’ • … ‹ ›` only: no emoji, no other symbols (they show as blanks). Clock fonts hold digits, `:` `-` and space.
+5. Text: sentence case, no letter-spaced capitals, short. The board fonts hold printable ASCII, Latin-1 (accented letters, `° · ×`) and `– — ’ • … ‹ ›`, plus Chinese, Japanese and Korean when the CJK font is on the card: no emoji, no other symbols (they show as blanks; transliterate in the PC half). Clock fonts hold digits, `:` `-` and space.
 6. PC half: exit on `stop` or a closed pipe (`fenix-sdk` does). Ask only for the permissions it uses; `elevated: true` only if it truly needs admin. No hooks, injection, process scanning or input capture: users run games with anti-cheat beside fenixOS.
 7. No AI attribution or `Co-Authored-By` lines in commits, PRs or files.
 8. Keep `README.md` and the manifest description true to what the app does.

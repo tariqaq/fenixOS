@@ -58,7 +58,7 @@ Defaults: buttons 40 px tall (icon buttons 40 × 40), button background `accent`
 
 ### Fonts
 
-`body` (15, default), `body_semibold`, `label` (13), `label_medium`, `label_semibold`, `caption` (12), `caption_medium`, `title` (17), `title_l` (22), `clock_56`, `clock_64`. Inter only. Text fonts hold printable ASCII plus `° · × – — ’ • … ‹ ›`; clock fonts hold digits, `:` `-` and space.
+`body` (15, default), `body_semibold`, `label` (13), `label_medium`, `label_semibold`, `caption` (12), `caption_medium`, `title` (17), `title_l` (22), `clock_56`, `clock_64`. Inter only. Text fonts hold printable ASCII, Latin-1 (accented letters such as `é ñ ü Å ß`, `° · ×`; fenixOS 0.1.26 and newer, older boards show them as blanks) and `– — ’ • … ‹ ›`; Chinese, Japanese and Korean show when the user has put the CJK font on the board's SD card. Anything else is a blank: transliterate it in the PC half (`fenix_sdk::text::fit`). Clock fonts hold digits, `:` `-` and space.
 
 ### Colours
 

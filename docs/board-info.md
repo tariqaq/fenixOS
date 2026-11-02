@@ -348,6 +348,17 @@ screens, 147 elements, 57 bindings, one bound image):
 - Screen switching (`set mode=n`): the old screen's objects are deleted and the new one built and
   faded in; heap the same on every screen. A 96 × 96 picture: 18,432 B in 253 ms (USB).
 
+## Latin-1 in the text fonts (P51-M, 2026-11-02)
+
+- `tools/gen_fonts.py` `TEXT` adds U+00A0 to U+00FF to the 9 Inter text fonts (accented letters,
+  `° · ×` were there before). C source 497,926 to 860,296 B; firmware **0x12e930 to 0x13aea0
+  (+50.5 KB)**, 32% of the 0x1d0000 slot still free.
+- lv_font_conv sizes `line_height` from the glyphs it gets: accented capitals raised it at 13 and
+  12 px (15 to 16) and 22 px (26 to 28), and 39 of 41 simulator screens moved by a pixel. The
+  generator now sets `line_height` and `base_line` from an ASCII-only run (`keep_metrics`), so the
+  screens are unchanged; the accent of a capital may be cut by up to 1 px (2 px at 22 px) at the top
+  of a label that has no padding. Simulator shot `app_view` shows `Élise à Ñandú` at 17 px, whole.
+
 ## CJK font from the card (P54, 2026-11-02)
 
 Details and numbers: `docs/fonts.md` "Measured on the board". In short: a glyph read is ~3.1 ms
