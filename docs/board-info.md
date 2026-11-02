@@ -586,3 +586,12 @@ The user saw the app lose the board for a few seconds around stopping a Wi-Fi st
 - **Result:** the same test after the fix, the stop pressed on the board 300 to 1200 ms into a slide: USB 4 of 4 and Wi-Fi 4 of 4 without a drop, the link up 4 s after each stop; two 15 s Wi-Fi benches stopped from the PC also clean. Wi-Fi at 25 fps now carries 72 to 88 KB/s, 5.0 to 5.9 screens/s (45 to 64 KB/s and 3.0 to 4.4 before, when stalls cut the link). Lowest heap 26.7 KB.
 - **Two power sources (2026-10-31):** with a USB-C charger in the board's USB-C port and the PC on its micro-USB, the PC listed COM9 but every open failed with "A device attached to the system is not functioning" (the device itself reported OK). Unplugging the charger did not clear it; restarting the PC and plugging the micro-USB alone did. Cause not confirmed: power both ports at once only if needed, and stop retrying when this error shows (the CH340 driver's crash path, above).
 - **Hotspot after a PC restart:** while the hotspot was down the board showed "failed" (`fenix radio`; after 5 tries it keeps trying every 30 s, `radio.cpp`); a reboot rejoined at once, at a new address (192.168.137.161). `tcp:fenixos.local` follows the address, a fixed IP does not.
+
+## USB Wi-Fi adapter on the board? (2026-11-03, user question)
+
+Asked: can the board use a USB Wi-Fi adapter (an ALFA-made RTL8811AU, `USB\VID_0BDA&PID_0811`, MAC prefix `00:C0:CA`, 802.11ac 2.4 and 5 GHz) through a USB-C dock powered by a powerbank. **No.**
+
+- The ESP32 (D0WD-V3) has no USB peripheral at all, host or device. Both USB ports on the board go to the CH340C, a USB-to-serial chip that is a USB *device*. The ESP32 sees only UART0.
+- A dock's upstream USB-C port expects a host (a PC). Docked to the board, there are two USB devices and no host, so only power gets through. The adapter gets power but no enumeration.
+- Even a chip with USB OTG (ESP32-S2/S3) would need a Realtek 8811AU driver, its firmware blob and an 802.11 stack (Linux's `rtl8812au` is tens of thousands of lines). ESP-IDF has none, and ~53 KB of free heap would not hold one.
+- The dock setup still works as a power supply for the board (powerbank, dock, board).
