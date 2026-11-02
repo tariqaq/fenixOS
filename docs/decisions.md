@@ -258,7 +258,7 @@ Consequences:
 | Long file names | Off (8.3) / **on, buffers on the heap** | **On** (user: "a no brainer"): app ids name files |
 | SPI clash (LCD, touch and SD on three pin sets, two SPI controllers) | Switch SPI3's pins between touch and SD / **touch on software SPI** | **Software SPI for touch**: 346 µs per read, only while pressed (~2 % of core 1), the SD card keeps hardware SPI at 40 MHz; tested together without effect on either |
 
-## 2026-11-02: SD, apps, OTA (user picks; plan in `docs/plan-sd-ota.md`, `tasks.md` P51 to P54)
+## 2026-11-02: SD, apps, OTA (user picks; plan in `docs/plan-sd-ota.md`, checklists P51 to P54 in `docs/legacy/tasks-history.md`)
 
 Corrected: several rows below were changed by the user the same evening (flash layout, package caps, tiles, sounds, unknown apps); the changes are in the next section, and the rows say so.
 

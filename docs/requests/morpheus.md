@@ -129,7 +129,7 @@ Requests 1 to 4 and the `opened` burst are in v0.1.25; set `min_fenixos = "0.1.2
 
 ## fenixOS answer (2026-11-01)
 
-Discussed with the user; nothing was built yet (built since: see "Shipped in fenixOS v0.1.25" above, which corrects the RAM numbers here). Plan: `tasks.md` P50-M (v0.1.25) and P51-M (v0.1.26), two releases (corrected 2026-11-02: were P50 and P51 for v0.1.20 and v0.1.21; they now come after the SD card and OTA phases). Choices: `docs/decisions.md`, "2026-11-01: Morpheus requests".
+Discussed with the user; nothing was built yet (built since: see "Shipped in fenixOS v0.1.25" above, which corrects the RAM numbers here). Plan: P50-M (v0.1.25) and P51-M (v0.1.26; checklists now in `docs/legacy/tasks-history.md`), two releases (corrected 2026-11-02: were P50 and P51 for v0.1.20 and v0.1.21; they now come after the SD card and OTA phases). Choices: `docs/decisions.md`, "2026-11-01: Morpheus requests".
 
 **RAM budget.** Sized for an app open with Wi-Fi on and the PC linked (over Wi-Fi or USB), no screen stream: about 82 KB free at boot in that mode, about 155 KB with the radio off (`docs/board-info.md`). Streaming while an app runs is not a target (user). Anything that fits the Wi-Fi case fits USB-only.
 
