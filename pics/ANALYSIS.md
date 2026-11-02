@@ -41,7 +41,7 @@ Free GPIO for projects: **IO22, IO27, IO35 (input only)**. Do not use IO21 on P3
 3. **Dual core, not single core.** The manual's "Single Core" line is wrong. esptool reads an ESP32-D0WD-V3 rev 3.1, dual core 240 MHz (the listing's D0WDQ6 is also outdated).
 4. **Display driver settled: ILI9341.** The panel spec says ILI9341V. The ST7789 worry from community posts does not match this panel. Verified on hardware: colours and orientation correct with `invert=false`, `rgb_order=false`.
 5. **The vendor TFT_eSPI `User_Setup.h` has one wrong pin.** It sets `TFT_RST 12`, but IO12 is the LCD MISO and reset is tied to EN. Use `TFT_MISO 12`, `TFT_RST -1`. The vendor LovyanGFX demo has it right.
-6. **Touch is on its own SPI bus** (25/32/39/33), not shared with the LCD. TFT_eSPI's built-in touch (`TOUCH_CS`) will not work. Use the `XPT2046_Touchscreen` library on a second SPIClass, or use LovyanGFX.
+6. **Touch is on its own SPI bus** (25/32/39/33), not shared with the LCD. TFT_eSPI's built-in touch (`TOUCH_CS`) will not work. Use the `XPT2046_Touchscreen` library on a second SPIClass, or use LovyanGFX. fenixOS drives it by software SPI since P50 (`fenix_hal/include/fenix_touch.hpp`), so SPI3 (VSPI) is left to the microSD card.
 
 ## Schematic caveat
 

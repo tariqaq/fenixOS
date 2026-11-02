@@ -60,6 +60,7 @@ These 3 are part of the firmware. They have **no tile and no switch** in the PC 
   - PC not connected: "Waiting for host PC connection".
   - App switched off on the PC: "This app is turned off on the host PC" (or "host PC has disabled this app").
 - **Later, with an SD card:** the board detects the card, and apps can be installed onto it and stay there. Host-dependent apps follow the same three states above.
+- Corrected (P51, v0.1.21): built with the card. Apps go on the card first (flash only without one); switching off no longer deletes the board half, it fades the tile and the board offers Turn on; Remove app removes both halves (`docs/packages.md` "Where apps live").
 
 Example (an illustration only; not part of v0.1): a stream-deck app is switched on in the PC app. On the board it shows a mute button and a volume slider. Touching them sends the event straight to the PC part of the app, which controls the PC.
 
@@ -78,7 +79,7 @@ Example (an illustration only; not part of v0.1): a stream-deck app is switched 
 3. **Switch on** means the app's board part may run when it is opened on the board, and it gets installed to the board (section 4.5). **Switch off** means the board part says it is turned off on the host, and it is removed from the board.
 4. **Click a tile** to open that app's settings and customization. **Back** returns to the dashboard.
 5. A **plus (+) button** opens a list of available apps, read from the manifests kept centrally in this repo. Picking one makes the PC app use the manifest to fetch the app from its own GitHub repo and install it into the PC app. It then shows as a tile, ready to switch on, and switching it on installs it on the board.
-6. Later, when the board has its own SD card and may already have an app installed, this flow changes.
+6. Later, when the board has its own SD card and may already have an app installed, this flow changes. Corrected (P51): it did; switch off keeps the board half, Remove app removes it, and Apps › Sync with board settles differences (section 4.5).
 
 ## 6. App model (modular)
 

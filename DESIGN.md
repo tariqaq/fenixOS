@@ -96,7 +96,7 @@ On the board, every size is a generated anti-aliased bitmap font (`lv_font_conv`
 
 ## Icons
 
-**Phosphor** (MIT), v2.1.1. Fill weight on tiles and status glyphs; bold weight for chevrons, plus and close. On the board, the used glyphs are packed into icon fonts by `tools/gen_fonts.py`: fill at 12, 14, 15, 16, 18, 20, 26, 28 and 40 px, bold at 10 and 14 px. The first 20 fill icons (Settings to Monitor below) are also the built-in icons apps can use (`docs/packages.md`).
+**Phosphor** (MIT), v2.1.1. Fill weight on tiles and status glyphs; bold weight for chevrons, plus and close. On the board, the used glyphs are packed into icon fonts by `tools/gen_fonts.py`: fill at 12, 14, 15, 16, 18, 20, 26, 28 and 40 px, bold at 10 and 14 px. The first 20 fill icons (Settings to Monitor below) and 14 media and call glyphs (`play`, `pause`, `skip-forward`, `skip-back`, `speaker-high`, `speaker-x`, `microphone`, `microphone-slash`, `headphones`, `game-controller`, `music-notes`, `video`, `phone`, `sparkle`; P50-M) are the 34 built-in icons apps can use (`docs/packages.md`). Corrected (P56): said only the first 20.
 
 | Meaning | Phosphor name |
 |---|---|
