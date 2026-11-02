@@ -49,6 +49,7 @@ jobs:
             board/build/fenixos.bin
             board/build/bootloader/bootloader.bin
             board/build/partition_table/partition-table.bin
+            board/build/ota_data_initial.bin
             board/build/flasher_args.json
             board/build/project_description.json
           if-no-files-found: error
