@@ -36,7 +36,7 @@ A folder with:
 | `switch` | On/off switch | `bind`, `event`, `value` |
 | `slider` | Horizontal slider | `min`, `max`, `value`, `bind`, `event` |
 | `bar` | Progress / meter bar | `min`, `max`, `value`, `bind`, `color` |
-| `image` | A8 (tinted with `color`) or RGB565 image. Since v0.1.25 one `image` may have a `bind`: the PC half sends its pixels (album art); it needs `w` and `h` in pixels (1 to 96, the same in portrait; corrected in step 5: 120 × 120 left 0.9 KB of heap), shows `src` or a `surface_2` square until the first picture arrives, and its buffer (w × h × 2 B) counts in the RAM estimate | `src`, `color` (A8 only), `bind` |
+| `image` | A8 (tinted with `color`) or RGB565 image. Since v0.1.25 one `image` may have a `bind`: the PC half sends its pixels (album art); it needs `w` and `h` in pixels (1 to 96, the same in portrait; corrected in P50-M step 5: 120 × 120 left 0.9 KB of heap), shows `src` or a `surface_2` square until the first picture arrives, and its buffer (w × h × 2 B) counts in the RAM estimate | `src`, `color` (A8 only), `bind` |
 | `icon` | Built-in Phosphor glyph | `icon`, `size` (12 14 15 16 18 20 26 28 40), `color` |
 | `view` | Since v0.1.25: a container that shows one child, picked by its int `bind` (0 = first child; out of range shows none), or by `value` until the PC sets it. Lays out like a `box` | `bind`, `value`, and the `box` props |
 
@@ -55,7 +55,7 @@ Props every element takes: `w`, `h` (pixels, `"50%"`, or `"content"`; boxes defa
 - **Pictures from the PC (P50-M, v0.1.25):** one `image` per app may have a `bind`. The PC half calls `set_image(bind, w, h, &rgba)` with any picture (the SDK scales it to at most 120 × 120); fenixOS scales it to fill the element, crops the middle, converts it to RGB565 and sends it in `BIND_IMAGE` chunks, about 3 KB per 50 ms (a 96 × 96 picture took 253 ms over USB). The board writes them into the element's one buffer and redraws it once the picture is whole, so a redraw during the transfer can show the old and new picture mixed for that moment. Send it once per change (a new track), not per frame; a newer picture replaces one still on its way. Not kept on the card: after a restart or offline the element shows `src` again.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `event: "mute"` makes the element report: a button sends a tap (and a long press), a switch or slider sends its new value (sliders on release). The board sends `EVENT` with the element's index; the PC maps the index back to the name through the package.
-- The board keeps no values while an app is closed. When an app opens the board sends `APP_OPENED`, and the PC half sends its current values.
+- The board keeps no live values while an app is closed: only the last ones on the SD card, for the dimmed offline view (P53, `docs/sd-card.md` "Last app values"). When an app opens the board sends `APP_OPENED`, and the PC half sends its current values.
 
 ## Limits
 

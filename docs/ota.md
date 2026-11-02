@@ -26,7 +26,7 @@ USB flashing (`fenix flash`, the app's first install and its fallback) still wor
 | ota_1 | app | 0x1F0000 | 0x1D0000 |
 | apps | data littlefs | 0x3C0000 | 256 KB (flash app store) |
 
-Corrected (P52): until v0.1.21 there was one 2 MB `factory` slot and a 1984 KB flash app store. The first boot on the new layout erases the `apps` partition once (NVS `ota`/`layout` = 2), because the old store's data no longer lines up with it. Apps on the SD card are not touched, and the PC app's Sync card offers the flash apps back. The v0.1.22 image is 1,177,600 B, 38% of a slot free.
+Corrected (P52): until v0.1.21 there was one 2 MB `factory` slot and a 1984 KB flash app store. The first boot on the new layout erases the `apps` partition once (NVS `ota`/`layout` = 2), because the old store's data no longer lines up with it. Apps on the SD card are not touched, and the PC app's Sync card offers the flash apps back. The v0.1.22 image is 1,177,600 B, 38% of a slot free; v0.1.27 is 1,290,192 B, 32% free.
 
 ## The package (`.fwp`)
 
@@ -76,7 +76,7 @@ The link task receives; an `ota` task (6 KB stack) checks and installs. The UI r
 
 ## On the PC
 
-- **Shared sender.** `crates/fenix-link/src/ota.rs` holds `parse_fwp` and `OtaSend`. The CLI and the app both use it.
+- **Shared sender.** `crates/fenix-link/src/ota.rs` holds `parse_fwp` and `OtaSend`, on the chunk sender in `chunks.rs` that file writes share (P53). The CLI and the app both use it.
   - Up to 4 chunks (4 KB) are in flight.
   - When no ack moves the offset for a second, it sends again from the last acked offset.
   - It gives up after 12 s without progress, or 120 s after `FW_END` with no `FW_RESULT`.

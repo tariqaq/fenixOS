@@ -1,6 +1,6 @@
 # Plan: apps on the SD card, sync, OTA, SD extras, fonts, then Morpheus (P51 to P54, P50-M, P51-M)
 
-Status: P51 done (v0.1.21); P52 built and tested on the board (`docs/ota.md`, v0.1.22); P53 done (v0.1.23); P54 done (v0.1.24, `docs/fonts.md`); P50-M on: **planned**, not built (2026-11-02). Corrected: this line said P53 on was planned after P53 shipped. Ahead of the code on purpose (AGENTS.md rule 7). The checklists are in `tasks.md`; the user's picks are in `docs/decisions.md` "2026-11-02: SD, apps, OTA" and "2026-11-02 (evening): plan changes before the overnight run". The SD base (P50, v0.1.20) is done: card at `/sd`, `SD_STATE`, Storage rows.
+Status: **all done** (2026-11-02): P51 (v0.1.21), P52 (v0.1.22, `docs/ota.md`), P53 (v0.1.23), P54 (v0.1.24, `docs/fonts.md`), P50-M (v0.1.25), P51-M (v0.1.26); the P55 audit fixes shipped in v0.1.27 (`docs/audit-2026-11.md`). Corrected (P56): said P50-M on was planned after it shipped. Kept as the design record; where the build differs, the rows say "Corrected". The checklists are in `tasks.md`; the user's picks are in `docs/decisions.md` "2026-11-02: SD, apps, OTA" and "2026-11-02 (evening): plan changes before the overnight run". The SD base (P50, v0.1.20) is done: card at `/sd`, `SD_STATE`, Storage rows.
 
 **Overnight run (user: "/goal the entire plan"):** the phases run one after another without waiting for a go: P51, P52, P53, P54, P50-M, P51-M. Each ends with docs, all tests, a release, a flash over USB and a tag. A choice the plan does not settle is made by the agent and logged in `docs/decisions.md` (section "2026-11-02: overnight run") with the options not taken. A step that cannot be done (needs the user's hands or eyes, or keeps failing) is marked blocked in `tasks.md` with notes, and the run goes on with the next step that does not depend on it.
 
@@ -105,7 +105,7 @@ App slots must start on 64 KB boundaries; this layout fills the 4 MB exactly.
 
 1. **PC over USB or Wi-Fi:** the PC sends the `.fwp`. With a card it is staged to `/sd/fenixos/firmware/<v>.fwp` (resumable: `FW_BEGIN` for the same sha answers with the bytes already there), verified, then copied into the spare slot. Without a card it is written straight into the spare slot and verified after.
 2. **SD package:** copy `fenixOS_<v>.fwp` to the card's root on a PC. Settings › About finds it (also checked at boot) and offers "Update to vX".
-3. **Rollback:** the last two `.fwp` stay in `/sd/fenixos/firmware/` (also the rescue copy). Settings › About › "Go back to vY" installs one (signature checked again; a downgrade only from this menu).
+3. **Rollback:** the last two `.fwp` stay in `/sd/fenixos/firmware/` (also the rescue copy; corrected, built: three, `docs/ota.md` "Kept packages"). Settings › About › "Go back to vY" installs one (signature checked again; a downgrade only from this menu).
 
 Each way shows a progress screen on the board and restarts into the new slot.
 
@@ -151,6 +151,8 @@ Signature host test (good, bad signature, bad hash, wrong key), updates over USB
 ## P50-M and P51-M: Morpheus (v0.1.25, v0.1.26)
 
 Only the fenixOS features in `docs/requests/morpheus.md`; the Morpheus app itself lives in its own repo and is not built here (user, 2026-11-02). As in `tasks.md`, with the user's answers (2026-11-02): **both** a `view` element and a bindable `show` (bool) on every element; a **`secret`** setting type (masked in the PC app, DPAPI user scope, never logged; the sidecar gets the plain value); **two releases**. The answer in `docs/requests/morpheus.md` is updated when each ships.
+
+- **Status (2026-11-02):** built and released as v0.1.25 (views, `show`, bindable button text and icons, 14 icons, the bound image, capped at 96 × 96 after a measurement, and the `screen` permission) and v0.1.26 (Latin-1, `text::fit`, label `overflow` and `max_lines`, `secret` settings); `docs/requests/morpheus.md` "Shipped in fenixOS".
 
 ## Order and releases
 

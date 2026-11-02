@@ -77,7 +77,7 @@ The built-in glyphs (the last 14, from `play`, need fenixOS v0.1.25): `gear-six`
 - **Pictures from the PC half (fenixOS v0.1.25):** one `image` per app may have a `bind`. The PC half calls `set_image(bind, w, h, &rgba)` with any picture (the SDK scales it to at most 120 × 120); fenixOS scales it to fill the element, crops the middle, converts it to RGB565 and sends it in `BIND_IMAGE` chunks, about 3 KB per 50 ms (a 96 × 96 picture takes ~0.25 s over USB). The board writes them into the element's one buffer and redraws it once the picture is whole, so a redraw during the transfer can show the old and new picture mixed for that moment. Send it once per change (a new track), not per frame; a newer picture replaces one still on its way. Not kept on the card: after a restart or offline the element shows `src` again.
 - A bound label without `w` grows with its text and is cut off at the screen edge; with `w` it wraps onto as many lines as needed.
 - `"event": "mute"` makes the element report: a button sends `tap` (and `long` on a long press), a switch sends `change` with 0/1, a slider sends `change` with its value on release. The board updates its own copy of a bound control the user changed.
-- The board keeps no values while the app is closed. When the app opens, the PC half gets `opened` and must send its current values.
+- The board keeps no live values while the app is closed (fenixOS v0.1.23 and later keep the last ones on the SD card and show them dimmed while the PC is away). When the app opens, the PC half gets `opened` and must send its current values.
 - A label's `text` is what shows until the first value arrives: use a placeholder such as `"--"`.
 
 ## States the board shows for you
