@@ -99,9 +99,27 @@ CJK is likely too big for flash. Say so if it is.
 
 Until requests 1 and 2 ship, Morpheus can only be one generic card whose text, bar and buttons change with the context. Once fenixOS ships them, Morpheus sets `min_fenixos` to that release.
 
+## Shipped in fenixOS v0.1.25 (2026-11-02)
+
+Requests 1 to 4 and the `opened` burst are in v0.1.25; set `min_fenixos = "0.1.25"` (`fenix-pkg build` refuses `view`, `show`, a bound image or the new icons without it, and the registry refuses `screen`). The app template is pinned to v0.1.25 (`fenix-pkg`, `fenix-sdk`). Reference: `docs/packages.md`, `docs/sidecars.md`, `proto/spec.md` 0x32, `docs/registry.md`; a working example layout is `tools/view-app` (simulator shots `app_view`, `app_view_call`).
+
+- **Screens:** `{"type": "view", "bind": "mode", "children": [...]}` shows child `mode` (0 first; `value` until you set it). Only the shown child is built: switching deletes the old screen's objects and builds the next one, which fades in (200 ms). Values for screens not shown are kept and applied when they show. `"show": "<bool binding>"` on any element hides or shows it (it is built either way).
+- **Album art:** one `image` with `"bind": "art", "w": 80, "h": 80` (1 to 96 px a side, fixed, the same in portrait). PC half: `app.set_image("art", w, h, &rgba)` with any picture; fenixOS scales it to fill the element (centre crop), converts to RGB565 and sends it paced. Measured: 80 × 80 in ~0.2 s, 96 × 96 in ~0.25 s over USB. Until the first picture it shows `src` or a `surface_2` square.
+- **Icons and button text:** int `bind` on an `icon`, or on a button, picks the glyph; text `bind` on a button sets its text. `app.set_icon("play_icon", "pause")`. The 14 glyphs you listed are built in (indices 20 to 33 in `fenix_sdk::ICONS`).
+- **Permission:** `screen`, shown as "See your screen and the window in front".
+- **Burst:** ~50 values on `opened` arrive whole (PC paces 16 per 50 ms, board keeps a 4 KB ring).
+
+**What changed from the 2026-11-01 answer below (measured on the board, `docs/board-info.md` "App RAM with views and album art"):**
+
+- Corrected: Home has **~54 KB** free with Wi-Fi on and the CJK font installed, not ~82 KB (that was v0.1.12).
+- Corrected: hidden view children are **not** built (the answer said they are built at open and count in RAM). Building all of a 147-element, 6-screen layout ran the board out of memory.
+- Corrected: the RAM estimate cap went **down to 32 KB**, not up to ~56 KB. It now counts what is built at once (a view counts its largest child) × 160 B, plus 32 B per element in the package, plus strings, images and the art buffer. Your planned layout (~145 elements, one ~25-element screen at a time, 80 × 80 art) estimates ~23 KB.
+- Corrected: the art cap is **96 × 96**. 120 × 120 left 0.9 KB of heap at the lowest point. With 96 × 96 the lowest point was 20.4 KB with the PC on USB and ~12.5 KB with the PC on Wi-Fi (Wi-Fi receive bursts take up to ~16 KB for a moment). 80 × 80 leaves ~6 KB more.
+- App open and close now fade from black: Home is deleted before the app is built, so the two never need RAM at once.
+
 ## fenixOS answer (2026-11-01)
 
-Discussed with the user; nothing is built yet. Plan: `tasks.md` P50-M (v0.1.25) and P51-M (v0.1.26), two releases (corrected 2026-11-02: were P50 and P51 for v0.1.20 and v0.1.21; they now come after the SD card and OTA phases). Choices: `docs/decisions.md`, "2026-11-01: Morpheus requests".
+Discussed with the user; nothing was built yet (built since: see "Shipped in fenixOS v0.1.25" above, which corrects the RAM numbers here). Plan: `tasks.md` P50-M (v0.1.25) and P51-M (v0.1.26), two releases (corrected 2026-11-02: were P50 and P51 for v0.1.20 and v0.1.21; they now come after the SD card and OTA phases). Choices: `docs/decisions.md`, "2026-11-01: Morpheus requests".
 
 **RAM budget.** Sized for an app open with Wi-Fi on and the PC linked (over Wi-Fi or USB), no screen stream: about 82 KB free at boot in that mode, about 155 KB with the radio off (`docs/board-info.md`). Streaming while an app runs is not a target (user). Anything that fits the Wi-Fi case fits USB-only.
 

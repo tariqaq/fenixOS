@@ -6,7 +6,7 @@ A small operating system for the ESP32-2432S028R ("Cheap Yellow Display", 2.8" 3
 - **PC app:** Rust + Tauri 2 + Svelte 5. Lives in the tray, finds the board over USB (or Wi-Fi at fenixos.local), installs and switches apps, mirrors the board's screen, shows the board's load live (Task manager: CPU per core, memory, storage, the link, threads), keeps the board's firmware and time in step.
 - **Design:** Apple-style dark theme (`DESIGN.md`), Inter and Phosphor icons.
 
-Status: **v0.1.24.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress: `tasks.md`.
+Status: **v0.1.25.** Plan: `docs/PLAN.md`, next: `docs/plan-sd-ota.md`; progress: `tasks.md`.
 
 <p>
   <img src="docs/screens/board/home.png" width="320" alt="Home screen with the time, date and app tiles">
@@ -27,7 +27,7 @@ fenixOS lives in the tray and starts with Windows if you leave that on (Settings
 Checked file by file in P42 and P45 (2026-11-01), with games that use kernel anti-cheat (Vanguard and similar) in mind:
 
 - **Processes:** `fenixos.exe`, plus WebView2 only while its window is open (its 3D board scene, shown while no board is connected, draws only while the window is visible), plus the PC half of each app you switch on (none by default). It caps its own CPU with a Windows job object; it never touches other processes.
-- **Not used:** process or window lists, keyboard or mouse hooks, raw input, simulated input, screen capture, reading other programs' memory, DLL injection, drivers of its own, admin rights (only an app marked `elevated` asks, through UAC, each time it starts).
+- **Not used:** process or window lists, keyboard or mouse hooks, raw input, simulated input, screen capture (by fenixOS itself; an app's PC half that declares the `screen` permission may), reading other programs' memory, DLL injection, drivers of its own, admin rights (only an app marked `elevated` asks, through UAC, each time it starts).
 - **USB:** while no board is connected it lists USB serial ports once a second; a CH340 that does not answer as fenixOS is retried every 10 s. Connected, it reads the board's COM port every 2 to 10 ms and pings once a second. The only kernel driver involved is WCH's CH340 driver, which Windows installs for the board; no anti-cheat reports about it were found (searched 2026-11-01), but that is not a guarantee.
 - **Network:** GitHub (update check at start, the app registry when Add app opens, downloads), Open-Meteo place search when you search, and the board itself on your LAN (TCP 7350, `fenixos.local` by mDNS every 5 s) only while no USB board is plugged in and the board was last seen with Wi-Fi on. `netsh wlan show networks` runs only when you scan for networks in Settings with the board's Wi-Fi off.
 - To be sure during a match: Quit fenixOS from the tray. The board keeps running on its own (clock, apps without a PC half).
@@ -36,8 +36,8 @@ Checked file by file in P42 and P45 (2026-11-01), with games that use kernel ant
 
 An app has two halves:
 
-- **Board half:** a small package (`.fxp`) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. The board draws it with the system theme. Spec: `docs/packages.md`.
-- **PC half (optional):** a Windows program that fenixOS starts while the app is switched on. It sets binding values ("cpu = 42") and gets the board's taps and slider moves over named pipes. Rust apps use `crates/fenix-sdk`; the protocol is in `docs/sidecars.md`.
+- **Board half:** a small package (`.fxp`) with a layout of labels, buttons, switches, sliders, bars, icons and images, and named bindings. Since v0.1.25 a layout can hold several screens (a `view` shows the one the PC picks, built only while shown), show or hide parts, change a button's text or icon, and show one picture the PC sends (album art, up to 96 × 96). The board draws it with the system theme. Spec: `docs/packages.md`.
+- **PC half (optional):** a Windows program that fenixOS starts while the app is switched on. It sets binding values ("cpu = 42") and pictures, and gets the board's taps and slider moves over named pipes. Rust apps use `crates/fenix-sdk`; the protocol is in `docs/sidecars.md`.
 
 Apps come from the registry (`registry/`, rules in `docs/registry.md`). Adding an app installs its package on the board (on the SD card when one is in) and starts its PC half; switching it off stops the PC half and fades its tile on the board, which offers Turn on; Remove app removes both. When the board and the PC differ, the Apps page lists it under Sync with board. `tools/sample-app` is a complete example.
 

@@ -18,7 +18,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - run: cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.13 fenix-pkg
+      - run: cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.25 fenix-pkg
       - run: pwsh tools/build.ps1
       - run: python tools/app.py release ${{ github.ref_name }}
       - name: release assets

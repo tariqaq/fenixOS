@@ -1,6 +1,6 @@
 # fenixOS app template
 
-Starting point for an app on **fenixOS** (an ESP32-2432S028R board and its Windows app; `tariqaq/fenixOS`). Made for fenixOS **v0.1.13**. The starter app ("Starter") counts seconds on the PC and shows them on the board, with a switch and a button.
+Starting point for an app on **fenixOS** (an ESP32-2432S028R board and its Windows app; `tariqaq/fenixOS`). Made for fenixOS **v0.1.25** (the starter itself runs on v0.1.13 and later, its `min_fenixos`). The starter app ("Starter") counts seconds on the PC and shows them on the board, with a switch and a button.
 
 ## Start a new app
 
@@ -13,7 +13,7 @@ No PC half needed? Delete `app/pc`, the root `Cargo.toml`, and `"pc"` in `manife
 ## Tools
 
 - Rust (stable) and Python 3.11+.
-- `fenix-pkg`, the package compiler: `cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.13 fenix-pkg`.
+- `fenix-pkg`, the package compiler: `cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.25 fenix-pkg`.
 - fenixOS installed, with the board plugged in, to test.
 
 ## Build, test, release
