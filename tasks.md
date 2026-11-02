@@ -202,8 +202,10 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
     - Done: C1 font ranges capped at the board's 16, C2 stream rect bounds, C3 kept (CLI timestamps in UTC+8). `cargo test --workspace` passes
   - [x] 3. PC app: `app/src-tauri/src/*`, `app/src/**` read whole; fixes, svelte-check, cargo tests
     - Done: A1 remove during a board install, A2 unreadable config kept as `config.bad.json`, A3 download timeout scales with size, A4 comments. App cargo tests 12/12, svelte-check 0/0
-  - [ ] 4. Tools, templates, registry, workflows (`tools/`, `templates/`, `registry/`, `.github/`) read whole
-  - [ ] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed
+  - [x] 4. Tools, templates, registry, workflows (`tools/`, `templates/`, `registry/`, `.github/`) read whole
+    - Done: no bug found (log in `docs/audit-2026-11.md`)
+  - [~] 5. Findings and fixes logged in `docs/audit-2026-11.md`; build, test, release if code changed
+    - In progress: release v0.1.27 (VERSION, template pins, README; checks, tests, sim; firmware, bundle, installer; install, flash, tag)
 - [ ] P56 Docs sweep: every current `.md` (root, `docs/` except `legacy/`, `vendor/`, `tempcrashlogs/`; `proto/`, `board/`, `app/`, `tools/`, `registry/`, `templates/`) checked against the code; stale facts fixed with Corrected notes; tasks.md Done list trimmed into the history file
 
 - [ ] P36 Later
