@@ -99,7 +99,7 @@ CJK is likely too big for flash. Say so if it is.
 
 Until requests 1 and 2 ship, Morpheus can only be one generic card whose text, bar and buttons change with the context. Once fenixOS ships them, Morpheus sets `min_fenixos` to that release.
 
-Since then: v0.1.27 (2026-11-02) has audit fixes only (`docs/audit-2026-11.md`); nothing changes for apps, and the template is pinned to v0.1.27.
+Since then: v0.1.27 (2026-11-02) has audit fixes only (`docs/audit-2026-11.md`); v0.1.28 (2026-11-03) opens apps with the system slide when RAM allows (a Morpheus-sized layout with art still fades in from black) and notices a pulled or returned SD card. Nothing changes in the app format; the template is pinned to v0.1.28.
 
 ## Shipped in fenixOS v0.1.26 (2026-11-02)
 

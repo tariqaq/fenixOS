@@ -1236,7 +1236,7 @@ dependencies = [
 
 [[package]]
 name = "fenix-cli"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "fenix-flash",
  "fenix-font",
@@ -1250,7 +1250,7 @@ dependencies = [
 
 [[package]]
 name = "fenix-flash"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "espflash",
  "serde",
@@ -1261,14 +1261,14 @@ dependencies = [
 
 [[package]]
 name = "fenix-font"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "ab_glyph",
 ]
 
 [[package]]
 name = "fenix-link"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "fenix-proto",
  "serialport",
@@ -1278,7 +1278,7 @@ dependencies = [
 
 [[package]]
 name = "fenix-pkg"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "png 0.17.16",
  "serde",
@@ -1288,14 +1288,14 @@ dependencies = [
 
 [[package]]
 name = "fenix-proto"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "fenix-sample"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "fenix-sdk",
  "windows-sys 0.61.2",
@@ -1303,7 +1303,7 @@ dependencies = [
 
 [[package]]
 name = "fenix-sdk"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "base64 0.22.1",
  "deunicode",
@@ -1314,7 +1314,7 @@ dependencies = [
 
 [[package]]
 name = "fenixos"
-version = "0.1.27"
+version = "0.1.28"
 dependencies = [
  "base64 0.22.1",
  "fenix-flash",

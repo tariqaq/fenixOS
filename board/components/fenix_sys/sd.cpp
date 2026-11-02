@@ -27,6 +27,7 @@ static fnx::SdState s_st;  // under s_mux
 static sdmmc_card_t* s_card;
 static bool s_bus;
 static volatile bool s_busy;  // a probe task is running
+static bool s_fail_logged;    // probe task only: a failed mount was logged since the last good one
 // Held while s_card may change (probe task) or is checked (sd_tick). Made on first use: the link
 // task can probe (HELLO) before sd_start runs.
 static SemaphoreHandle_t lock() {
@@ -108,9 +109,11 @@ static void mount() {
   esp_err_t err = esp_vfs_fat_sdspi_mount(SD_PATH, &host, &dev, &mc, &s_card);
   if (err != ESP_OK) {
     s_card = nullptr;
-    // Logged once per state: sd_tick retries every 3 s while card apps are missing (P57).
-    if (sd_info().state != (err == ESP_FAIL ? fnx::sd_state::NO_FS : fnx::sd_state::NONE))
+    // Logged once until a mount works again: sd_tick retries every 3 s while card apps are
+    // missing (P57), and the time says what a retry costs.
+    if (!s_fail_logged)
       link_log(3, "sd: mount failed (0x%x, %d ms)", (unsigned)err, (int)((esp_timer_get_time() - t0) / 1000));
+    s_fail_logged = true;
     // A card that answered but has no FAT (exFAT, NTFS, blank) fails the mount, not the init.
     return set(err == ESP_FAIL ? fnx::sd_state::NO_FS : fnx::sd_state::NONE);
   }
@@ -122,6 +125,7 @@ static void mount() {
     unmount();
     return set(fnx::sd_state::FAILED);
   }
+  s_fail_logged = false;
   uint64_t cl = (uint64_t)fs->csize * 512;
   set(fnx::sd_state::READY, (uint32_t)((uint64_t)(fs->n_fatent - 2) * cl / 1024), (uint32_t)(free_cl * cl / 1024),
       (uint16_t)s_card->real_freq_khz);

@@ -68,14 +68,15 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P50-M App runtime for Morpheus (views, `show`, bindable text and icons, bound image, `screen` permission); release v0.1.25
 - P51-M Text and labels for Morpheus (Latin-1, `text::fit`, label overflow, `secret` settings); release v0.1.26
 - P55 Full audit (`docs/audit-2026-11.md`); release v0.1.27
+- P57 Apps slide open when RAM allows, SD card noticed when pulled or put back; release v0.1.28
 
-Releases: v0.1.0 (P10) to v0.1.27 (P55); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
+Releases: v0.1.0 (P10) to v0.1.28 (P57); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
 
 ## Open (needs the user)
 
 Tests and checks the overnight run could not do (2026-11-02); none blocks use:
 
-- [ ] Card pulled, or no card, with an SD app open (P51; the simulator covers both: `home_card_out`, `app_card_missing`)
+- [x] Card pulled, or no card, with an SD app open (P51): failed at first (nothing noticed it), fixed in P57, user-tested 2026-11-03
 - [ ] Board Settings › About "Update to vX" from a `.fwp` copied to the card's root on a PC (P52; the PC app can write only `fonts/ data/ web/`)
 - [ ] Power cut during a firmware copy (P52; the old slot stays the boot slot until the copy is checked)
 - [ ] Status light during a firmware update: dim blue, and dim red after a failed one (P55 B4; built, not seen on the board yet)
@@ -100,12 +101,13 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
   - [x] 6. All checks, commit, push
     - Done (2026-11-02): version, tokens, registry, template, licenses checks ok; `cargo test --workspace` 0 failed; `sim_shots.py --no-build --update` rewrote identical goldens and the docs copy, then 42 screens match
 
-- [~] P57 App open slide and SD pull detection (user, 2026-11-02, testing with the sample app: "why is sample app launching with a simple fade"; "removing sdcard did nothing")
+- [x] P57 App open slide and SD pull detection (user, 2026-11-02, testing with the sample app: "why is sample app launching with a simple fade"; "removing sdcard did nothing")
   - [x] 1. Installed apps slide like Settings and Stream when RAM allows (user pick): slide when free heap minus the app's RAM estimate leaves a margin, else the P50-M fade-from-black guard; the pop back matches. Measure heap low point of a slide with the sample app and with `tools/view-app`
     - Done (dev build, flashed over USB): `slide_fits` in `app_pkg.cpp` (free heap > built × 160 B + 28 KB; `fpkg::Package::built` from the reader). Sample (15 elements, on the card): "app open: slide (52476 B free)", lowest heap 39.6 KB over two opens and closes in Wi-Fi mode. view-app not measured (20 elements, slides the same way); the fade path stays for big layouts. Sim 42/42, pkg host test passes
-  - [~] 2. A pulled card is noticed with an app open: periodic card status check while mounted (user allowed a read-only look at the IDF sdspi driver in `C:\Espressif` for its locking); open SD app returns Home, tile faded with the badge
-    - Built: `sd_tick` (link task, every 2 s, CMD13 under a mutex shared with the probe task, made on first use since a HELLO can probe before `sd_start`). IDF check: `sdspi_host_do_transaction` holds `spi_device_acquire_bus` for each whole command, so CMD13 cannot split another task's transfer. User test 1 (2026-11-02): pull noticed, app went Home, tile faded with the badge; but a card put back was not mounted until the tile was tapped (only a mounted card was checked). Fix: with no card, `sd_tick` tries a mount every 3 s while `store_card_missing()` (no polling for a board without card apps); a failed mount logs once per state with its time. Flashed; waiting for user test 2
-  - [ ] 3. Sim shots, docs (DESIGN.md Motion, packages.md, sd-card.md, decisions, board-info), tests, build, flash, user check; release when it holds
+  - [x] 2. A pulled card is noticed with an app open: periodic card status check while mounted (user allowed a read-only look at the IDF sdspi driver in `C:\Espressif` for its locking); open SD app returns Home, tile faded with the badge
+    - Built: `sd_tick` (link task, every 2 s, CMD13 under a mutex shared with the probe task, made on first use since a HELLO can probe before `sd_start`). IDF check: `sdspi_host_do_transaction` holds `spi_device_acquire_bus` for each whole command, so CMD13 cannot split another task's transfer. User test 1 (2026-11-02): pull noticed, app went Home, tile faded with the badge; but a card put back was not mounted until the tile was tapped (only a mounted card was checked). Fix: with no card, `sd_tick` tries a mount every 3 s while `store_card_missing()` (no polling for a board without card apps); a failed mount logs once per state with its time. Flashed; user test 2 (2026-11-03): "yes works". The first failed mount after a good one is now logged with its time (lines written while the card is out are lost with the card, so the PC log keeps it); not measured yet
+  - [x] 3. Sim shots, docs (DESIGN.md Motion, packages.md, sd-card.md, decisions, board-info), tests, build, flash, user check; release when it holds
+    - Done (2026-11-03): docs (DESIGN.md Motion, packages, spec, decisions, PLAN, Morpheus note, board-info, toolchain), template pinned to v0.1.28 and zip; checks ok, cargo test 0 failed, pkg host test, svelte-check 0/0, sim 42/42 (P57 step 1). v0.1.28: firmware 0x13b150, signed `fenixOS_0.1.28.fwp` (1260 KB), installer built and installed (/S), board flashed (`fenix hello`: v0.1.28). Tagged
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
