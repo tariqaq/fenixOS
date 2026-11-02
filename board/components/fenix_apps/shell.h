@@ -23,6 +23,7 @@ void settings_on_sd();  // the microSD card changed: refreshes Storage if it sho
 void update_screen(lv_obj_t* scr);  // firmware update progress (P52)
 void stream_screen(lv_obj_t* scr);
 void session_open();
+void backup_sheet();  // "Restore settings?" while sys::backup_offer() (P53; shown from tick)
 // Stream rate when started on the board (the PC asks for the same). USB's 460800 baud is full at
 // 10 fps in a busy screen; Wi-Fi at 25 shows 47% more pictures (P46, `fenix bench 15 <fps>`).
 constexpr uint8_t STREAM_FPS = 10;

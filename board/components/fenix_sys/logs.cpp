@@ -102,6 +102,8 @@ void logs_note(uint8_t level, const char* fmt, ...) {
 }
 
 // Link task: write what waits, every 5 s, at once after an error.
+void logs_flush_soon() { s_urgent = true; }
+
 void logs_tick(int64_t now) {
   if (now >= s_next_heap) {
     if (s_next_heap)

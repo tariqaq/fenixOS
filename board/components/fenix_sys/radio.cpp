@@ -106,6 +106,18 @@ static void creds_save() {
   }
   nvs_commit(h);
   nvs_close(h);
+  backup_changed();
+}
+
+void radio_creds(char* ssid, size_t ssid_cap, char* pass, size_t pass_cap) {
+  strlcpy(ssid, s_ssid, ssid_cap);
+  strlcpy(pass, s_pass, pass_cap);
+}
+
+void radio_creds_restore(const char* ssid, const char* pass) {
+  strlcpy(s_ssid, ssid, sizeof s_ssid);
+  strlcpy(s_pass, pass, sizeof s_pass);
+  creds_save();
 }
 
 bool radio_saved_network(char* out, size_t cap) {

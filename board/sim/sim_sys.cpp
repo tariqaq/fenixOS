@@ -258,6 +258,19 @@ bool app_state_write(const char*, const uint8_t*, size_t) { return false; }
 size_t app_state_read(const char*, uint8_t*, size_t) { return 0; }
 void app_state_forget(const char*) {}
 void shot_save() {}
+// Settings backup (P53): `backup offer <ssid|->` shows the sheet; the answers only clear it.
+std::string s_backup_ssid;
+bool s_backup_on;
+bool backup_offer(char* ssid, size_t cap) {
+  if (!s_backup_on) return false;
+  if (ssid && cap) strlcpy(ssid, s_backup_ssid.c_str(), cap);
+  return true;
+}
+bool backup_restore() {
+  s_backup_on = false;
+  return false;  // the board restarts here; the simulator just closes the sheet
+}
+void backup_decline() { s_backup_on = false; }
 void sd_start() {}
 void sd_probe() {}
 void sd_report() {}
@@ -329,6 +342,10 @@ void ota_offer(const std::string& update, const std::string& back) {
   }
   if (back != "-") strlcpy(o.back, back.c_str(), sizeof o.back);
   post(sys::LinkEv::SD_CHANGED);
+}
+void backup_offer(const std::string& ssid) {
+  sys::s_backup_ssid = ssid == "-" ? "" : ssid;
+  sys::s_backup_on = true;
 }
 void ota_failed(const std::string& version) { sys::s_ota_failed = version == "-" ? "" : version; }
 void ota_phase(uint8_t phase, uint8_t pct, const std::string& version) {

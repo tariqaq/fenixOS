@@ -36,6 +36,8 @@ void set_card(bool in);  // the pretend SD card, which holds the store's apps (P
 void ota_offer(const std::string& update, const std::string& back);
 void ota_failed(const std::string& version);
 void ota_phase(uint8_t phase, uint8_t pct, const std::string& version);
+// Settings backup offer (P53): `backup offer <ssid|->`.
+void backup_offer(const std::string& ssid);
 // `name=value` pairs for app `id`'s binds, resolved through its package; false if unknown.
 bool set_binds(const std::string& id, const std::vector<std::string>& pairs, std::string* err);
 bool install(const std::string& fxp, std::string* id, std::string* err);

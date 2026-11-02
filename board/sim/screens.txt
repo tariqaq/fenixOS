@@ -107,6 +107,11 @@ shot app_card_missing
 card in                                   # the card comes back: the app opens
 tap 30 16
 remove io.github.tariqaq.sample
+# Settings backup (P53): an erased board finds a backup on its card.
+backup offer HomeWiFi
+shot backup_offer
+tap 160 214                               # Start fresh closes it for good
+shot backup_fresh                         # Home again
 # Firmware update (P52): a package on the card's root, a rolled-back try and a kept older one;
 # then the progress screen an update from the PC opens, and a refused package.
 ota failed_version 0.1.98

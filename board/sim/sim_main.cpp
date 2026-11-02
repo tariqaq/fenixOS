@@ -157,6 +157,9 @@ static int run_script(const std::string& path, const std::string& out) {
     } else if (v == "ota" && w.size() == 4 && w[1] == "offer") {
       sim::ota_offer(w[2], w[3]);
       run_for(300);
+    } else if (v == "backup" && w.size() == 3 && w[1] == "offer") {
+      sim::backup_offer(w[2]);
+      run_for(600);
     } else if (v == "ota" && w.size() == 3 && w[1] == "failed_version") {
       sim::ota_failed(w[2]);
     } else if (v == "ota" && w.size() >= 2 && w.size() <= 4) {

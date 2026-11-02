@@ -29,7 +29,11 @@ struct Settings {
 };
 void nvs_start();
 Settings& settings();
-void settings_save();
+void settings_save();  // NVS, and the card's backup a few seconds later (P53)
+bool settings_were_empty();  // NVS had no settings at this boot (a new or erased board)
+size_t settings_blob(uint8_t* out, size_t cap);  // the NVS blob, for the backup
+// Settings from a backup's blob, saved to NVS. This board's own touch calibration stays if it has one.
+bool settings_restore(const uint8_t* blob, size_t n);
 
 // ---- Clock ----
 // Local time is MYT (UTC+8, no DST).
@@ -153,6 +157,8 @@ int radio_scan_results(fnx::WifiAp* out, int max);  // last scan, strongest firs
 void radio_join(const char* ssid, const char* pass);  // saved in plaintext; empty ssid forgets
 void radio_reconnect();                               // the saved network, now
 bool radio_saved_network(char* out, size_t cap);
+void radio_creds(char* ssid, size_t ssid_cap, char* pass, size_t pass_cap);  // the saved network
+void radio_creds_restore(const char* ssid, const char* pass);  // saved only; a restart follows
 // ---- microSD (P50, sd.cpp): FAT32 at /sd, SPI3 at 40 MHz, long file names ----
 constexpr const char* SD_PATH = "/sd";
 using SdInfo = fnx::SdState;
@@ -210,6 +216,16 @@ void logs_line(uint8_t level, const char* text, size_t n);  // any task (link_lo
 void logs_note(uint8_t level, const char* fmt, ...) __attribute__((format(printf, 2, 3)));
 void logs_tick(int64_t now_us);  // link task: writes waiting lines to /sd/fenixos/logs/<boot>.txt
 void logs_mounted();             // sd task, after a mount: this boot's file; copies a core dump
+void logs_flush_soon();          // any task: the link task writes waiting lines at its next pass
+
+// ---- Settings backup on the card (P53, backup.cpp): /sd/fenixos/backup/settings.bin ----
+void backup_changed();          // any task: settings, the Wi-Fi network or the weather place changed
+void backup_tick(int64_t now);  // link task: writes the backup 3 s after the last change
+void backup_mounted();          // sd task, after a mount: offers the backup, or writes one
+// UI: a backup waits for an answer (the shell shows its sheet on Home); its network name if asked.
+bool backup_offer(char* ssid = nullptr, size_t cap = 0);
+bool backup_restore();          // UI: restore it and restart; false if it could not be read
+void backup_decline();          // UI: start fresh; the board's settings are saved, so it is not asked again
 
 void net_start();  // Wi-Fi mode: PC link over TCP, mDNS, SNTP (net.cpp)
 void net_up();     // the station got an address
@@ -222,6 +238,7 @@ struct Weather {
   char place[fnx::PLACE_LEN];
 };
 void weather_set(const fnx::WeatherSet& p);  // saved in NVS; any mode
+fnx::WeatherSet weather_place();             // the saved place; name empty = none
 bool weather(Weather* out);                  // false until the first reading
 const char* weather_text(uint8_t code);      // one short word: "Clear", "Rain"...
 

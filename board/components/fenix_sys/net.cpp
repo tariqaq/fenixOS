@@ -170,6 +170,14 @@ void weather_set(const fnx::WeatherSet& p) {
   s_wx = {};
   portEXIT_CRITICAL(&s_wx_mux);
   if (s_wx_task) xTaskNotifyGive(s_wx_task);
+  backup_changed();
+}
+
+fnx::WeatherSet weather_place() {
+  portENTER_CRITICAL(&s_wx_mux);
+  fnx::WeatherSet p = s_place;
+  portEXIT_CRITICAL(&s_wx_mux);
+  return p;
 }
 
 bool weather(Weather* out) {

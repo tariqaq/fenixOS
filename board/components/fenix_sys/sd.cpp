@@ -117,7 +117,8 @@ static void mount() {
   logs_note(3, "sd: card mounted, %u MB free of %u", (unsigned)(free_cl * cl / 1048576),
             (unsigned)((uint64_t)(fs->n_fatent - 2) * cl / 1048576));
   store_sd_changed(true);
-  ota_scan_sd();  // a firmware package on the card (P52)
+  ota_scan_sd();     // a firmware package on the card (P52)
+  backup_mounted();  // offers the card's settings backup to an empty board, or writes one (P53)
 }
 
 static void probe_task(void*) {

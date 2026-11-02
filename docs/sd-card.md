@@ -11,7 +11,8 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `fonts/` `data/` `wallpaper/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
 | `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
 | `state/` | Last bound values per app, `<id>.bin` | The board | P53 |
-| `backup/` `web/` | Settings backup, status page | Planned (P53 steps 5 and 6, `tasks.md`) | |
+| `backup/` | `settings.bin`: settings, the Wi-Fi network, the weather place | The board | P53 |
+| `web/` | Status page | Planned (P53 step 6, `tasks.md`) | |
 
 ## Files over the link (P53 step 1)
 
@@ -46,6 +47,19 @@ Board: `board/components/fenix_apps/app_pkg.cpp` (the format), `fenix_sys/files.
 - **With no PC:** the layout shows the values under "PC not connected", behind a 50 % veil, and takes no taps (it still scrolls). With no values saved the screen is 6a "Waiting for host PC" as before. When the PC connects, the app screen is rebuilt live.
 - **Removed** with the app (while the card is in).
 - **Cost:** 2.1 KB of firmware; a 4 KB buffer while the app opens.
+
+## Settings backup (P53 step 5)
+
+Board: `board/components/fenix_sys/backup.cpp`; the sheet is in `fenix_apps/session.cpp`.
+
+- **What:** `backup/settings.bin` holds the settings blob as NVS keeps it, the saved Wi-Fi network with its password **in plain text** (the user's choice), and the weather place. Format: `FXB1`, then records (tag, u16 length, bytes): 1 settings, 2 network name, 3 password, 4 place (lat and lon x 10^4 as i32 LE, then the name). Unknown tags are skipped.
+- **Written** by the link task 3 s after the last change (a slider sends many), and at every mount. The file is written as `settings.tmp`, then put in place.
+- **Offered** when a boot found no settings and no Wi-Fi network in NVS (a new or erased board) and the card has a backup. The sheet "Restore settings?" shows on Home and comes back after any rebuild until it is answered; nothing is written to the card until then.
+  - **Restore** puts the settings, network and place in NVS and restarts. A board that was calibrated before the offer keeps its own touch calibration; otherwise the backup's comes back too.
+  - **Start fresh** saves the board's current settings, so it is not asked again; the card's backup is then replaced 3 s later.
+- **An empty board with no backup on its card** saves its settings at the mount, so a later boot does not take it for an erased one.
+- **Tested** (2026-11-02): NVS erased with `fenix erase 0x9000 0x6000`; the next boot offered the backup (network "theworld"); Restore restarted the board, Wi-Fi came up with the restored network, and the backup on the card stayed byte-identical.
+- **Cost:** 2.9 KB of firmware; nothing kept in RAM but a few flags.
 
 ## Board log (P53 step 2)
 

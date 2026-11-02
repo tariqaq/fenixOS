@@ -188,6 +188,9 @@ void tick() {
     refresh_if_top(b);
   }
   if (nav_top() == home_screen) home_tick();
+  // A settings backup offered to an empty board (P53): shown on Home, again after any rebuild
+  // (a screen change closes sheets), until it is answered.
+  if (nav_top() == home_screen && !sheet_is_open() && sys::backup_offer()) backup_sheet();
   settings_tick();
   app_tick();
   if (s_shell.streaming && s_last_rot != rotation()) send_stream_info();

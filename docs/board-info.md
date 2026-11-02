@@ -315,6 +315,9 @@ The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, me
   - A shot takes 0.3 s over USB or Wi-Fi: the panel read back at 20 MHz, 8 rows a pass, then 153,666 B written. Colours match the panel (the RGB565 readback through LovyanGFX `readRect` into `rgb565_t`).
   - Heap: 16-row bands (10 KB) took the low point to 43.0 KB with a Wi-Fi session open. 8-row bands (5 KB) leave 52.2 KB after a USB shot and 50.6 KB after a Wi-Fi one, so the board uses 8.
   - The image grew to 0x124770 (+5.1 KB over step 2).
+- **Settings backup (step 5):**
+  - Found: a sheet posted at the mount (0.55 s after boot) never showed. The boot screen was still up, and `nav.cpp` closes any sheet when a screen changes; Home also rebuilds when the card's apps arrive. The offer is now a state that the shell's tick shows on Home until it is answered.
+  - Erasing NVS also clears the `ota` `layout` key, so the next boot erases the flash `apps` partition (`ota_boot`) and rebuilds the card's app index. Nothing is lost while apps live on the card.
 
 ## Two OTA slots and updates (P52, 2026-11-02)
 
