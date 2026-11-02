@@ -142,7 +142,7 @@ Signature host test (good, bad signature, bad hash, wrong key), updates over USB
 ## P54: fonts from the card (v0.1.24)
 
 - **Scripts:** Chinese, Japanese, Korean (user). One CJK font on the card: Noto Sans CJK (OFL), its language OTF (~16 MB). Step 1 checks LVGL 9.5 Tiny TTF and its `stb_truetype` with a CFF-outline OTF; if CFF does not work, a TrueType-outline CJK font (OFL) instead. If one big font is too slow, it is split per script.
-- **Engine:** LVGL Tiny TTF (`LV_USE_TINY_TTF`, `LV_TINY_TTF_FILE_SUPPORT`) with an LVGL file system driver on `/sd`; `tools/sim_config.py` after the LVGL change. Measured first: flash added, glyph cache RAM, time to draw a 20-character title.
+- **Engine:** LVGL Tiny TTF (`LV_USE_TINY_TTF`, `LV_TINY_TTF_FILE_SUPPORT`) with an LVGL file system driver on `/sd`; `tools/sim_config.py` after the LVGL change. Measured first: flash added, glyph cache RAM, time to draw a 20-character title. Corrected (step 1, measured): Tiny TTF needs about 60 separate card reads a glyph with the CFF OTF and 16 with the TrueType build (whose default weight is the thinnest); at the card's ~1 MB/s that is up to 2 s for a title. Instead the PC draws the glyphs into a bitmap font file on the card (`docs/fonts.md`), 2 reads a glyph.
 - **Delivery:** the PC app downloads the font (pinned URL and sha256) and installs it with `FILE_WRITE` to `/sd/fenixos/fonts/`; Settings › Storage shows it.
 - **Use:** labels fall back to the CJK font for characters the built-in fonts lack (no change for app makers); with no card or no font they show as now. Covers the Morpheus "wider text" request beyond Latin-1.
 - **UI sounds: dropped** (user, 2026-11-02: no speaker planned).
