@@ -40,7 +40,7 @@ const INDEX_RETRY: Duration = Duration::from_secs(3);
 const BIND_BURST: u32 = 16;
 const BIND_WINDOW: Duration = Duration::from_millis(50);
 /// Bound-image chunks per BIND_WINDOW (P50-M): ~3 KB per 50 ms keeps the board's 5 KB UART buffer
-/// safe; a 120 x 120 image takes ~0.5 s.
+/// safe; a 96 x 96 image (the largest, fenix_pkg::MAX_ART) takes ~0.25 s.
 const IMAGE_CHUNKS: u32 = 3;
 const IMAGE_CHUNK: usize = 1024;
 

@@ -38,7 +38,7 @@ payload = type:u8 ‖ seq:u8 ‖ body
 1. The PC sends `HELLO` every 300 ms for up to 2.5 s. The board answers `HELLO_ACK`.
    - If `proto` differs, the board answers `ERROR` (code 1). The PC reports "board firmware too old or too new" and offers to flash.
    - If the fenixOS versions differ, the session continues for `REBOOT` and flashing only. The PC shows the update dialog, and host apps stay off.
-2. The PC sends `TIME_SET`, then `APP_LIST_REQ`, and reconciles apps (install missing, remove extra).
+2. The PC sends `TIME_SET`, then `APP_INDEX_REQ` page 0 (and each next page), and lists the differences under Apps › Sync with board; nothing is installed or removed until the user clicks Sync (P51). Corrected (P56): said `APP_LIST_REQ` and an automatic reconcile, the v0.1.0 flow.
 3. The PC sends `PING` every 1 s; the board answers `PONG`. Either side declares the link down after **3 s** without a valid frame.
 4. The board sends `STATS` every 5 s, `BOARD_STATE` on every change, and `LOG` lines when it has something to say.
 

@@ -82,7 +82,8 @@ The built-in glyphs (the last 14, from `play`, need fenixOS v0.1.25): `gear-six`
 
 ## States the board shows for you
 
-- No PC link: "Waiting for host PC".
+- No PC link: "Waiting for host PC", or with an SD card in (fenixOS v0.1.23) the last values, dimmed, under "PC not connected".
+- The app is on an SD card that is out: "Insert the SD card".
 - The app switched off in the PC app: "Turned off on host PC", with a Turn on button. Starting: "Starting on host PC". Added on another PC only: "Not on this PC".
 - Otherwise the layout. An update reloads it in place; a removed app returns to Home.
 

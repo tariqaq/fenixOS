@@ -71,4 +71,4 @@ Any Windows program can speak the protocol: each message is a little-endian `u32
 
 ## Permissions
 
-Declare in `manifest.json` what the helper does: `keys` (press keys and shortcuts), `media` (volume and media), `system-stats` (CPU, memory and other stats), `network`, `files`, `programs` (start other programs). The PC app shows them before Add. Do no more than declared, and nothing that looks like cheating software: no global hooks, DLL injection, other processes' memory or raw input capture.
+Declare in `manifest.json` what the helper does: `keys` (press keys and shortcuts), `media` (volume and media), `system-stats` (CPU, memory and other stats), `network`, `files`, `programs` (start other programs), `screen` (screenshots of the display or the window in front; fenixOS 0.1.25, needs `min_fenixos` 0.1.25). The PC app shows them before Add. Do no more than declared, and nothing that looks like cheating software: no global hooks, DLL injection, other processes' memory or raw input capture.
