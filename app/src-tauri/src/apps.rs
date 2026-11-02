@@ -595,7 +595,11 @@ impl Apps {
                 self.set_enabled(&id, false);
                 self.ops
                     .retain(|o| !matches!(o, Op::Install(x) if x == &id));
-                if self.on_board.contains_key(&id) {
+                // An install under way stops (`tick` drops it once the files are gone), but the
+                // board may have finished it already: remove it there too (`UNKNOWN_APP` is fine).
+                let sending =
+                    matches!(&self.current, Some(Current { op: Op::Install(x), .. }) if x == &id);
+                if self.on_board.contains_key(&id) || sending {
                     self.ops.push_back(Op::Remove(id.clone()));
                 }
                 let name = self.name(&id);

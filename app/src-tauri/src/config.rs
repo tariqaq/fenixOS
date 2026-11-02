@@ -59,13 +59,22 @@ pub fn path() -> PathBuf {
 
 impl Config {
     pub fn load() -> Config {
-        fs::read(path())
-            .ok()
-            .and_then(|b| serde_json::from_slice(&b).ok())
-            .unwrap_or_else(|| Config {
-                check_updates: true,
-                ..Default::default()
-            })
+        let p = path();
+        let parsed = fs::read(&p).ok().map(|b| serde_json::from_slice(&b));
+        match parsed {
+            Some(Ok(c)) => c,
+            other => {
+                // A file that does not parse is kept as config.bad.json: the defaults below are
+                // saved over config.json at start, and would lose the user's apps and settings.
+                if matches!(other, Some(Err(_))) {
+                    let _ = fs::rename(&p, p.with_file_name("config.bad.json"));
+                }
+                Config {
+                    check_updates: true,
+                    ..Default::default()
+                }
+            }
+        }
     }
 
     pub fn save(&self) -> std::io::Result<()> {

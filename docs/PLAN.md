@@ -191,7 +191,7 @@ docs/, pics/
   - Background scanning never resets a board.
 - **App manager:**
   - Installed apps in `%LOCALAPPDATA%\fenixOS\apps\<id>\<version>\`.
-  - State and settings in `%APPDATA%\fenixOS\config.json`.
+  - State and settings in `%APPDATA%\fenixOS\config.json` (written to a temp file and renamed; one that does not parse is kept as `config.bad.json` before the defaults replace it, P55 audit).
   - Enable or disable, push packages, run sidecars.
 - **Sidecars:**
   - Started only while their app is switched on.

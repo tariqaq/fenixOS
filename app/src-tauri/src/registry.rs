@@ -225,8 +225,9 @@ pub fn hex(b: &[u8]) -> String {
 }
 
 fn http_get(url: &str, limit: u64) -> Result<Vec<u8>, String> {
+    // 60 s plus 1 s per 256 KB: a big PC half (up to 64 MB) on a slow line needs minutes.
     let agent = ureq::Agent::config_builder()
-        .timeout_global(Some(Duration::from_secs(60)))
+        .timeout_global(Some(Duration::from_secs(60 + limit / (256 * 1024))))
         .user_agent(concat!("fenixOS/", env!("CARGO_PKG_VERSION")))
         .build()
         .new_agent();

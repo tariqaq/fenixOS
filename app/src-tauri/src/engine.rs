@@ -820,7 +820,6 @@ impl Engine {
         self.log(app, Source::Pc, false, "Time synced");
     }
 
-    /// Apply one link event. True when the state the UI shows changed.
     /// Run a file job on the board's SD card (P53) from a command thread: `job` gets `send` and
     /// `recv` for `fenix_link::files::list` and `read`. Blocks; one job at a time.
     pub fn board_files<T>(
@@ -838,6 +837,7 @@ impl Engine {
         r
     }
 
+    /// Apply one link event. True when the state the UI shows changed.
     fn handle(&self, app: &AppHandle, e: Event) -> bool {
         // Answers for a file job go to it (P53). An ERROR goes there too while a job waits: an
         // older board answers unknown type.

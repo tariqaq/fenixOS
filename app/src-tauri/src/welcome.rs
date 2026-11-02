@@ -14,7 +14,7 @@ pub fn open(app: &AppHandle) {
         let _ = w.set_focus();
         return;
     }
-    // FENIX_OOTB_ARGS=lean runs the welcome window with the main window's args (S8 comparison).
+    // FENIX_OOTB_ARGS=lean runs the welcome window with the old GPU-off args (S8 comparison).
     let lean = std::env::var("FENIX_OOTB_ARGS").is_ok_and(|v| v == "lean");
     let dir = crate::local_dir().join(if lean {
         "webview-welcome-lean"
