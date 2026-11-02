@@ -2,7 +2,7 @@
 
 The board has two app slots. A new firmware goes into the spare slot while the old one keeps running. The board restarts into it only after the board has checked the package's hash and signature. A new image runs on trial: if it crashes or resets before it has shown Home for 30 s, the bootloader goes back to the old slot.
 
-Design and the user's picks: `docs/plan-sd-ota.md` (P52) and `docs/decisions.md` ("2026-11-02: SD, apps, OTA", "2026-11-03: overnight run"). Messages: `proto/spec.md` "Firmware (0x5_)".
+Design and the user's picks: `docs/plan-sd-ota.md` (P52) and `docs/decisions.md` ("2026-11-02: SD, apps, OTA", "2026-11-02: overnight run"). Messages: `proto/spec.md` "Firmware (0x5_)".
 
 ## Three ways in
 
@@ -84,7 +84,7 @@ The link task receives; an `ota` task (6 KB stack) checks and installs. The UI r
   - Stages: `writing` (sending), `installing` (the board checks and copies), `restarting`, then `done` once the board reconnects with the bundled version.
   - A link drop fails the update. Try again goes on from what the board staged.
 
-## Measured (2026-11-03, COM9, 8 GB card, test builds labelled 0.1.22 to 0.1.28, 1.15 MB image)
+## Measured (2026-11-02, COM9, 8 GB card, test builds labelled 0.1.22 to 0.1.28, 1.15 MB image)
 
 | Case | Sent | Install | Notes |
 |---|---|---|---|

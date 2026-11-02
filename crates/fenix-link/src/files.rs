@@ -209,6 +209,42 @@ pub fn read(
     }
 }
 
+/// Ask the board to save its screen to `shots/` on the card (`SHOT_SAVE`); the saved path.
+pub fn shot(
+    send: &dyn Fn(Msg),
+    recv: &mut dyn FnMut(Duration) -> Option<Msg>,
+) -> Result<String, String> {
+    send(Msg::ShotSave);
+    let end = Instant::now() + QUIET * 2; // the UI task reads the screen back and writes it
+    loop {
+        let left = end.saturating_duration_since(Instant::now());
+        match recv(left.max(Duration::from_millis(1))) {
+            Some(Msg::FileResult {
+                op: file::OP_SHOT,
+                code,
+                path,
+                text,
+            }) => {
+                return if code == file::OK {
+                    Ok(path)
+                } else {
+                    Err(format!(
+                        "screenshot: {}",
+                        if text.is_empty() {
+                            result_text(code)
+                        } else {
+                            &text
+                        }
+                    ))
+                }
+            }
+            Some(Msg::Error { code, text }) => return Err(format!("board error {code}: {text}")),
+            Some(_) if Instant::now() < end => continue,
+            _ => return Err(silent()),
+        }
+    }
+}
+
 /// The text for a `FILE_RESULT` code, when the board sent none.
 pub fn result_text(code: u8) -> &'static str {
     match code {

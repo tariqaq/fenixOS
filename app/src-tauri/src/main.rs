@@ -165,6 +165,49 @@ async fn board_card_logs(app: AppHandle) -> Result<Vec<CardLog>, String> {
     .map_err(|e| e.to_string())?
 }
 
+/// A screenshot the board saved on its card (P53), and the copy on this PC.
+#[derive(Serialize)]
+struct Shot {
+    /// Path under `/sd/fenixos`.
+    card: String,
+    /// The copy in `%LOCALAPPDATA%\fenixOS\shots`.
+    local: String,
+}
+
+fn shot_dir() -> PathBuf {
+    local_dir().join("shots")
+}
+
+/// The board saves its screen to `shots/` on its card; the app copies it to `shot_dir()`.
+#[tauri::command]
+async fn board_shot(app: AppHandle) -> Result<Shot, String> {
+    let e = app.state::<Arc<Engine>>().inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let (card, data) = e.board_files(|send, recv| {
+            let card = fenix_link::files::shot(send, recv)?;
+            let data = fenix_link::files::read(send, recv, &card, &mut |_, _| {})?;
+            Ok((card, data))
+        })?;
+        let dir = shot_dir();
+        std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        let local = dir.join(card.rsplit('/').next().unwrap_or("shot.bmp"));
+        std::fs::write(&local, data).map_err(|e| e.to_string())?;
+        Ok(Shot {
+            card,
+            local: local.display().to_string(),
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+fn open_shot_folder() {
+    let dir = shot_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let _ = std::process::Command::new("explorer.exe").arg(dir).spawn();
+}
+
 /// One saved log or crash summary, as text.
 #[tauri::command]
 async fn board_card_file(app: AppHandle, path: String) -> Result<String, String> {
@@ -599,6 +642,8 @@ fn main() {
             open_log_folder,
             board_card_logs,
             board_card_file,
+            board_shot,
+            open_shot_folder,
             get_autostart,
             set_autostart,
             reboot_board,

@@ -18,6 +18,8 @@
 //! fenix tap <x> <y>                remote touch (screen coordinates)
 //! fenix swipe <x1> <y1> <x2> <y2>  remote drag
 //! fenix shot <out.png> [secs]      stream the screen for a while, save the last frame
+//! fenix shot --sd [out.bmp]        the board saves its screen to shots/ on its SD card
+//!                                  (0.1.23 and later); with out.bmp, also copied here
 //! fenix bench [secs] [nostream|<fps>]  link throughput (stream at 10 fps unless given)
 //! fenix list                       installed apps (paged index since 0.1.21: where each lives)
 //! fenix install <file.fxp>         push a board package
@@ -151,6 +153,9 @@ fn main() {
             args.iter().any(|a| a == "nostream"),
             arg_u64(&args, 2, 10).clamp(1, 60) as u8,
         ),
+        "shot" if args.get(1).map(String::as_str) == Some("--sd") => {
+            shot_sd(opts, args.get(2).map(Path::new))
+        }
         "shot" => shot(
             opts,
             args.get(1).map(String::as_str).unwrap_or("shot.png"),
@@ -223,7 +228,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|shot --sd [out.bmp]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -1161,6 +1166,45 @@ fn files_get(opts: LinkOptions, path: &str, out: &Path) -> i32 {
         data.len() as f32 / 1024.0 / s.max(0.001)
     );
     0
+}
+
+/// `fenix shot --sd [out.bmp]` (P53): the board saves its screen on its card; `out` gets a copy.
+fn shot_sd(opts: LinkOptions, out: Option<&Path>) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        return 1;
+    }
+    let send = |m| link.send(m);
+    let mut recv = |d| file_recv(&link, d);
+    let t0 = Instant::now();
+    let path = match fenix_link::files::shot(&send, &mut recv) {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("{e}");
+            return 1;
+        }
+    };
+    println!(
+        "saved {path} on the card in {:.1} s",
+        t0.elapsed().as_secs_f32()
+    );
+    let Some(out) = out else { return 0 };
+    match fenix_link::files::read(&send, &mut recv, &path, &mut |_, _| {}) {
+        Ok(d) => match std::fs::write(out, &d) {
+            Ok(()) => {
+                println!("{} B to {}", d.len(), out.display());
+                0
+            }
+            Err(e) => {
+                eprintln!("{}: {e}", out.display());
+                1
+            }
+        },
+        Err(e) => {
+            eprintln!("{e}");
+            1
+        }
+    }
 }
 
 /// `fenix logs --board [n]` (P53): the board's saved logs and crash records on its SD card, then

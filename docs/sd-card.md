@@ -9,7 +9,8 @@ fenixOS keeps everything it writes on the card under `/sd/fenixos`. The card is 
 | `logs/` | The board log, `<n>.txt` per boot | The board | P53, v0.1.23 |
 | `crash/` | Crash records `<n>.elf` and `<n>.txt` | The board, at the next mount after a crash | P53 |
 | `fonts/` `data/` `wallpaper/` | Files the PC puts there | The PC (`fenix files put`) | P53 |
-| `shots/` `state/` `backup/` `web/` | Screenshots, last app values, settings backup, status page | Planned (P53 steps 3 to 7, `tasks.md`) | |
+| `shots/` | Screenshots `<time>.bmp` | The board, when the PC asks | P53 |
+| `state/` `backup/` `web/` | Last app values, settings backup, status page | Planned (P53 steps 4 to 6, `tasks.md`) | |
 
 ## Files over the link (P53 step 1)
 
@@ -25,6 +26,14 @@ Messages: `proto/spec.md` "Files (0x6_)". Board: `board/components/fenix_sys/fil
 - **CLI:** `fenix files ls [path]`, `get <path> [out]`, `put <local> <path>`, `rm <path>`.
 
 Measured numbers: `docs/board-info.md` "Files over the link".
+
+## Screenshots (P53 step 3)
+
+- **Asking.** From the PC only: Board › "Screenshot to the card" in the PC app (shown when a card is in), or `fenix shot --sd [out.bmp]`. The message is `SHOT_SAVE`.
+- **Saving.** The UI task reads the panel back over MISO, 8 rows at a time (5 KB), and writes a 16-bit BMP: RGB565 bitfields, rows top to bottom, 153,666 B at 320 x 240. Most viewers open it; Paint and Photos do.
+- **Name:** `shots/YYYYMMDD-HHMMSS.bmp` in local time, `-2` to `-9` for more in the same second, or `shots/up-<seconds>.bmp` before the clock is set.
+- **What it shows** is the glass, not what LVGL meant to draw. `fenix shot` (the stream) is the other way round.
+- **The PC app** copies each shot to `%LOCALAPPDATA%\fenixOS\shots`; "Show" opens that folder. Older shots: `fenix files ls shots`, `fenix files get shots/<name>`. They stay on the card until deleted (`fenix files rm`).
 
 ## Board log (P53 step 2)
 

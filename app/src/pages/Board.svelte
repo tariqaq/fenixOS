@@ -1,9 +1,10 @@
 <script lang="ts">
   // Artboard 11 (PcBoard): live mirror, facts and actions. The Logs row opens the log sheet
-  // (artboard 16); "Reinstall firmware" opens the update dialog (artboard 12).
+  // (artboard 16); "Reinstall firmware" opens the update dialog (artboard 12). "Screenshot to the
+  // card" (P53) has the board save its screen on its SD card; the app keeps a copy.
   import Icon from "../lib/Icon.svelte";
   import Mirror from "../lib/Mirror.svelte";
-  import { linkText, rebootBoard, sdText, uptime, type Board } from "../lib/api";
+  import { boardShot, linkText, openShotFolder, rebootBoard, sdText, uptime, type Board } from "../lib/api";
 
   let {
     board,
@@ -21,6 +22,23 @@
   });
   const up = $derived(Math.max(0, Math.floor((now - board.booted_at_ms) / 1000)));
   const matches = $derived(board.firmware === appVersion);
+
+  let shooting = $state(false);
+  let shotNote = $state("");
+  let shotOk = $state(false);
+  async function shoot() {
+    shooting = true;
+    shotNote = "Saving…";
+    try {
+      const s = await boardShot();
+      shotOk = true;
+      shotNote = `Saved as ${s.card} on the card, with a copy on this PC.`;
+    } catch (e) {
+      shotOk = false;
+      shotNote = `${e}`;
+    }
+    shooting = false;
+  }
 </script>
 
 <div class="wrap">
@@ -59,7 +77,21 @@
           <Icon name="list-bullets" size={18} color="var(--accent)" />
           <span>Logs</span>
         </button>
+        {#if board.sd?.state === 1}
+          <button type="button" class="row" disabled={shooting} onclick={shoot}>
+            <Icon name="camera" size={18} color="var(--accent)" />
+            <span>Screenshot to the card</span>
+          </button>
+        {/if}
       </div>
+      {#if shotNote}
+        <p class="hint plain" role="status">
+          <span>{shotNote}</span>
+          {#if shotOk}
+            <button type="button" class="link" onclick={() => openShotFolder()}>Show</button>
+          {/if}
+        </p>
+      {/if}
       <p class="hint plain">Shut down and restart are also on the board, in the Session app.</p>
     </div>
   </div>
@@ -86,6 +118,13 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
+  }
+  .link {
+    border: 0;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: var(--accent);
   }
   .hint {
     margin: -8px 0 0 4px;

@@ -141,6 +141,9 @@ void on_link(const sys::LinkEvent& e) {
     case sys::LinkEv::STREAM_START:
       stream_set(true, e.value);
       break;
+    case sys::LinkEv::SHOT:
+      sys::shot_save();
+      break;
     case sys::LinkEv::STREAM_STOP:
       stream_set(false, 0);
       break;

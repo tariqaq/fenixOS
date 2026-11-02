@@ -55,6 +55,11 @@ void display_sleep(bool on) {
 
 void display_set_spi_hz(uint32_t hz) { lcd.set_spi_hz(hz); }
 
+void display_read(int x, int y, int w, int h, uint16_t* px) {
+  lcd.waitDMA();
+  lcd.readRect(x, y, w, h, reinterpret_cast<lgfx::rgb565_t*>(px));
+}
+
 int display_selftest() {
   static const uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000, 0xA554, 0x1234, 0x8410};
   lcd.waitDMA();

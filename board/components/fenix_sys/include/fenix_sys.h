@@ -95,6 +95,7 @@ enum class LinkEv : uint8_t {
   APPS_CHANGED,  // text = app id installed or removed; empty: several (the SD card came or went)
   SD_CHANGED,    // the microSD card came, went or changed (sd_info)
   OTA,           // a firmware update started or failed (ota_status)
+  SHOT,          // the PC asked for a screenshot on the card (SHOT_SAVE): the UI task calls shot_save
 };
 struct LinkEvent {
   LinkEv type;
@@ -196,6 +197,7 @@ bool ota_busy();
 void files_frame(uint8_t type, fnx::Reader& r);  // link task: FILE_* from the PC
 void files_tick(int64_t now_us);                 // link task: closes a write or read idle for 10 s
 void files_abort();                              // the session ended (a part stays for a resume)
+void shot_save();  // UI task: the screen to /sd/fenixos/shots/<time>.bmp, answered with FILE_RESULT
 
 // ---- Board log and crash records on the card (P53, logs.cpp) ----
 void logs_line(uint8_t level, const char* text, size_t n);  // any task (link_log calls it)

@@ -189,6 +189,14 @@ export interface CardLog {
 export const boardCardLogs = () => invoke<CardLog[]>("board_card_logs");
 export const boardCardFile = (path: string) => invoke<string>("board_card_file", { path });
 
+/** A screenshot the board saved on its card (P53): its path there and the copy on this PC. */
+export interface Shot {
+  card: string;
+  local: string;
+}
+export const boardShot = () => invoke<Shot>("board_shot");
+export const openShotFolder = () => invoke("open_shot_folder");
+
 /** A board log line as saved on the card: "<seconds since boot> <HH:MM:SS or --:--:--> <E|W|I|D> text". */
 export function cardLine(raw: string, crash: boolean): LogLine {
   const m = /^(\d+)\.\d{3} (\d\d:\d\d:\d\d|--:--:--) ([EWID?]) (.*)$/.exec(raw);

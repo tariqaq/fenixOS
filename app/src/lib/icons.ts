@@ -22,6 +22,7 @@ import wifiHigh from "@phosphor-icons/core/assets/fill/wifi-high-fill.svg?raw";
 import wifiMedium from "@phosphor-icons/core/assets/fill/wifi-medium-fill.svg?raw";
 import wifiLow from "@phosphor-icons/core/assets/fill/wifi-low-fill.svg?raw";
 import lock from "@phosphor-icons/core/assets/fill/lock-fill.svg?raw";
+import camera from "@phosphor-icons/core/assets/regular/camera.svg?raw";
 
 export const icons = {
   "squares-four": squaresFour,
@@ -46,6 +47,7 @@ export const icons = {
   "wifi-medium": wifiMedium,
   "wifi-low": wifiLow,
   lock,
+  camera,
 } as const;
 
 export type IconName = keyof typeof icons;

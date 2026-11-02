@@ -20,6 +20,8 @@ void display_fill(int x, int y, int w, int h);
 void display_sleep(bool on);
 // Write colour bars, read them back over MISO and count wrong pixels (bus check).
 int display_selftest();
+// Read a block of the panel back over MISO as RGB565 (native byte order). LVGL's task only.
+void display_read(int x, int y, int w, int h, uint16_t* px);
 // SPI write clock in Hz (default 40 MHz; set before display_init). Only spike S1 sets it.
 void display_set_spi_hz(uint32_t hz);
 

@@ -458,6 +458,9 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
     case fnx::ty::FILE_CHUNK:
     case fnx::ty::FILE_END:
       return files_frame(type, r);
+    case fnx::ty::SHOT_SAVE:
+      post(LinkEv::SHOT);  // the LCD belongs to the UI task
+      return;
     case fnx::ty::STREAM_START: {
       uint8_t fps = r.u8();
       post(LinkEv::STREAM_START, fps ? fps : 10);

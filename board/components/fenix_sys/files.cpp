@@ -3,7 +3,8 @@
 // fonts/, data/ and wallpaper/. A write goes to <path>.part with <path>.pin (size and sha256)
 // beside it, so a cut transfer goes on from where it stopped, as firmware staging does. FILE_END
 // checks the sha256 in a short-lived task (a big font takes seconds to read back), then renames
-// the part into place. Link task only, except that check; nothing stays allocated at idle.
+// the part into place. Link task only, except that check and shot_save (the UI task, which owns
+// the LCD); nothing stays allocated at idle.
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,6 +16,7 @@
 #include <new>
 
 #include "esp_timer.h"
+#include "fenix_hal.h"
 #include "fenix_sys.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -401,6 +403,74 @@ static void write_end(fnx::Reader& r) {
     s_checking = false;
     result(file::OP_WRITE, file::BUSY, s_job.path, "out of memory");
   }
+}
+
+// ---- Screenshot (SHOT_SAVE) ----
+
+static constexpr int SHOT_BAND = 8;  // rows read back per pass: 5 KB at 320 wide
+
+static void put_le16(uint8_t* b, uint16_t v) {
+  b[0] = v;
+  b[1] = v >> 8;
+}
+
+// UI task: read the panel back in bands and write a top-down 16-bit BMP (RGB565 bitfields), which
+// needs no colour conversion. Named by the local time, or the uptime before the clock is set.
+void shot_save() {
+  if (!card()) return result(file::OP_SHOT, file::NO_CARD, "");
+  int w = hal::display_width(), h = hal::display_height();
+  char stem[32];
+  struct tm t;
+  if (clock_local(&t)) strftime(stem, sizeof stem, "shots/%Y%m%d-%H%M%S", &t);
+  else snprintf(stem, sizeof stem, "shots/up-%lu", (unsigned long)(esp_timer_get_time() / 1000000));
+  char path[48], full[FULL];
+  struct stat st;
+  for (int i = 1; i < 10; i++) {  // two shots in one second get -2, -3 ...
+    snprintf(path, sizeof path, i == 1 ? "%s.bmp" : "%s-%d.bmp", stem, i);
+    join(full, path);
+    if (stat(full, &st) != 0) break;
+  }
+  make_dirs(path);
+
+  uint32_t row = (uint32_t)w * 2, size = row * h, off = 14 + 40 + 12;
+  uint8_t hd[66] = {'B', 'M'};
+  put_le32(hd + 2, off + size);
+  put_le32(hd + 10, off);
+  put_le32(hd + 14, 40);
+  put_le32(hd + 18, w);
+  put_le32(hd + 22, (uint32_t)-h);  // negative: rows top to bottom
+  put_le16(hd + 26, 1);
+  put_le16(hd + 28, 16);
+  put_le32(hd + 30, 3);  // BI_BITFIELDS
+  put_le32(hd + 34, size);
+  put_le32(hd + 38, 2835);  // 72 dpi
+  put_le32(hd + 42, 2835);
+  put_le32(hd + 54, 0xF800);
+  put_le32(hd + 58, 0x07E0);
+  put_le32(hd + 62, 0x001F);
+
+  int band = SHOT_BAND;
+  std::unique_ptr<uint16_t[]> px(new (std::nothrow) uint16_t[w * band]);
+  if (!px) {
+    band = 2;
+    px.reset(new (std::nothrow) uint16_t[w * band]);
+    if (!px) return result(file::OP_SHOT, file::STORAGE, path, "out of memory");
+  }
+  FILE* f = fopen(full, "wb");
+  if (!f) return result(file::OP_SHOT, file::STORAGE, path);
+  bool ok = fwrite(hd, 1, sizeof hd, f) == sizeof hd;
+  for (int y = 0; ok && y < h; y += band) {
+    int n = h - y < band ? h - y : band;
+    hal::display_read(0, y, w, n, px.get());
+    ok = fwrite(px.get(), 1, row * n, f) == row * n;
+  }
+  ok = fclose(f) == 0 && ok;
+  if (!ok) {
+    unlink(full);
+    return result(file::OP_SHOT, sd_info().free_kb < 256 ? file::NO_SPACE : file::STORAGE, path);
+  }
+  logs_note(3, "screenshot saved to %s", path);
+  result(file::OP_SHOT, file::OK, path);
 }
 
 // ---- Link task ----

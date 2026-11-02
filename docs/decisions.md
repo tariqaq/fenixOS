@@ -291,6 +291,8 @@ The user reviewed the plan, asked for these changes and set the whole plan (P51 
 | Apps on one side only | Remove unknown board apps (today) / keep, faded / **a sync system** | **Sync** (user's own idea): board-only apps get their PC half, PC-only apps get their board half, version skew updates the older side. Shown as a "Sync with board" card with a checkbox each; **one click** applies them, nothing changes silently except Add and Remove |
 | Board app whose PC half is not in the registry | **Registry, else keep board-only or remove** / store PC halves on the card | **Registry, else keep or remove** (no programs taken off the board) |
 | Screenshot trigger | BOOT button / long press on the clock / **from the PC only** | **PC only**: Board page button and `fenix shot --sd` |
+| Screenshot file (P53) | 24-bit BMP / PNG / **16-bit BMP** | **16-bit BMP** (RGB565 bitfields, top-down): the panel's own format, no conversion or compression on the board. 8-row bands, not the planned 16: 16 took the heap low point to 43 KB |
+| Where the PC app keeps shot copies (P53) | Pictures / Downloads / **`%LOCALAPPDATA%\fenixOS\shots`** | **Local app data**: never a synced or redirected folder (the user keeps cloud sync off). "Show" opens it |
 | OTA signing key | **Agent makes it and sets the Actions secret with gh** / agent makes it, user sets the secret | **Agent does both**; `%USERPROFILE%\.fenixos\fw-signing.pem`, never in git. Backup: the agent copies it with the updater key to `%USERPROFILE%\Documents\fenixOS-keys\` and tells the user (corrected: said the user backs it up) |
 | Wi-Fi password in the settings backup | **Yes, plaintext** / no | **Yes, plaintext** (matches the earlier no-encryption choice; anyone with the card can read it) |
 | Fonts from the card | **Chinese, Japanese, Korean** / plus more scripts / Japanese only | **CJK**: one Noto Sans CJK font (OFL) installed by the PC app; split per script if one font is too slow |
@@ -302,7 +304,7 @@ The user reviewed the plan, asked for these changes and set the whole plan (P51 
 | Morpheus: `secret` setting | **Yes** / no | **Yes**: masked, DPAPI user scope, never logged |
 | Morpheus: releases | **Two** / one | **Two** |
 
-## 2026-11-03: overnight run (choices made on the user's behalf; the user was asleep)
+## 2026-11-02: overnight run (choices made on the user's behalf; the user was asleep)
 
 Plan: `docs/plan-sd-ota.md`. Each row: the question, the options, what was chosen and why.
 

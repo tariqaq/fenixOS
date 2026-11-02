@@ -2,7 +2,7 @@
 
 Chip info and the stock backup were read on 2026-10-28 with `esptool v5.6.0`, before anything was written. The board was then flashed with the FenixDeck firmware (FenixDeck repo `board/`; that code is not in fenixOS). Chip info was re-read on 2026-10-29 and matched.
 
-**Current state (2026-11-03): fenixOS v0.1.22** (flashed with `fenix flash`, the move to two OTA slots, P52; then reinstalled over the link from the PC app). Corrected: said v0.1.20.
+**Current state (2026-11-02): fenixOS v0.1.22** (flashed with `fenix flash`, the move to two OTA slots, P52; then reinstalled over the link from the PC app). Corrected: said v0.1.20.
 
 Current numbers (v0.1.12 unless marked; the sections below are a dated log, so older numbers in them are history):
 
@@ -293,7 +293,7 @@ fenixOS mounts the card itself since v0.1.20 (`fenix_sys/sd.cpp`): SPI3 at 40 MH
 
 The MHz is the SPI clock on the wire between the ESP32 and the card (SCK, pin 18), not the CPU (240 MHz). Limits: an SD card in SPI mode runs up to 25 MHz (default speed) or 50 MHz (high speed); the ESP32's SPI clock on IO-MUX pins is 80 MHz divided by a whole number (80, 40, 26.7, 20 ...). 80 is above the card's 50, so **40 MHz is the highest that works**, and it does on this card. The card's 4-bit SD mode (several times faster) needs the SDMMC pins (2, 4, 12, 13, 14, 15), which this board uses for the LCD and the LED, so SPI is the only way here.
 
-## Files over the link, board log, crash records (P53, 2026-11-03)
+## Files over the link, board log, crash records (P53, 2026-11-02)
 
 The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, messages in `proto/spec.md` "Files (0x6_)", board side `fenix_sys/files.cpp`.
 
@@ -311,8 +311,12 @@ The card's folders and rules: `docs/sd-card.md`. `fenix files ls|get|put|rm`, me
   - Cost: the image grew 10.6 KB (IDF's core dump code). Free heap at idle went from 66.2 to 63.3 KB: the 512 B log buffer, IDF's ISR stack growing from 1,536 to 2,096 B per core when core dumps are on, and the core dump's own state.
   - A test crash (a null write in the link task) left a 26,564 B ELF dump, under half the 56 KB partition. The board copied it to `crash/3.elf` at the next boot, and the summary's backtrace decoded to the right line.
   - newlib nano's `printf` has no `%lld`: the first log lines printed `ld` for the time. They now use `%lu`.
+- **Screenshots to the card (step 3):**
+  - A shot takes 0.3 s over USB or Wi-Fi: the panel read back at 20 MHz, 8 rows a pass, then 153,666 B written. Colours match the panel (the RGB565 readback through LovyanGFX `readRect` into `rgb565_t`).
+  - Heap: 16-row bands (10 KB) took the low point to 43.0 KB with a Wi-Fi session open. 8-row bands (5 KB) leave 52.2 KB after a USB shot and 50.6 KB after a Wi-Fi one, so the board uses 8.
+  - The image grew to 0x124770 (+5.1 KB over step 2).
 
-## Two OTA slots and updates (P52, 2026-11-03)
+## Two OTA slots and updates (P52, 2026-11-02)
 
 Full write-up, layout and numbers: `docs/ota.md`.
 
@@ -323,7 +327,7 @@ Full write-up, layout and numbers: `docs/ota.md`.
   - A rolled-back try pushed the older kept package out. Prune now keeps three.
 - **Rollback is quick:** an image that aborts at boot is back on the old slot in about 3 s. The boot reason after that is a panic (reset reason 4).
 
-## Apps on the SD card (P51, 2026-11-03)
+## Apps on the SD card (P51, 2026-11-02)
 
 Measured on COM9, USB link, dev build, FAT32 card in.
 

@@ -144,7 +144,7 @@ Files on the board's SD card under `/sd/fenixos` (P53, firmware 0.1.23 and later
 | 0x67 | FILE_END | P→B | (empty). The board reads the part back, checks the sha256, then puts it in place of any old file. Answered with FILE_RESULT op write |
 | 0x68 | FILE_ACK | B→P | next_offset:u32 |
 | 0x69 | FILE_RESULT | B→P | op:u8 ‖ code:u8 ‖ path:str ‖ text:bytes. Ops: 1 list, 2 read, 3 delete, 4 write, 5 shot. Codes: 0 ok, 1 not found, 2 not allowed, 3 no card, 4 no space, 5 bad hash, 6 storage error, 7 busy. A list or read that works answers with FILE_LIST or FILE_DATA instead |
-| 0x6A | SHOT_SAVE | P→B | (empty). Save the screen to `/sd/fenixos/shots/` (P53 step 3, not built yet). Answered with FILE_RESULT op shot; its path is the saved file |
+| 0x6A | SHOT_SAVE | P→B | (empty). Save the screen to `/sd/fenixos/shots/<time>.bmp` (P53). Answered with FILE_RESULT op shot; its path is the saved file. An older board answers ERROR unknown type |
 
 ## Versioning
 
