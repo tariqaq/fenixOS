@@ -195,8 +195,9 @@ Releases: v0.1.0 (P10) to v0.1.19 (P42, P44 to P48); tags on GitHub.
   - [x] 5. Docs (packages, registry, template copies, Morpheus answer), tests, release v0.1.26
     - Done: VERSION 0.1.26 (`tools/version.py`), template pinned to v0.1.26, README status and app features, `docs/requests/morpheus.md` "Shipped in fenixOS v0.1.26". All checks and `cargo test --workspace` pass, 41 sim shots match. Release build: firmware 0x13af50, signed `fenixOS_0.1.26.fwp` (1259 KB), PC app 0.1.26 installed, board flashed over USB: heap 54.2 KB on Home; the view-app with the long accented title on the board looks like the sim (47.8 KB free with it open, 40.6 KB lowest); view-app removed again (board keeps only the sample app). Not clicked through by hand: the `secret` field in App settings (svelte-check and the Rust tests only)
 
-- [ ] P55 Full audit after the run (user: "go thru all files literally everything and audit for bugs", security excluded)
-  - [ ] 1. Board: every file under `board/components/fenix_*`, `board/main`, `board/sim` read whole; bugs fixed with host or sim tests where possible
+- [~] P55 Full audit after the run (user: "go thru all files literally everything and audit for bugs", security excluded)
+  - [~] 1. Board: every file under `board/components/fenix_*`, `board/main`, `board/sim` read whole; bugs fixed with host or sim tests where possible
+    - Log: `docs/audit-2026-11.md` (started 2026-11-02 after v0.1.26). Read so far: (none)
   - [ ] 2. Crates: every file under `crates/` read whole; fixes with cargo tests
   - [ ] 3. PC app: `app/src-tauri/src/*`, `app/src/**` read whole; fixes, svelte-check, cargo tests
   - [ ] 4. Tools, templates, registry, workflows (`tools/`, `templates/`, `registry/`, `.github/`) read whole
