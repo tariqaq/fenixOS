@@ -99,6 +99,8 @@ CJK is likely too big for flash. Say so if it is.
 
 Until requests 1 and 2 ship, Morpheus can only be one generic card whose text, bar and buttons change with the context. Once fenixOS ships them, Morpheus sets `min_fenixos` to that release.
 
+Since then: v0.1.27 (2026-11-02) has audit fixes only (`docs/audit-2026-11.md`); nothing changes for apps, and the template is pinned to v0.1.27.
+
 ## Shipped in fenixOS v0.1.26 (2026-11-02)
 
 Request 5 and the settings answer. Set `min_fenixos = "0.1.26"` in `app.toml` (and in the manifest when you use `secret`: the registry checks it). The template is pinned to v0.1.26.

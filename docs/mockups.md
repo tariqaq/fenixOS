@@ -37,6 +37,11 @@ Status: approved by the user on 2026-10-29 ("follow it exactly as it is") after 
 | 16 | PcLogs | PC: log sheet (filter All / Board / Apps / Problems, Copy, Open log folder), opened from the Board page |
 | 17 | PcTaskManager | PC: Task manager (P27, drawn in P35 from the shipped page): CPU per core, memory, the link (USB; over Wi-Fi "Wi-Fi link" without line use), storage, display, wireless, threads. Series colours `chart-1` / `chart-2`. In `design/mockups/` only; the review canvas gets it at its next publish |
 
+Added in P50 to P51-M (2026-11-02 overnight run) without artboards, designed by the agent under `DESIGN.md` (user: no mock-up review overnight); board screens are in the simulator set, `docs/screens/board/`:
+
+- Board: Settings › Storage SD card group and the CJK text row (`storage`, P50, P54); Home pages with page dots, faded tiles and the SD badge (`home_page2`, `home_faded`, `home_card_out`, P51); app states Turned off with Turn on, Not on this PC, Starting, Insert the SD card, PC not connected with the last values (`app_host_off`, `app_not_here`, `app_starting`, `app_card_missing`, `app_offline`, P51, P53); About update rows and the update screens (`about_update`, `settings_update`, `update_progress`, `update_failed`, P52); the settings backup sheet (`backup_offer`, `backup_fresh`, P53); CJK text, views and the bound image (`app_cjk`, `app_view`, `app_view_call`, P54, P50-M).
+- PC: the Sync with board card and where each app lives on Apps (P51); Board page Screenshot to the card and Chinese, Japanese and Korean text (P53, P54); Logs › On the card (P53); a `secret` setting's password field and Clear on App settings (P51-M).
+
 ## Review round 1 (2026-10-29)
 
 - Home layout: keep **both** styles; the user picks Tiles or Dock in Settings › Home screen. (Settings artboard updated.)

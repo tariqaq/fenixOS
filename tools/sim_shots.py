@@ -2,7 +2,8 @@
 """Board screens from the PC simulator, checked against golden images.
 
   python tools/sim_shots.py            build, run board/sim/screens.txt, compare with board/sim/golden
-  python tools/sim_shots.py --update   same, but rewrite the golden images (review the diff in git)
+  python tools/sim_shots.py --update   same, but rewrite the golden images and their copy in
+                                       docs/screens/board (review the diff in git)
   python tools/sim_shots.py --no-build skip the CMake build (use the existing fenix_sim.exe)
 
 Needs Windows with the Visual Studio C++ tools (board/sim/build.ps1) and cargo (fenix-pkg builds
@@ -21,6 +22,7 @@ SIM = ROOT / "board" / "sim"
 BUILD = SIM / "build"
 SHOTS = BUILD / "shots"
 GOLDEN = SIM / "golden"
+DOCS = ROOT / "docs" / "screens" / "board"  # the same set for the docs (README shows three)
 EXE = BUILD / "fenix_sim.exe"
 SIM_TIMEOUT_S = 60
 
@@ -89,12 +91,14 @@ def main():
 
     shots = sorted(SHOTS.glob("*.png"))
     if "--update" in args:
-        GOLDEN.mkdir(exist_ok=True)
-        for old in GOLDEN.glob("*.png"):
-            old.unlink()
+        for d in (GOLDEN, DOCS):
+            d.mkdir(parents=True, exist_ok=True)
+            for old in d.glob("*.png"):
+                old.unlink()
         for s in shots:
             write_png(GOLDEN / s.name, *read_png(s))
-        print(f"{len(shots)} golden images in {GOLDEN.relative_to(ROOT)}")
+            shutil.copyfile(GOLDEN / s.name, DOCS / s.name)
+        print(f"{len(shots)} golden images in {GOLDEN.relative_to(ROOT)} and {DOCS.relative_to(ROOT)}")
         return
 
     bad = []
