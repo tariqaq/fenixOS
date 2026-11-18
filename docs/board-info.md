@@ -595,3 +595,13 @@ Asked: can the board use a USB Wi-Fi adapter (an ALFA-made RTL8811AU, `USB\VID_0
 - A dock's upstream USB-C port expects a host (a PC). Docked to the board, there are two USB devices and no host, so only power gets through. The adapter gets power but no enumeration.
 - Even a chip with USB OTG (ESP32-S2/S3) would need a Realtek 8811AU driver, its firmware blob and an 802.11 stack (Linux's `rtl8812au` is tens of thousands of lines). ESP-IDF has none, and ~53 KB of free heap would not hold one.
 - The dock setup still works as a power supply for the board (powerbank, dock, board).
+
+## DHT22 sensors on CN1 (P59 spike `board/spikes/dht`, 2026-11-18)
+
+Wiring (user, following the 3D guide): CN1 3.3V and GND to two strips of the white 170-hole breadboard, each DHT22 module's `+` and `-` to those strips, CN1 IO27 straight onto sensor A's `out` pin, IO22 onto sensor B's. The modules are Makerhub "DHT22HT" (AM2302 on a small board with a 3-pin header). IO27 also has the board's own 10 kΩ pull-up (R18); the ESP32's internal pull-up is on as well.
+
+- **Method:** the pin is open drain (GPIO), driven low 1.2 ms and released; the RMT receiver (1 MHz ticks, 1 µs glitch filter, 200 µs idle ends the frame) times the reply. The last 40 highs are the bits (a high over 48 µs is a 1).
+- **Result:** 24 of 24 reads valid (12 per sensor, 2.5 s apart each, sensors 1.25 s apart), no checksum, short or missing replies. 42 RMT symbols per reply. Bit highs: 0 at most 27 µs, 1 at least 70 µs, so the 48 µs threshold has wide margins.
+- **Readings:** A (IO27) 24.2 °C, 66.1 to 65.9 %RH; B (IO22) 24.7 °C, 65.6 to 63.2 %RH (the two sit side by side; B's humidity was still settling).
+- **COM port:** the board showed up as COM12 this time (COM9 before); `fenix` finds it on its own, `tools/serial_read.py` needs `--port COM12`.
+- The spike uses fenixOS's partition table and goes into `ota_0`; `fenix flash board/build` put v0.1.28 back with settings kept (`fenix hello` after).
