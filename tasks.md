@@ -110,6 +110,16 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
   - [x] 3. Sim shots, docs (DESIGN.md Motion, packages.md, sd-card.md, decisions, board-info), tests, build, flash, user check; release when it holds
     - Done (2026-11-03): docs (DESIGN.md Motion, packages, spec, decisions, PLAN, Morpheus note, board-info, toolchain), template pinned to v0.1.28 and zip; checks ok, cargo test 0 failed, pkg host test, svelte-check 0/0, sim 42/42 (P57 step 1). v0.1.28: firmware 0x13b150, signed `fenixOS_0.1.28.fwp` (1260 KB), installer built and installed (/S), board flashed (`fenix hello`: v0.1.28). Tagged
 
+- [~] P59 Wired sensors: two DHT22 on CN1 (IO22, IO27) for the `io.github.tariqaq.sensors` app (request: `docs/requests/fenixos-sensor-support.md`; user, 2026-11-18: "first confirm if u can get readings from sensor then implement the firmware side as requested"). Wired by the user with the 3D guide (sensor A on IO27, B on IO22, 3.3 V and GND through the white breadboard). Choices: the full design (no fallback), "Turned off on host PC" keeps no live readings, `fenix sensors fake` is a normal command whose values live in RAM only
+  - [ ] 1. Spike `board/spikes/dht`: RMT RX on IO22 and IO27, start pulse by GPIO, decode 40 bits, checksum; print both sensors every 2.5 s on the UART console. Uses fenixOS's partition table (NVS and the apps partition stay). Flash with `fenix flash`, read with `tools/serial_read.py`, then flash fenixOS back. Record readings, timings and failures in `docs/board-info.md`
+  - [ ] 2. Firmware driver `fenix_sys/sensors.cpp`: RMT channels per declared pin, read every 2 s staggered 1 s, ok / error / missing after 3 bad reads, pins configured only while an installed app declares them, read while the app is open or its PC half runs on a connected PC; cost in `fenix sysinfo`
+  - [ ] 3. Package format: `[[sensor]] kind pin bind` in `app.toml`; `fenix-pkg` checks (kind dht22, pin 22 or 27, once per app, unique bind prefix, `min_fenixos` 0.1.29) and `inspect`; Rust writer and reader, C++ reader; generated bindings `<b>_temp _temp_text _hum _hum_text _ok _state` count toward 64
+  - [ ] 4. Board side: the board sets the generated bindings itself; live layout while the PC is away for apps with sensors; store keeps each app's sensor list (index), pin clash refused at install
+  - [ ] 5. Link: `SENSOR` frame board to PC (spec, Rust, C++, vectors); PC app routes it to the app's PC half as pipe `sensor`; `fenix-sdk` `Message::Sensor`, `SensorState`, `app.sensors()`
+  - [ ] 6. PC app and registry: `sensors` permission (`tools/registry.py` PERMISSIONS and PERMISSION_SINCE, template `app.py`), install refuses a package with `[[sensor]]` and no permission, app page lists the pins
+  - [ ] 7. CLI: `fenix sensors [s]`, `fenix sensors fake <pin> <temp> <hum> | missing | error | off`; `fenix sysinfo` shows the sensor task
+  - [ ] 8. Docs (board-info CN1, packages, sidecars, registry, spec, dev-guide and template copies), sim screens, tests, build, flash, user check with both sensors, release v0.1.29
+
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
   - [x] Phone Web Bluetooth page: dropped, P38 removed Bluetooth (needs BLE on the board)
