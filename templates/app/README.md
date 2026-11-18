@@ -30,7 +30,7 @@ Release: bump `version` in both files, tag `v<version>`, push the tag. The workf
 | Path | What |
 |---|---|
 | `AGENTS.md`, `CLAUDE.md` | Rules for AI agents |
-| `docs/fenixos/` | App format, design language, PC half, registry (copies from fenixOS) |
+| `docs/fenixos/` | Developer guide (`dev-guide.md`: board, PC app, `fenix` CLI, dev loop in one file), app format, design language, PC half, registry (copies from fenixOS) |
 | `design/tokens.json` | Design tokens (copy) |
 | `manifest.json` | Registry manifest: name, colour, permissions, settings |
 | `app/board/` | Board half: `app.toml`, `layout.json`, `icon.png` |

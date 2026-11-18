@@ -1,8 +1,8 @@
 # fenixOS app developer guide
 
-One file with what you need to build an app for fenixOS: the board, the PC app, the `fenix` CLI, the app format, the PC half and the release steps. Use it with `fenixos-app-template.zip` (repo root; source `templates/app/`). Written for fenixOS **v0.1.28** (2026-11-03).
+One file with what you need to build an app for fenixOS: the board, the PC app, the `fenix` CLI, the app format, the PC half and the release steps. It ships in `fenixos-app-template.zip` as `docs/fenixos/dev-guide.md` (source in the fenixOS repo: `templates/app/`). Written for fenixOS **v0.1.28** (2026-11-03).
 
-The template's `docs/fenixos/*.md` are the full reference for the app format, design, PC half and registry. This guide sums them up and adds the board, the PC app and the CLI. Where the two differ, the fenixOS repo wins: `docs/packages.md`, `docs/sidecars.md`, `docs/registry.md`, `DESIGN.md`.
+The other `docs/fenixos/*.md` files beside this one are the full reference for the app format, design, PC half and registry. This guide sums them up and adds the board, the PC app and the CLI. Where they differ, the fenixOS repo (`tariqaq/fenixOS`) wins: `docs/packages.md`, `docs/sidecars.md`, `docs/registry.md`, `DESIGN.md`.
 
 ## 1. The pieces
 
@@ -48,7 +48,7 @@ Pin map (for reference only; apps never touch pins):
 | Speaker | 26 (DAC) |
 | Free | 22, 27, 35 (input only) |
 
-Sources: `docs/board-info.md`, `pics/ANALYSIS.md`.
+Sources (fenixOS repo): `docs/board-info.md`, `pics/ANALYSIS.md`.
 
 ### Flash layout
 
@@ -144,7 +144,7 @@ Unzip `fenixos-app-template.zip` into a new repo under `github.com/tariqaq/` (th
 | Path | What |
 |---|---|
 | `AGENTS.md`, `CLAUDE.md` | Rules for AI agents |
-| `docs/fenixos/` | `app-format.md`, `design.md`, `pc-half.md`, `registry.md` |
+| `docs/fenixos/` | `dev-guide.md` (this file), `app-format.md`, `design.md`, `pc-half.md`, `registry.md` |
 | `design/tokens.json` | Design tokens |
 | `manifest.json` | Registry manifest: name, colour, permissions, settings |
 | `app/board/` | `app.toml`, `layout.json`, `icon.png` |

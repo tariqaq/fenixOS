@@ -4,12 +4,13 @@ This repo is one **fenixOS app**: a screen on the ESP32-2432S028R board (the "CY
 
 ## Read first, in this order
 
+0. `docs/fenixos/dev-guide.md`: the overview in one file: the board's hardware, the fenixOS PC app, the `fenix` CLI, the build and test loop.
 1. `docs/fenixos/app-format.md`: what the board half can be (`app.toml`, `layout.json`, limits).
 2. `docs/fenixos/design.md`: the design language. It is **locked**: use its tokens, fonts, icons and patterns only. No new colours, fonts, shadows or gradients.
 3. `docs/fenixos/pc-half.md`: the Windows helper (`fenix-sdk`), only if the app needs data from the PC.
 4. `docs/fenixos/registry.md`: the manifest and how the app gets listed.
 
-These four files are copies from fenixOS (version in `README.md`). Where they disagree with the fenixOS repo, fenixOS wins: re-copy, do not patch.
+These files are copies from fenixOS (version in `README.md`). Where they disagree with the fenixOS repo, fenixOS wins: re-copy, do not patch.
 
 ## What an app is
 
