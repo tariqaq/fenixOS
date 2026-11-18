@@ -5,7 +5,8 @@
 //
 // One task reads: every second it takes the next slot, so each pin is read every 2 s and the two
 // are 1 s apart. A slot is read while the UI wants it (its app is open, or the app's PC half runs
-// with the link up: sensors_want) or a watch asks for it. A read drives the pin low for 1.2 ms by
+// with the link up: sensors_want), a watch asks for it, or a page polled /sensors.json in the
+// last 10 s (P61, declared pins only). A read drives the pin low for 1.2 ms by
 // GPIO, releases it, and lets the RMT receiver time the answer (1 MHz ticks), so interrupts from
 // the display, touch or Wi-Fi cannot corrupt the bits (measured in the spike: 24 of 24 good).
 // Per slot: ok on a good read; after 3 failed reads in a row, missing when the last 3 got no
@@ -14,6 +15,7 @@
 // the last failure only, so bad, bad, none read "missing" and the label could flip per read. Readings reach the UI through sensors_get (a sequence number that moves
 // on every change) and the PC through SENSOR frames, sent from this task.
 #include <string.h>
+#include <time.h>
 
 #include "driver/gpio.h"
 #include "driver/rmt_rx.h"
@@ -43,6 +45,8 @@ static Slot s_slot[SENSOR_SLOTS];
 static SensorReading s_read[SENSOR_SLOTS];  // under s_mux
 static portMUX_TYPE s_mux = portMUX_INITIALIZER_UNLOCKED;
 static volatile uint8_t s_want, s_up, s_watch;  // pin masks: bit 0 IO22, bit 1 IO27
+static volatile int64_t s_web_until;              // P61: read declared pins until then (us)
+static constexpr int64_t WEB_HOLD_US = 10 * 1000000;
 
 static bool IRAM_ATTR on_done(rmt_channel_handle_t, const rmt_rx_done_event_data_t* ev, void* ctx) {
   BaseType_t woke = pdFALSE;
@@ -128,7 +132,7 @@ static Got read_dht22(int i, int16_t* t, uint16_t* h) {
 }
 
 // Pins some installed app declares (AppMeta::sensors: low nibble IO22, high nibble IO27).
-static uint8_t declared() {
+uint8_t sensors_declared() {
   uint8_t m = 0;
   AppMeta a;
   for (int i = 0; store_at(i, &a); i++) m |= (a.sensors & 0x0F ? 1 : 0) | (a.sensors & 0xF0 ? 2 : 0);
@@ -136,6 +140,12 @@ static uint8_t declared() {
 }
 
 static void publish(int i, uint8_t state, int16_t t, uint16_t h, bool values) {
+  // Local time first (no clock calls inside the critical section). Without a clock the last
+  // good time stays: it was right when it was taken.
+  char hms[9] = "";
+  struct tm tm;
+  if (values && state == fnx::sensor_state::OK && clock_local(&tm))
+    snprintf(hms, sizeof hms, "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
   portENTER_CRITICAL(&s_mux);
   SensorReading& r = s_read[i];
   bool changed = r.state != state || (values && (r.temp_x10 != t || r.hum_x10 != h));
@@ -146,6 +156,11 @@ static void publish(int i, uint8_t state, int16_t t, uint16_t h, bool values) {
     r.hum_x10 = h;
   }
   r.uptime_ms = (uint32_t)(esp_timer_get_time() / 1000);
+  if (values && state == fnx::sensor_state::OK) {  // P61: the time of every good read
+    r.good_ms = r.uptime_ms ? r.uptime_ms : 1;
+    if (hms[0] || !r.good_hms[0]) memcpy(r.good_hms, hms, sizeof r.good_hms);
+    changed = true;
+  }
   if (changed) r.seq++;
   portEXIT_CRITICAL(&s_mux);
 }
@@ -174,10 +189,12 @@ static void send(int i) {
 static void sensor_task(void*) {
   for (int i = 0;; i = (i + 1) % SENSOR_SLOTS) {
     vTaskDelay(pdMS_TO_TICKS(1000));
-    uint8_t bit = 1 << i, watch = s_watch;
+    uint8_t bit = 1 << i, watch = s_watch, decl = sensors_declared();
     Slot& s = s_slot[i];
-    set_up(i, (declared() | watch) & bit);
-    if (!((s_want | watch) & bit)) {
+    set_up(i, (decl | watch) & bit);
+    // A page polling /sensors.json (P61) keeps the declared pins read; it sends no frames.
+    uint8_t web = esp_timer_get_time() < s_web_until ? decl : 0;
+    if (!((s_want | watch | web) & bit)) {
       if (sensors_get(i).state != SENSOR_STARTING) stop(i);  // the next read starts afresh
       continue;
     }
@@ -231,6 +248,8 @@ SensorReading sensors_get(int slot) {
 }
 
 void sensors_watch(uint8_t pins) { s_watch = pins & 3; }
+
+void sensors_web_poll() { s_web_until = esp_timer_get_time() + WEB_HOLD_US; }
 
 void sensors_fake(const fnx::SensorFake& f) {
   int i = f.pin == 22 ? 0 : f.pin == 27 ? 1 : -1;

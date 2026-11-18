@@ -73,6 +73,11 @@ static void sensors(const char* path) {
   FILE* f = fopen(path, "rb");
   uint8_t nib = 0;
   expect(f && fpkg::read_sensor_nibbles(f, b.size(), &nib) && nib == 0x11, "nibbles from the file");
+  char binds[2][fpkg::MAX_SENSOR_BIND + 1];
+  uint8_t nib2 = 0;
+  expect(f && fpkg::read_sensors(f, b.size(), &nib2, binds) && nib2 == 0x11 && !strcmp(binds[0], "s1") &&
+             !strcmp(binds[1], "s2"),
+         "binds from the file");
   if (f) fclose(f);
   struct Bad {
     size_t at;  // from the end

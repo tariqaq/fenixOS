@@ -59,7 +59,9 @@ fn print_sensors(p: &fenix_pkg::Package) {
         let b = p.sensor_bind(s);
         let gen: Vec<String> = fenix_pkg::SENSOR_BINDS
             .iter()
+            .chain(std::iter::once(&fenix_pkg::SENSOR_TIME_BIND))
             .map(|x| format!("{b}_{x}"))
+            .filter(|n| p.bind_id(n).is_some())
             .collect();
         println!("sensor {name}, set by the board: {}", gen.join(", "));
     }

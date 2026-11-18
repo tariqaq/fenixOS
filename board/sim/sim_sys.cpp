@@ -51,6 +51,8 @@ bool set_sensor(int pin, const std::vector<std::string>& a) {
   sys::SensorReading& r = s_sensor[pin == 22 ? 0 : 1];
   if (a.size() == 2) {
     r.state = fnx::sensor_state::OK;
+    r.good_ms = 1;
+    strlcpy(r.good_hms, "14:03:27", sizeof r.good_hms);  // fixed, so the goldens stay put
     r.temp_x10 = (int16_t)lround(atof(a[0].c_str()) * 10);
     r.hum_x10 = (uint16_t)lround(atof(a[1].c_str()) * 10);
   } else if (a.size() == 1 && (a[0] == "missing" || a[0] == "error" || a[0] == "reading")) {
@@ -259,6 +261,8 @@ void sensors_want(uint8_t, uint8_t) {}
 SensorReading sensors_get(int slot) { return sim::s_sensor[slot]; }
 void sensors_watch(uint8_t) {}
 void sensors_fake(const fnx::SensorFake&) {}
+void sensors_web_poll() {}
+uint8_t sensors_declared() { return 0; }
 FILE* store_open(const char* id, size_t* n) {
   if (sim::s_card_out) return nullptr;
   std::error_code ec;

@@ -1080,7 +1080,7 @@ static void set_value(uint16_t bind, uint8_t kind, int32_t i, const char* text, 
   if (shows) refresh_shown(true);
 }
 
-// A sensor's six bindings from its latest reading (docs/packages.md "Sensors"). Temperature and
+// A sensor's bindings (six, and _time from 0.1.31) from its latest reading (docs/packages.md "Sensors"). Temperature and
 // humidity ints keep their last good values while the state is not ok (`_ok` hides them).
 static void sensor_values(Sens& se, bool show) {
   sys::SensorReading r = sys::sensors_get(se.slot);
@@ -1097,6 +1097,7 @@ static void sensor_values(Sens& se, bool show) {
                    : r.state == fnx::sensor_state::ERROR   ? "Read error"
                                                            : "Reading";
   const uint16_t* id = se.ids;
+  set_value(id[6], 2, 0, r.good_hms[0] ? r.good_hms : "--:--:--", false, show);  // P61, 0.1.31 packages
   if (ok || r.seq == 0) {  // before any reading the bars rest at 0
     set_value(id[0], 0, r.temp_x10, "", false, show);
     set_value(id[2], 0, r.hum_x10, "", false, show);

@@ -49,7 +49,7 @@ bool clock_local(struct tm* out);  // false while invalid
 // partition "apps" at /apps, FLASH_PKG_MAX per package). An index in RAM lists them all.
 constexpr int MAX_APPS = 32;  // APP_INDEX pages them; Home pages its tiles
 constexpr uint32_t FLASH_PKG_MAX = 128 * 1024;
-struct AppMeta {  // 124 B
+struct AppMeta {  // 158 B
   char id[49];  // fpkg::MAX_ID + 1
   char version[32];
   char name[32];
@@ -57,6 +57,7 @@ struct AppMeta {  // 124 B
   uint8_t where;   // fnx::app_where
   uint8_t state;   // fnx::app_state: CARD_MISSING while its SD card is out
   uint8_t sensors;  // P59: sensor kind on IO22 (low nibble) and IO27 (high nibble), 0 none
+  char sbind[2][17];  // P61: their bind prefixes (/sensors.json); "" when none or read from sd.idx
 };
 bool store_mount();  // boot: flash apps, plus the card's apps from /apps/sd.idx (card missing until scanned)
 void store_usage(uint32_t* used_kb, uint32_t* total_kb);  // the flash store
@@ -88,7 +89,9 @@ struct SensorReading {
   int16_t temp_x10;  // the last good values
   uint16_t hum_x10;
   uint32_t uptime_ms;  // of the last read
-  uint32_t seq;        // moves whenever state or values change
+  uint32_t seq;        // moves whenever state or values change, and on every good read (P61)
+  uint32_t good_ms;    // P61: uptime of the last good read, 0 before the first
+  char good_hms[9];    // P61: local HH:MM:SS of the last good read, "" before it or without a clock
 };
 void sensors_start();  // boot, after store_mount
 // UI task: the pins to read (open app, PC halves running) and those whose readings go to the PC.
@@ -96,6 +99,9 @@ void sensors_want(uint8_t pins, uint8_t upstream);
 SensorReading sensors_get(int slot);  // any task
 void sensors_watch(uint8_t pins);     // link task: SENSOR_WATCH; 0 when the link drops
 void sensors_fake(const fnx::SensorFake& f);  // link task: SENSOR_FAKE
+// Web task (P61): a /sensors.json request; every declared pin is read for the next 10 s.
+void sensors_web_poll();
+uint8_t sensors_declared();  // pins some installed app declares (bit 0 IO22, bit 1 IO27)
 
 // ---- Shared board state (written by the UI, read by the link task) ----
 struct BoardInfo {

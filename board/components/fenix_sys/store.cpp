@@ -107,6 +107,13 @@ static void set_meta(AppMeta& m, std::string_view id, std::string_view ver, std:
   m.color = color;
 }
 
+// Each sensor's bind prefix by pin (P61).
+static void set_binds(AppMeta& m, const fpkg::Package& pkg) {
+  for (const fpkg::Sensor& s : pkg.sensors)
+    snprintf(m.sbind[s.pin == fpkg::SENSOR_PIN_A ? 0 : 1], sizeof m.sbind[0], "%.*s",
+             (int)pkg.strings[s.bind].size(), pkg.strings[s.bind].data());
+}
+
 // Id, version, name and colour of a package file: from its first 512 bytes when the strings fit,
 // else from a full parse (strings and props only, P39).
 static bool read_meta(const char* p, AppMeta& m) {
@@ -120,7 +127,7 @@ static bool read_meta(const char* p, AppMeta& m) {
   bool ok = fpkg::peek(head, got, &id, &ver, &name, &color);
   if (ok) {
     set_meta(m, id, ver, name, color);
-    ok = fpkg::read_sensor_nibbles(f, n, &m.sensors);  // the table at the end (P59)
+    ok = fpkg::read_sensors(f, n, &m.sensors, m.sbind);  // the table at the end (P59), prefixes (P61)
   } else {
     fseek(f, 0, SEEK_SET);
     fpkg::Package pkg;
@@ -129,6 +136,7 @@ static bool read_meta(const char* p, AppMeta& m) {
     if (ok) {
       set_meta(m, pkg.id, pkg.version, pkg.name, pkg.head.tile_color);
       m.sensors = fpkg::sensor_nibbles(pkg.sensors);
+      set_binds(m, pkg);
     }
   }
   fclose(f);
@@ -524,6 +532,7 @@ uint8_t store_end(char* why, size_t cap) {
   m.where = where;
   m.state = fnx::app_state::READY;
   m.sensors = fpkg::sensor_nibbles(pkg.sensors);
+  set_binds(m, pkg);
   {
     Lock l;
     AppMeta* e = find_in(s_index, id);

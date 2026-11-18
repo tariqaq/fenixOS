@@ -71,7 +71,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P57 Apps slide open when RAM allows, SD card noticed when pulled or put back; release v0.1.28
 - P58 One-file guide for app authors (board specs and pins, PC app, `fenix` CLI, app format, PC half, manifest, dev loop), user request 2026-11-03. Corrected (2026-11-18, user: "bundle it inside the zip"): moved from `docs/app-dev-guide.md` into the template as `docs/fenixos/dev-guide.md`
 
-Releases: v0.1.0 (P10) to v0.1.30 (P60); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
+Releases: v0.1.0 (P10) to v0.1.31 (P61); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
 
 ## Open (needs the user)
 
@@ -130,6 +130,15 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
 
 - [x] P60 Sensor state for mixed failures (user, 2026-11-18, from a ChatGPT code review: "fix it"): v0.1.29 labelled 3 failures in a row by the last one alone (bad, bad, none = missing; the label could flip per read). Now missing only when the last 3 reads got no answer, else error (`sensors.cpp` `none_run`); spec and packages.md corrected. Release v0.1.30, built locally, board flashed, app installed; GitHub builds at its own pace
   - Not tested on hardware: needs a flaky sensor; both sensors read ok after the flash
+
+- [x] P61 Sensor read time and app web pages (user, 2026-11-18: "proceed with the request", `docs/requests/fenixos-sensor-web.md`)
+  - [x] 1. `<b>_time`: `fenix-pkg` (generated from min_fenixos 0.1.31, refused below; inspect lists 7), C++ reader (6 required + `_time`), `sensors.cpp` (HH:MM:SS of each good read, seq moves every good read), `app_pkg.cpp`. Tests: Rust `sensor_time_binding`, C++ `read_sensors`
+  - [x] 2. `/sensors.json` + 10 s watch (`sensors_web_poll`, `sensors_declared`; `AppMeta::sbind` from `fpkg::read_sensors`)
+  - [x] 3. `/apps/<id>/` (only `data/<id>/web/`, installed ids, 301 without slash), `/apps.json`, links on the built-in page; httpd stack 3 -> 4 KB (3 KB left 224 B)
+  - [x] 4. Fixture `tools/sensor-app` shows `_time` (min 0.1.31), 4 sensor goldens updated (46)
+  - [x] 5. Board test (Wi-Fi via hotspot): endpoints, path rules (count.txt, .., %, \, unknown id 404), reads stop 10-11 s after polling, remove = 404; heap 25.6 KB low with app open + 3 pollers + Wi-Fi link (criterion 7 asked > 35.9 KB: not met, documented). Fixture removed from the board after
+  - [x] 6. Docs (packages, sd-card, sidecars, board-info, request status, template copies, zip), v0.1.31 release built locally, flashed, installed; tag pushed, GitHub builds at its own pace
+  - Not built (optional in the request): PC app URL hint, `fenix_sdk::web_url`, `fenix web`, `<b>_age`
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)

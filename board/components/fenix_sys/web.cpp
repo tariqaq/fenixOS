@@ -3,8 +3,13 @@
 // nothing on the board. One small page in the design language (tokens from design/tokens.json),
 // refreshed from /status.json every 2 s. Files in /sd/fenixos/web/ come first (P53): a page put
 // there replaces the built-in one, and can read /status.json the same way.
+// P61: /sensors.json (wired sensors, keeps the declared pins read for 10 s), /apps.json (apps
+// with a page) and /apps/<id>/... (an app's own page: /sd/fenixos/data/<id>/web/, written by its
+// PC half's put_file). All public on the network, like the rest.
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <strings.h>
 #include <time.h>
 
@@ -15,6 +20,7 @@
 #include "esp_heap_caps.h"
 #include "esp_http_server.h"
 #include "esp_timer.h"
+#include "fenix_pkg.h"
 #include "fenix_proto.h"
 #include "fenix_sys.h"
 
@@ -35,6 +41,7 @@ p.n{color:var(--l2);font-size:13px;margin:8px 16px}</style></head><body>
 <h1>fenixOS</h1><p id="clock">--:--</p><p id="date">Loading</p>
 <h2>Board</h2><div class="g" id="board"></div>
 <h2>Wi-Fi</h2><div class="g" id="wifi"></div>
+<div id="apw" hidden><h2>App pages</h2><div class="g" id="apps"></div></div>
 <p class="n">This page only shows the board's state. Change settings on the board or in fenixOS on your PC.</p>
 <script>
 const rows=(id,a)=>document.getElementById(id).innerHTML=a.map(([k,v,c])=>
@@ -49,9 +56,13 @@ rows("board",[["Version",j.version],["Running for",up(j.uptime)],["PC",j.pc?"Con
 rows("wifi",[["Network",j.ssid],["Signal",j.rssi+" dBm"],["Address",j.ip]]);}catch(e){
 document.getElementById("date").textContent="Board not answering"}}
 tick();setInterval(tick,2000);
+fetch("/apps.json",{cache:"no-store"}).then(r=>r.json()).then(a=>{if(!a.length)return;
+document.getElementById("apps").innerHTML=a.map(x=>`<div class="r"><a href="/apps/${x.id}/" style="color:var(--l)">${
+x.name.replace(/[<&]/g,"")}</a><span class="v">Open</span></div>`).join("");document.getElementById("apw").hidden=false}).catch(()=>{});
 </script></body></html>)html";
 
 static constexpr const char* WEB = "/sd/fenixos/web";
+static constexpr const char* DATA = "/sd/fenixos/data";  // P61: <id>/web/ is an app's page
 static constexpr size_t SEND_BUF = 1024;
 
 static const char* mime(const char* path) {
@@ -71,9 +82,10 @@ static const char* mime(const char* path) {
   return "application/octet-stream";
 }
 
-// The request's path without its query, or false when it is not one the card may serve: no "..",
-// "\\" or "%" (no decoding; names on the card are plain). "/" and "dir/" mean their index.html.
-static bool card_path(const char* uri, char* full, size_t cap) {
+// `base` + the path `uri` (starting with "/") without its query, or false when it is not one the
+// card may serve: no "..", "\\" or "%" (no decoding; names on the card are plain). "/" and "dir/"
+// mean their index.html.
+static bool card_path(const char* base, const char* uri, char* full, size_t cap) {
   size_t n = strcspn(uri, "?#");
   if (!n || uri[0] != '/' || n > 96) return false;
   char rel[112];
@@ -81,13 +93,12 @@ static bool card_path(const char* uri, char* full, size_t cap) {
   rel[n] = 0;
   if (strstr(rel, "..") || strchr(rel, '\\') || strchr(rel, '%')) return false;
   if (rel[n - 1] == '/') strlcat(rel, "index.html", sizeof rel);
-  return (size_t)snprintf(full, cap, "%s%s", WEB, rel) < cap;
+  return (size_t)snprintf(full, cap, "%s%s", base, rel) < cap;
 }
 
-// A file from the card's web folder, sent in 1 KB chunks. False when there is none (or no card).
-static bool from_card(httpd_req_t* r) {
-  char full[160];
-  if (sd_info().state != fnx::sd_state::READY || !card_path(r->uri, full, sizeof full)) return false;
+// A file from the card, sent in 1 KB chunks. False when there is none (or no card).
+static bool send_file(httpd_req_t* r, const char* full) {
+  if (sd_info().state != fnx::sd_state::READY) return false;
   FILE* f = fopen(full, "rb");
   if (!f) return false;
   std::unique_ptr<char[]> b(new (std::nothrow) char[SEND_BUF]);
@@ -104,6 +115,37 @@ static bool from_card(httpd_req_t* r) {
   return true;
 }
 
+// A file from the card's web folder (P53).
+static bool from_card(httpd_req_t* r) {
+  char full[160];
+  return card_path(WEB, r->uri, full, sizeof full) && send_file(r, full);
+}
+
+// /apps/<id>/<path> (P61): <path> from the app's /sd/fenixos/data/<id>/web/, for installed apps
+// only. Nothing else in data/<id>/ is reachable. "/apps/<id>" redirects to "/apps/<id>/", so the
+// page's relative links work.
+static esp_err_t app_page(httpd_req_t* r) {
+  const char* p = r->uri + 6;  // after "/apps/"
+  size_t n = strcspn(p, "/?#");
+  char id[fpkg::MAX_ID + 1];
+  AppMeta m;
+  if (!n || n > fpkg::MAX_ID) return httpd_resp_send_404(r);
+  memcpy(id, p, n);
+  id[n] = 0;
+  if (!fpkg::valid_id(id) || !store_find(id, &m)) return httpd_resp_send_404(r);
+  if (p[n] != '/') {
+    char loc[fpkg::MAX_ID + 16];
+    snprintf(loc, sizeof loc, "/apps/%s/", id);
+    httpd_resp_set_status(r, "301 Moved Permanently");
+    httpd_resp_set_hdr(r, "Location", loc);
+    return httpd_resp_send(r, nullptr, 0);
+  }
+  char base[fpkg::MAX_ID + 32], full[200];
+  snprintf(base, sizeof base, "%s/%s/web", DATA, id);
+  if (card_path(base, p + n, full, sizeof full) && send_file(r, full)) return ESP_OK;
+  return httpd_resp_send_404(r);
+}
+
 static esp_err_t page(httpd_req_t* r) {
   if (from_card(r)) return ESP_OK;
   size_t n = strcspn(r->uri, "?#");
@@ -118,6 +160,7 @@ static const char* const MONTHS[] = {"January", "February", "March",     "April"
 
 // The board's state as JSON: version, uptime, heap, apps, PC link, time, date, weather, network.
 // Length, or 0 when `cap` is too small.
+static void json_esc(const char* in, char* out, size_t cap);
 static size_t status_json(char* b, size_t cap) {
   char t[8] = "", d[40] = "", wx[48] = "";
   struct tm tm;
@@ -142,19 +185,122 @@ static size_t status_json(char* b, size_t cap) {
   RadioInfo ri = radio_info();
   // The SSID is escaped for JSON: quotes and backslashes only (control bytes are dropped).
   char ssid[2 * fnx::SSID_LEN];
-  size_t k = 0;
-  for (const char* p = ri.name; *p && k < sizeof ssid - 2; p++) {
-    if ((uint8_t)*p < 0x20) continue;
-    if (*p == '"' || *p == '\\') ssid[k++] = '\\';
-    ssid[k++] = *p;
-  }
-  ssid[k] = 0;
+  json_esc(ri.name, ssid, sizeof ssid);
   n += snprintf(b + n, cap - n, ",\"ssid\":\"%s\",\"rssi\":%d,\"ip\":\"%u.%u.%u.%u\"", ssid, ri.rssi, ri.ip[0],
                 ri.ip[1], ri.ip[2], ri.ip[3]);
   if ((size_t)n + 2 > cap) return 0;
   b[n++] = '}';
   b[n] = 0;
   return n;
+}
+
+// `in` for a JSON string: quotes and backslashes escaped, control bytes dropped.
+static void json_esc(const char* in, char* out, size_t cap) {
+  size_t k = 0;
+  for (const char* p = in; *p && k + 2 < cap; p++) {
+    if ((uint8_t)*p < 0x20) continue;
+    if (*p == '"' || *p == '\\') out[k++] = '\\';
+    out[k++] = *p;
+  }
+  out[k] = 0;
+}
+
+// Appends to a heap buffer; false once it is full (the reply is then cut, never overrun).
+struct Out {
+  char* b;
+  size_t cap, n = 0;
+  bool add(const char* fmt, ...) __attribute__((format(printf, 2, 3))) {
+    va_list a;
+    va_start(a, fmt);
+    int k = vsnprintf(b + n, cap - n, fmt, a);
+    va_end(a);
+    if (k < 0 || (size_t)k >= cap - n) return false;
+    n += k;
+    return true;
+  }
+};
+
+static esp_err_t send_json(httpd_req_t* r, const Out& o, bool ok) {
+  httpd_resp_set_type(r, "application/json");
+  httpd_resp_set_hdr(r, "Cache-Control", "no-store");
+  if (!ok) return httpd_resp_send_500(r);
+  return httpd_resp_send(r, o.b, o.n);
+}
+
+// /sensors.json (P61, docs/sd-card.md): one entry per declared pin with its last reading and the
+// apps that declare it. Each request keeps those pins read for 10 s (sensors_web_poll).
+static esp_err_t sensors_json(httpd_req_t* r) {
+  sensors_web_poll();
+  static constexpr size_t CAP = 1536;
+  std::unique_ptr<char[]> b(new (std::nothrow) char[CAP]);
+  if (!b) return httpd_resp_send_500(r);
+  Out o{b.get(), CAP};
+  char now[9] = "";
+  struct tm tm;
+  if (clock_local(&tm)) snprintf(now, sizeof now, "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
+  bool ok = o.add("{\"time\":\"%s\",\"pc\":%s,\"sensors\":[", now, link_connected() ? "true" : "false");
+  uint8_t decl = sensors_declared();
+  uint32_t ms = (uint32_t)(esp_timer_get_time() / 1000);
+  bool first = true;
+  for (int i = 0; ok && i < SENSOR_SLOTS; i++) {
+    if (!(decl & (1 << i))) continue;
+    SensorReading s = sensors_get(i);
+    const char* st = s.state == fnx::sensor_state::OK        ? "ok"
+                     : s.state == fnx::sensor_state::MISSING ? "missing"
+                     : s.state == fnx::sensor_state::ERROR   ? "error"
+                                                             : "reading";
+    const char* label = s.state == fnx::sensor_state::OK        ? "Live"
+                        : s.state == fnx::sensor_state::MISSING ? "Not connected"
+                        : s.state == fnx::sensor_state::ERROR   ? "Read error"
+                                                                : "Reading";
+    ok = o.add("%s{\"pin\":%d,\"kind\":\"dht22\",\"state\":\"%s\",\"label\":\"%s\",", first ? "" : ",",
+               i ? 27 : 22, st, label);
+    first = false;
+    if (ok && s.good_ms) {
+      int t = s.temp_x10 < 0 ? -s.temp_x10 : s.temp_x10;
+      ok = o.add("\"temp\":%s%d.%d,\"hum\":%u.%u,\"read\":\"%s\",\"age\":%lu,", s.temp_x10 < 0 ? "-" : "",
+                 t / 10, t % 10, (unsigned)(s.hum_x10 / 10), (unsigned)(s.hum_x10 % 10), s.good_hms,
+                 (unsigned long)((ms - s.good_ms) / 1000));
+    } else if (ok) {
+      ok = o.add("\"temp\":null,\"hum\":null,\"read\":\"\",\"age\":null,");
+    }
+    ok = ok && o.add("\"apps\":[");
+    AppMeta m;
+    bool fa = true;
+    for (int k = 0; ok && store_at(k, &m); k++) {
+      uint8_t kind = (m.sensors >> (4 * i)) & 15;
+      if (!kind) continue;
+      ok = o.add("%s{\"id\":\"%s\",\"bind\":\"%s\"}", fa ? "" : ",", m.id, m.sbind[i]);
+      fa = false;
+    }
+    ok = ok && o.add("]}");
+  }
+  ok = ok && o.add("]}");
+  return send_json(r, o, ok);
+}
+
+// /apps.json (P61): installed apps whose page is on the card (data/<id>/web/index.html).
+static esp_err_t apps_json(httpd_req_t* r) {
+  static constexpr size_t CAP = 2048;
+  std::unique_ptr<char[]> b(new (std::nothrow) char[CAP]);
+  if (!b) return httpd_resp_send_500(r);
+  Out o{b.get(), CAP};
+  bool ok = o.add("[");
+  bool card = sd_info().state == fnx::sd_state::READY, first = true;
+  AppMeta m;
+  for (int k = 0; ok && card && store_at(k, &m); k++) {
+    char p[160];
+    struct stat st;
+    snprintf(p, sizeof p, "%s/%s/web/index.html", DATA, m.id);
+    if (stat(p, &st) != 0) continue;
+    char name[2 * sizeof m.name];
+    json_esc(m.name, name, sizeof name);
+    ok = o.add("%s{\"id\":\"%s\",\"name\":\"%s\",\"color\":\"#%06lx\"}", first ? "" : ",", m.id, name,
+               (unsigned long)(m.color & 0xFFFFFF));
+    first = false;
+  }
+  ok = ok && o.add("]");
+  return send_json(r, o, ok);
 }
 
 static esp_err_t status(httpd_req_t* r) {
@@ -169,7 +315,7 @@ void web_start() {
   c.max_open_sockets = 3;  // a phone or two; each socket costs lwIP buffers
   c.lru_purge_enable = true;
   c.core_id = 0;           // the UI keeps core 1
-  c.stack_size = 3072;     // P37: the status handler peaks at 1.3 KB
+  c.stack_size = 4096;     // P37: the status handler peaks at 1.3 KB; P61: 3 KB left 224 B with /sensors.json and app pages
   c.uri_match_fn = httpd_uri_match_wildcard;  // "/*" serves the card's web folder (P53)
   httpd_handle_t h = nullptr;
   if (httpd_start(&h, &c) != ESP_OK) return;
@@ -177,6 +323,15 @@ void web_start() {
   u.method = HTTP_GET;
   u.uri = "/status.json";  // before "/*": handlers match in the order they were registered
   u.handler = status;
+  httpd_register_uri_handler(h, &u);
+  u.uri = "/sensors.json";  // P61
+  u.handler = sensors_json;
+  httpd_register_uri_handler(h, &u);
+  u.uri = "/apps.json";
+  u.handler = apps_json;
+  httpd_register_uri_handler(h, &u);
+  u.uri = "/apps/*";
+  u.handler = app_page;
   httpd_register_uri_handler(h, &u);
   u.uri = "/*";
   u.handler = page;

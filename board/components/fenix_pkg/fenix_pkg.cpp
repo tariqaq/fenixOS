@@ -5,7 +5,7 @@
 namespace fpkg {
 
 static const uint8_t MAGIC[4] = {'F', 'X', 'P', '1'};
-const char* const SENSOR_BINDS[N_SENSOR_BINDS] = {"temp", "temp_text", "hum", "hum_text", "ok", "state"};
+const char* const SENSOR_BINDS[N_SENSOR_BINDS] = {"temp", "temp_text", "hum", "hum_text", "ok", "state", "time"};
 
 bool MemSource::read(void* dst, size_t n) {
   if (n > n_ - pos) return false;
@@ -125,7 +125,8 @@ bool valid_sensor_bind(std::string_view b) {
   return true;
 }
 
-bool read_sensor_nibbles(FILE* f, size_t n, uint8_t* nibbles) {
+bool read_sensors(FILE* f, size_t n, uint8_t* nibbles, char (*binds)[MAX_SENSOR_BIND + 1]) {
+  binds[0][0] = binds[1][0] = 0;
   *nibbles = 0;
   uint8_t h[HEADER_LEN];
   if (n < HEADER_LEN || fseek(f, 0, SEEK_SET) != 0 || fread(h, 1, HEADER_LEN, f) != HEADER_LEN) return false;
@@ -139,7 +140,32 @@ bool read_sensor_nibbles(FILE* f, size_t n, uint8_t* nibbles) {
     v.push_back({e[0], e[1], (uint16_t)(e[2] | e[3] << 8)});
   }
   *nibbles = sensor_nibbles(v);
+  // Strings follow the header: u16 length + bytes each.
+  if (fseek(f, HEADER_LEN, SEEK_SET) != 0) return false;
+  uint16_t ns = (uint16_t)(h[10] | h[11] << 8), last = 0;
+  for (const Sensor& s : v) last = s.bind > last ? s.bind : last;
+  if (last >= ns) return false;
+  for (uint16_t i = 0; i <= last; i++) {
+    uint8_t l[2];
+    if (fread(l, 1, 2, f) != 2) return false;
+    uint16_t sl = (uint16_t)(l[0] | l[1] << 8);
+    const Sensor* hit = nullptr;
+    for (const Sensor& s : v)
+      if (s.bind == i) hit = &s;
+    if (hit && sl <= MAX_SENSOR_BIND) {
+      char* out = binds[hit->pin == SENSOR_PIN_A ? 0 : 1];
+      if (fread(out, 1, sl, f) != sl) return false;
+      out[sl] = 0;
+    } else if (fseek(f, sl, SEEK_CUR) != 0) {
+      return false;
+    }
+  }
   return true;
+}
+
+bool read_sensor_nibbles(FILE* f, size_t n, uint8_t* nibbles) {
+  char binds[2][MAX_SENSOR_BIND + 1];
+  return read_sensors(f, n, nibbles, binds);
 }
 
 bool peek(const uint8_t* data, size_t n, std::string_view* id, std::string_view* version, std::string_view* name,
@@ -344,7 +370,8 @@ const char* Package::check() {
       if (sensors[j].pin == s.pin) return "two sensors on one pin";
       if (strings[sensors[j].bind] == strings[s.bind]) return "two sensors with one bind";
     }
-    for (const char* suf : SENSOR_BINDS) {
+    for (int k = 0; k < N_SENSOR_BINDS_REQUIRED; k++) {
+      const char* suf = SENSOR_BINDS[k];
       char full[MAX_SENSOR_BIND + 12];
       snprintf(full, sizeof full, "%s_%s", strings[s.bind].data(), suf);
       bool found = false;

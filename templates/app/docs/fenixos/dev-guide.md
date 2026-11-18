@@ -1,6 +1,6 @@
 # fenixOS app developer guide
 
-One file with what you need to build an app for fenixOS: the board, the PC app, the `fenix` CLI, the app format, the PC half and the release steps. It ships in `fenixos-app-template.zip` as `docs/fenixos/dev-guide.md` (source in the fenixOS repo: `templates/app/`). Written for fenixOS **v0.1.29** (2026-11-18).
+One file with what you need to build an app for fenixOS: the board, the PC app, the `fenix` CLI, the app format, the PC half and the release steps. It ships in `fenixos-app-template.zip` as `docs/fenixos/dev-guide.md` (source in the fenixOS repo: `templates/app/`). Written for fenixOS **v0.1.31** (2026-11-18).
 
 The other `docs/fenixos/*.md` files beside this one are the full reference for the app format, design, PC half and registry. This guide sums them up and adds the board, the PC app and the CLI. Where they differ, the fenixOS repo (`tariqaq/fenixOS`) wins: `docs/packages.md`, `docs/sidecars.md`, `docs/registry.md`, `DESIGN.md`.
 
@@ -58,7 +58,7 @@ Sources (fenixOS repo): `docs/board-info.md`, `pics/ANALYSIS.md`.
 |---|---|---|
 | nvs | 24 KB | Settings, Wi-Fi network, touch calibration |
 | otadata, phy_init, coredump | 8 + 4 + 56 KB | Boot slot choice, radio calibration, last crash |
-| ota_0, ota_1 | 1,856 KB each | Firmware (two slots; v0.1.29 uses 1,299,088 B, 32% free) |
+| ota_0, ota_1 | 1,856 KB each | Firmware (two slots; v0.1.31 uses 1,302,032 B, 31% free) |
 | apps | 256 KB | Flash app store (LittleFS), used when no SD card is in |
 
 ### What fenixOS runs
@@ -66,7 +66,7 @@ Sources (fenixOS repo): `docs/board-info.md`, `pics/ANALYSIS.md`.
 - Boot screen, Home (time, date, weather, app tiles), system apps Settings, Session and Stream, and installed apps.
 - Up to 32 installed apps, on the SD card when one is in, else in flash (128 KB package cap there).
 - Settings › Display › Rotation: landscape or portrait. **Every app layout must work in both.**
-- Burn-in protection, network time, a web status page at `http://fenixos.local/` (Wi-Fi mode).
+- Burn-in protection, network time, a web status page at `http://fenixos.local/` (Wi-Fi mode), and app pages at `/apps/<id>/` (0.1.31, section 6).
 - Firmware updates from the PC app, from `fenix ota`, or from a `.fwp` on the card (signed; unsigned is refused).
 
 ### SD card (`/sd/fenixos/`)
@@ -74,7 +74,7 @@ Sources (fenixOS repo): `docs/board-info.md`, `pics/ANALYSIS.md`.
 | Folder | What |
 |---|---|
 | `apps/` | Installed app packages |
-| `data/<id>/` | Your app's own files (PC half `put_file`, max 32 KB each). Deleted with the app |
+| `data/<id>/` | Your app's own files (PC half `put_file`, max 32 KB each). Deleted with the app. Its `web/` subfolder is served on the network as the app's page (0.1.31) |
 | `state/` | Last bound values per app: shown dimmed while the PC is away |
 | `fonts/cjk.fxf` | Chinese, Japanese and Korean font (the PC app's Board page puts it there) |
 | `logs/`, `crash/`, `shots/` | Board log per boot, crash records, screenshots |
@@ -107,7 +107,7 @@ Not shipped in the installer. Build it from the fenixOS repo (the repo patches `
 ```powershell
 git clone --recursive https://github.com/tariqaq/fenixOS
 cd fenixOS
-git checkout v0.1.29
+git checkout v0.1.31
 cargo build --release -p fenix-cli     # target\release\fenix.exe
 ```
 
@@ -159,7 +159,7 @@ Unzip `fenixos-app-template.zip` into a new repo under `github.com/tariqaq/` (th
 Tools: Rust (stable), Python 3.11+, and `fenix-pkg`:
 
 ```powershell
-cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.29 fenix-pkg
+cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.31 fenix-pkg
 ```
 
 ## 6. Board half
@@ -170,7 +170,7 @@ cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.29 fenix-pkg
 id = "io.github.tariqaq.myapp"   # letters, digits, . - _; <= 48 bytes; equals manifest.json id
 name = "My app"                  # tile label, <= 24 bytes
 version = "0.1.0"                # equals manifest.json version
-min_fenixos = "0.1.0"            # lowest fenixOS that may install it (0.1.25 for view/show, 0.1.26 for overflow and Latin-1, 0.1.29 for [[sensor]])
+min_fenixos = "0.1.0"            # lowest fenixOS that may install it (0.1.25 for view/show, 0.1.26 for overflow and Latin-1, 0.1.29 for [[sensor]], 0.1.31 for <bind>_time)
 color = "teal"                   # gray indigo blue teal green orange red purple pink
 icon = "icon.png"                # white glyph on transparent; scaled to 20 px and 26 px
 
@@ -192,12 +192,23 @@ A DHT22 temperature and humidity sensor on CN1 (the 4-pin JST 1.25 mm socket: `G
 | `<bind>_hum_text` | text | `45.2 %`; `--` unless live |
 | `<bind>_ok` | bool | True while live: use it as `show` on the values |
 | `<bind>_state` | text | `Reading` (no result yet), `Live`, `Not connected` (no answer 3 reads in a row, ~6 s), `Read error` (bad answers 3 reads in a row) |
+| `<bind>_time` | text | fenixOS 0.1.31: local time of the last good read, `14:03:27`, set on every good read (every 2 s while live); held while not live; `--:--:--` before the first good read or while the board's clock is not set. Generated only with `min_fenixos = "0.1.31"` or newer (an older `min_fenixos` refuses it in the layout) |
 
 - They count toward the 64 bindings. A layout binding under the prefix that is not one of the six is refused (`s1_temperature`), and `fenix-pkg inspect` lists them as set by the board. Do not `set` them from the PC half.
 - Without a PC link the layout stays live (no dimming), under a "PC not connected" line; PC-set values show their last value. "Turned off on host PC", "Starting" and "Not on this PC" show as for any app (no readings there).
 - The PC half gets every reading as `Message::Sensor` (section 7), whatever the board shows.
 - Test without hardware: `fenix sensors fake 22 23.4 45.2` (or `missing`, `error`, `off`); test the wiring: `fenix sensors`.
 - Example: `tools/sensor-app` in the fenixOS repo.
+
+### App web page (fenixOS 0.1.31)
+
+In Wi-Fi mode, with the SD card in, the board serves the files your PC half writes under `web/` as a page any device on the same network can open: `put_file("web/index.html", ...)` serves at `http://fenixos.local/apps/<id>/`, `web/app.js` at `/apps/<id>/app.js`. Only `web/` is served; the rest of `data/<id>/` stays private. 32 KB per file: split a bigger page. The page goes when the app is removed.
+
+- **Public:** anyone on the network can read it, without a password. Put only public things in `web/`: no settings, tokens or personal data.
+- **Live sensors:** the page can poll `GET /sensors.json` (once a second is fine): `{"time": "14:03:28", "pc": true, "sensors": [{"pin": 22, "kind": "dht22", "state": "ok", "label": "Live", "temp": 23.4, "hum": 45.2, "read": "14:03:27", "age": 1, "apps": [{"id": "<id>", "bind": "s1"}]}]}`. One entry per pin some installed app declares; `state` is `reading`, `ok`, `missing` or `error` (`label` is the `<bind>_state` text); `temp` and `hum` are the last good values (`null` before one); `read` is the last good read's local time (`""` without a clock); `age` the seconds since it (right without a clock). Each request keeps the sensors read for 10 s, with or without the app open or a PC; after a pause the first answers say `reading` for up to 2 s.
+- `GET /apps.json` lists the installed apps with a page (`[{"id", "name", "color"}]`); the board's own page at `http://fenixos.local/` links them. `GET /status.json` has the board's state.
+- Test without a PC half: `fenix files put index.html data/<id>/web/index.html`.
+- Not in USB-only mode, and not without a card.
 
 ### Screen area
 
@@ -245,7 +256,7 @@ Props on every element: `w`, `h` (px, `"50%"`, `"content"`), `grow`, `bind`, `ev
 |---|---|
 | Elements | 200 |
 | Strings | 8 KB |
-| Bindings | 64 (a sensor adds 6) |
+| Bindings | 64 (a sensor adds 6, 7 from `min_fenixos` 0.1.31) |
 | Image data | 24 KB (A8 = 1 B/px, RGB565 = 2 B/px) |
 | RAM estimate | 32 KB (elements built at once × 160 B + elements × 32 B + strings + images + bound image w × h × 2) |
 | Tree depth | 8 |
@@ -266,7 +277,7 @@ Dark only. Cards: `surface_1`, radius 12, pad 10, never nested. Buttons: primary
 `app/pc/Cargo.toml`:
 
 ```toml
-fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.29" }
+fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.31" }
 ```
 
 | API | What it does |
@@ -280,7 +291,7 @@ fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.29" }
 | `app.set_image(bind, w, h, &rgba)` | Picture for the bound `image` (~0.25 s for 96 × 96 over USB). Once per change |
 | `fenix_sdk::text::fit(s, cjk)` | Make outside text drawable (transliterates the rest) |
 | `app.log(Level::Warn, text)`, `app.log_info(text)` | Line in the PC app log |
-| `app.put_file`, `get_file`, `delete_file` | Files in `/sd/fenixos/data/<id>/`, ≤ 32 KB, block until the board answers |
+| `app.put_file`, `get_file`, `delete_file` | Files in `/sd/fenixos/data/<id>/`, ≤ 32 KB, block until the board answers. Files under `web/` are public: the app's page (0.1.31, section 6) |
 
 `Message`: `Settings`, `Board { connected }`, `Opened`, `Closed`, `Event { name, kind, value }` (`Tap`, `Long`, `Change`), `Button { key }`, `Sensor { bind, kind, temp, hum, state, at }` (0.1.29: every 2 s per sensor; `temp` °C and `hum` % are `None` unless `state` is `SensorState::Ok`; `at` Unix ms on the PC; `app.sensors()` keeps the last per `bind`), `Stop`.
 

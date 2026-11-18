@@ -74,6 +74,11 @@ pub const SENSOR_PINS: [u8; 2] = [22, 27];
 pub const SENSOR_KINDS: [&str; 1] = ["dht22"];
 /// Bindings the board sets for each sensor, as `<bind>_<suffix>`; they count toward `MAX_BINDS`.
 pub const SENSOR_BINDS: [&str; 6] = ["temp", "temp_text", "hum", "hum_text", "ok", "state"];
+/// The seventh binding (P61, fenixOS 0.1.31): `<bind>_time`, local `HH:MM:SS` of the last good
+/// read. The compiler adds it only for `min_fenixos` 0.1.31 or newer, so 0.1.29 packages keep
+/// their six; readers require the six and take `_time` when it is there.
+pub const SENSOR_TIME_BIND: &str = "time";
+pub const SENSOR_TIME_SINCE: (u8, u8, u8) = (0, 1, 31);
 pub const MAX_SENSOR_BIND: usize = 16;
 
 /// A sensor prefix: 1 to 16 ASCII letters, digits or `_`.
@@ -759,8 +764,14 @@ impl<'a> Compiler<'a> {
             .ok_or_else(|| format!("unknown colour {s}"))
     }
 
-    /// Check the `[[sensor]]` tables and add each sensor's bindings after the layout's (P59).
-    fn sensors(&mut self, decls: &[SensorDecl]) -> Result<Vec<Sensor>, String> {
+    /// Check the `[[sensor]]` tables and add each sensor's bindings after the layout's (P59),
+    /// `<bind>_time` too from `SENSOR_TIME_SINCE` (P61).
+    fn sensors(
+        &mut self,
+        decls: &[SensorDecl],
+        min_fenixos: (u8, u8, u8),
+    ) -> Result<Vec<Sensor>, String> {
+        let time = min_fenixos >= SENSOR_TIME_SINCE;
         let mut out: Vec<Sensor> = Vec::new();
         let mut prefixes: Vec<&str> = Vec::new();
         for (i, s) in decls.iter().enumerate() {
@@ -810,9 +821,15 @@ impl<'a> Compiler<'a> {
             let name = &self.strings[b as usize];
             for p in &prefixes {
                 if let Some(suf) = name.strip_prefix(&format!("{p}_")) {
-                    if !SENSOR_BINDS.contains(&suf) {
+                    if suf == SENSOR_TIME_BIND && !time {
+                        let (a, b, d) = SENSOR_TIME_SINCE;
                         return Err(format!(
-                            "binding {name}: {p} is a sensor, whose bindings are {}",
+                            "binding {name} needs min_fenixos {a}.{b}.{d} or newer (older boards never set it)"
+                        ));
+                    }
+                    if !SENSOR_BINDS.contains(&suf) && suf != SENSOR_TIME_BIND {
+                        return Err(format!(
+                            "binding {name}: {p} is a sensor, whose bindings are {}, {p}_{SENSOR_TIME_BIND}",
                             SENSOR_BINDS.map(|x| format!("{p}_{x}")).join(", ")
                         ));
                     }
@@ -822,6 +839,9 @@ impl<'a> Compiler<'a> {
         for p in prefixes {
             for suf in SENSOR_BINDS {
                 self.bind(&format!("{p}_{suf}"));
+            }
+            if time {
+                self.bind(&format!("{p}_{SENSOR_TIME_BIND}"));
             }
         }
         Ok(out)
@@ -1170,7 +1190,7 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
             "view, show, a bound image and the newer icons need min_fenixos {a}.{b}.{d} or newer"
         ));
     }
-    let sensors = c.sensors(&m.sensor)?;
+    let sensors = c.sensors(&m.sensor, min_fenixos)?;
     if !sensors.is_empty() && min_fenixos < SENSOR_SINCE {
         let (a, b, d) = SENSOR_SINCE;
         return Err(format!("[[sensor]] needs min_fenixos {a}.{b}.{d} or newer"));
@@ -1371,10 +1391,27 @@ mod tests {
         for suf in SENSOR_BINDS {
             assert!(p.bind_id(&format!("s2_{suf}")).is_some());
         }
+        assert!(p.bind_id("s2_time").is_none(), "no _time before 0.1.31");
         let b = p.to_bytes();
         assert_eq!(b[9], 2, "header byte 9 counts the sensors");
         // An older reader stops after the assets: the sensor table is trailing bytes.
         assert_eq!(&b[b.len() - 4..], &[1, 27, p.sensors[1].bind as u8, 0]);
+    }
+
+    #[test]
+    fn sensor_time_binding() {
+        let layout = r#"{ "type": "label", "bind": "s1_time" }"#;
+        let one = sensor("dht22", 22, "s1");
+        let e = build_with("t-old", &one, layout, "0.1.30").unwrap_err();
+        assert!(e.contains("min_fenixos 0.1.31"), "{e}");
+        let p = build_with("t-new", &one, layout, "0.1.31").unwrap();
+        assert_eq!(p.bind_id("s1_time"), Some(0), "the layout's id stays");
+        assert_eq!(p.binds.len(), 7);
+        // Unused in the layout, it is still generated from 0.1.31.
+        let l = r#"{ "type": "label", "text": "x" }"#;
+        let p = build_with("t-gen", &one, l, "0.1.31").unwrap();
+        assert!(p.bind_id("s1_time").is_some());
+        assert!(parse(&p.to_bytes()).is_ok());
     }
 
     #[test]

@@ -33,8 +33,10 @@ constexpr int N_ICONS = 34;  // 20 before v0.1.25 (P50-M added 14)
 // Wired sensors (P59, fenixOS 0.1.29): one per pin, on CN1's free pins only.
 constexpr int SENSOR_PIN_A = 22, SENSOR_PIN_B = 27;
 constexpr size_t MAX_SENSOR_BIND = 16;
-constexpr int N_SENSOR_BINDS = 6;
-extern const char* const SENSOR_BINDS[N_SENSOR_BINDS];  // <bind>_temp, _temp_text, _hum, _hum_text, _ok, _state
+// <bind>_temp, _temp_text, _hum, _hum_text, _ok, _state (required), then _time (P61, 0.1.31:
+// generated for min_fenixos 0.1.31 or newer only, so the reader takes it when present).
+constexpr int N_SENSOR_BINDS = 7, N_SENSOR_BINDS_REQUIRED = 6;
+extern const char* const SENSOR_BINDS[N_SENSOR_BINDS];
 namespace sensor_kind {
 constexpr uint8_t DHT22 = 1;
 }
@@ -159,6 +161,9 @@ bool valid_sensor_bind(std::string_view b);
 // The sensor table at the end of a package file: header byte 9 gives the count, the last
 // 4 x count bytes are the entries. Fills `nibbles` (sensor_nibbles); false on a read error.
 bool read_sensor_nibbles(FILE* f, size_t n, uint8_t* nibbles);
+// The same, plus each pin's bind prefix (binds[0] pin 22, binds[1] pin 27; "" when none): walks
+// the string table at the start of the file (P61, for /sensors.json).
+bool read_sensors(FILE* f, size_t n, uint8_t* nibbles, char (*binds)[MAX_SENSOR_BIND + 1]);
 
 // Read only the header and the first strings (id, version and, if asked, name) from the start of
 // a file, plus the tile colour. `n` may be shorter than the package; false if the strings asked for

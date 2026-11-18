@@ -97,12 +97,23 @@ A DHT22 temperature and humidity sensor on CN1 (the 4-pin JST 1.25 mm socket: `G
 | `<bind>_hum_text` | text | `45.2 %`; `--` unless live |
 | `<bind>_ok` | bool | True while live: use it as `show` on the values |
 | `<bind>_state` | text | `Reading` (no result yet), `Live`, `Not connected` (no answer 3 reads in a row, ~6 s), `Read error` (bad answers 3 reads in a row) |
+| `<bind>_time` | text | fenixOS 0.1.31: local time of the last good read, `14:03:27`, set on every good read (every 2 s while live); held while not live; `--:--:--` before the first good read or while the board's clock is not set. Generated only with `min_fenixos = "0.1.31"` or newer (an older `min_fenixos` refuses it in the layout) |
 
 - They count toward the 64 bindings. A layout binding under the prefix that is not one of the six is refused (`s1_temperature`), and `fenix-pkg inspect` lists them as set by the board. Do not `set` them from the PC half.
 - Without a PC link the layout stays live (no dimming), under a "PC not connected" line; PC-set values show their last value. "Turned off on host PC", "Starting" and "Not on this PC" show as for any app (no readings there).
 - The PC half gets every reading as `Message::Sensor` (`pc-half.md`), whatever the board shows.
 - Test without hardware: `fenix sensors fake 22 23.4 45.2` (or `missing`, `error`, `off`); test the wiring: `fenix sensors`.
 - Example: `tools/sensor-app` in the fenixOS repo.
+
+## App web page (fenixOS 0.1.31)
+
+In Wi-Fi mode, with the SD card in, the board serves the files your PC half writes under `web/` as a page any device on the same network can open: `put_file("web/index.html", ...)` serves at `http://fenixos.local/apps/<id>/`, `web/app.js` at `/apps/<id>/app.js`. Only `web/` is served; the rest of `data/<id>/` stays private. 32 KB per file: split a bigger page. The page goes when the app is removed.
+
+- **Public:** anyone on the network can read it, without a password. Put only public things in `web/`: no settings, tokens or personal data.
+- **Live sensors:** the page can poll `GET /sensors.json` (once a second is fine): `{"time": "14:03:28", "pc": true, "sensors": [{"pin": 22, "kind": "dht22", "state": "ok", "label": "Live", "temp": 23.4, "hum": 45.2, "read": "14:03:27", "age": 1, "apps": [{"id": "<id>", "bind": "s1"}]}]}`. One entry per pin some installed app declares; `state` is `reading`, `ok`, `missing` or `error` (`label` is the `<bind>_state` text); `temp` and `hum` are the last good values (`null` before one); `read` is the last good read's local time (`""` without a clock); `age` the seconds since it (right without a clock). Each request keeps the sensors read for 10 s, with or without the app open or a PC; after a pause the first answers say `reading` for up to 2 s.
+- `GET /apps.json` lists the installed apps with a page (`[{"id", "name", "color"}]`); the board's own page at `http://fenixos.local/` links them. `GET /status.json` has the board's state.
+- Test without a PC half: `fenix files put index.html data/<id>/web/index.html`.
+- Not in USB-only mode, and not without a card.
 
 ## States the board shows for you
 
@@ -120,7 +131,7 @@ Checked by `fenix-pkg build` and again by the board before it installs.
 | Package size | none (on the board's flash without an SD card: 128 KB) |
 | Elements | 200 |
 | Strings (all, bytes) | 8 KB |
-| Bindings (a wired sensor adds 6) | 64 |
+| Bindings (a wired sensor adds 6, 7 from `min_fenixos` 0.1.31) | 64 |
 | Image data (all images except the two tile icons) | 24 KB |
 | RAM estimate (`elements built at once × 160 B + elements × 32 B + strings + images + the bound image's w × h × 2`; a `view` counts its largest child) | 32 KB (40 KB before fenixOS v0.1.25) |
 | Tree depth | 8 |

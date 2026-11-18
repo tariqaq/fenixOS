@@ -89,6 +89,13 @@
          "bind": "s1_state"
         }
        ]
+      },
+      {
+       "type": "label",
+       "text": "--:--:--",
+       "font": "label",
+       "color": "label_2",
+       "bind": "s1_time"
       }
      ]
     },
@@ -167,6 +174,13 @@
          "bind": "s2_state"
         }
        ]
+      },
+      {
+       "type": "label",
+       "text": "--:--:--",
+       "font": "label",
+       "color": "label_2",
+       "bind": "s2_time"
       }
      ]
     }
