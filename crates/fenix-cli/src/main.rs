@@ -51,8 +51,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
 use fenix_proto::{
-    app, app_state, app_where, fw, host, radio, scan_status, BindValue, Msg, RadioState, Stats,
-    Sysinfo,
+    app, app_state, app_where, err, fw, host, radio, scan_status, sensor_fake, sensor_state, BindValue, Msg,
+    RadioState, SensorReading, Stats, Sysinfo,
 };
 use sha2::{Digest, Sha256};
 
@@ -138,6 +138,8 @@ fn main() {
             _ => usage(),
         },
         "sd" => sd_show(opts),
+        "sensors" if args.get(1).map(String::as_str) == Some("fake") => sensors_fake(opts, &args[2..]),
+        "sensors" => sensors_watch(opts, arg_u64(&args, 1, 20)),
         "weather" => match (args.get(1).map(|s| s.as_str()), args.get(2), args.get(3)) {
             (Some("off"), _, _) => one_shot(
                 opts,
@@ -275,7 +277,7 @@ fn main() {
 }
 
 fn usage() -> i32 {
-    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|shot --sd [out.bmp]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|font make <otf> <out.fxf> [--chars <text>]|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
+    eprintln!("usage: fenix ports|hello|logs [s]|logs --board [n]|time|reboot|sysinfo|tap <x> <y>|swipe <x1> <y1> <x2> <y2>|shot <png> [s]|shot --sd [out.bmp]|bench [s] [nostream|fps]|list|install <file.fxp>|ota <file.fwp>|files ls [path]|get <path> [out]|put <local> <path>|rm <path>|font make <otf> <out.fxf> [--chars <text>]|remove <id>|set <file.fxp> <bind>=<value>...|host <id> on|off|gone|starting|soak <min>|flash [dir] [--erase]|write <offset> <file>|read-flash <offset> <size> <file>|erase <offset> <size>|radio [off|wifi]|sd|sensors [s]|sensors fake <22|27> <temp> <hum>|missing|error|off|wifi scan|join <ssid> [pass]|forget|weather <lat> <lon> <name>|off [--port COMx|tcp:<host>]");
     2
 }
 
@@ -552,6 +554,94 @@ fn sd_show(opts: LinkOptions) -> i32 {
     }
     eprintln!("no SD_STATE (firmware before 0.1.20?)");
     1
+}
+
+/// One `SENSOR` line: pin, state, values.
+fn sensor_line(r: &SensorReading) -> String {
+    let state = ["ok", "missing", "error"]
+        .get(r.state as usize)
+        .copied()
+        .unwrap_or("?");
+    if r.state == sensor_state::OK {
+        format!(
+            "IO{} DHT22 {state}: {:.1} °C, {:.1} % (board up {} s)",
+            r.pin,
+            r.temp_x10 as f32 / 10.0,
+            r.hum_x10 as f32 / 10.0,
+            r.uptime_ms / 1000
+        )
+    } else {
+        format!("IO{} DHT22 {state} (board up {} s)", r.pin, r.uptime_ms / 1000)
+    }
+}
+
+/// `fenix sensors [s]` (P59): read IO22 and IO27 as DHT22, declared by an app or not, and print
+/// every reading. The board stops when the watch ends or the link drops.
+fn sensors_watch(opts: LinkOptions, secs: u64) -> i32 {
+    let link = Link::spawn(opts);
+    if !wait_connected(&link, 6) {
+        eprintln!("no board");
+        return 1;
+    }
+    link.send(Msg::SensorWatch { pins: 3 });
+    println!("reading IO22 and IO27 for {secs} s (each every 2 s; a missing sensor shows after ~6 s)");
+    let end = Instant::now() + Duration::from_secs(secs.max(1));
+    let mut got = 0;
+    while Instant::now() < end {
+        match link.recv_event(Duration::from_millis(200)) {
+            Some(Event::Msg(Msg::Sensor(r))) => {
+                got += 1;
+                println!("{} {}", ts(), sensor_line(&r));
+            }
+            Some(Event::Msg(Msg::Error { code, .. })) if code == err::UNKNOWN_TYPE => {
+                eprintln!("the board does not know sensors (firmware before 0.1.29)");
+                return 1;
+            }
+            _ => {}
+        }
+    }
+    link.send(Msg::SensorWatch { pins: 0 });
+    std::thread::sleep(Duration::from_millis(300));
+    if got == 0 {
+        eprintln!("no readings");
+        return 1;
+    }
+    0
+}
+
+/// `fenix sensors fake <pin> <temp> <hum> | missing | error | off` (P59): the board uses these
+/// readings for the pin instead of the sensor's, until `off` or a restart. For layouts tested
+/// without hardware; a test aid, not for real use.
+fn sensors_fake(opts: LinkOptions, args: &[String]) -> i32 {
+    let pin = match args.first().and_then(|p| p.parse::<u8>().ok()) {
+        Some(p @ (22 | 27)) => p,
+        _ => return usage(),
+    };
+    let x10 = |s: &String| s.parse::<f32>().ok().map(|v| (v * 10.0).round());
+    let (mode, t, h) = match (args.get(1).map(String::as_str), args.get(2)) {
+        (Some("off"), None) => (sensor_fake::OFF, 0.0, 0.0),
+        (Some("missing"), None) => (sensor_fake::MISSING, 0.0, 0.0),
+        (Some("error"), None) => (sensor_fake::ERROR, 0.0, 0.0),
+        (Some(_), Some(hum)) => match (x10(&args[1]), x10(hum)) {
+            (Some(t), Some(h)) if (-400.0..=800.0).contains(&t) && (0.0..=1000.0).contains(&h) => {
+                (sensor_fake::OK, t, h)
+            }
+            _ => {
+                eprintln!("temp -40 to 80 °C, hum 0 to 100 %");
+                return 2;
+            }
+        },
+        _ => return usage(),
+    };
+    one_shot(
+        opts,
+        Msg::SensorFake {
+            pin,
+            mode,
+            temp_x10: t as i16,
+            hum_x10: h as u16,
+        },
+    )
 }
 
 fn wifi_scan(opts: LinkOptions) -> i32 {

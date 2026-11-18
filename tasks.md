@@ -121,7 +121,8 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
     - Built: `set_value` shared by BIND_SET and sensor readings (sensor values not saved to the card, set only on change); store keeps `AppMeta::sensors` (nibbles; sd.idx colour top byte), install refuses a pin clash of kinds; offline sensor apps show the layout live under "PC not connected" (OFF, NOT_HERE, STARTING keep their screens: no readings shown there, decision). Sim: 4 new screens (app_sensors_reading, app_sensors, app_sensors_missing, app_sensors_offline)
   - [ ] 5. Link: `SENSOR` frame board to PC (spec, Rust, C++, vectors); PC app routes it to the app's PC half as pipe `sensor`; `fenix-sdk` `Message::Sensor`, `SensorState`, `app.sensors()`
   - [ ] 6. PC app and registry: `sensors` permission (`tools/registry.py` PERMISSIONS and PERMISSION_SINCE, template `app.py`), install refuses a package with `[[sensor]]` and no permission, app page lists the pins
-  - [ ] 7. CLI: `fenix sensors [s]`, `fenix sensors fake <pin> <temp> <hum> | missing | error | off`; `fenix sysinfo` shows the sensor task
+  - [x] 7. CLI: `fenix sensors [s]`, `fenix sensors fake <pin> <temp> <hum> | missing | error | off`; `fenix sysinfo` shows the sensor task
+    - Done: `fenix sensors [s]` (SENSOR_WATCH both pins) and `fenix sensors fake <pin> <temp> <hum> | missing | error | off`; sysinfo lists the `sensors` task by itself. Board test (dev 0.1.29, COM12): 12 of 12 reads ok (IO22 21.3 °C 70.8 %, IO27 21.2 °C 73.6 %); sensortest app open shows both live; fake missing on IO27 shows "Not connected"; task 0.1% CPU, 1396 B stack free of 3072. Heap at hello 47,752 B (v0.1.28: 55,328 B, both 5 s after a flash; not a like-for-like measure)
   - [ ] 8. Docs (board-info CN1, packages, sidecars, registry, spec, dev-guide and template copies), sim screens, tests, build, flash, user check with both sensors, release v0.1.29
 
 - [ ] P36 Later
