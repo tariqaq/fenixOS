@@ -31,6 +31,8 @@ void store_dir(const std::string& dir);
 void post(sys::LinkEv type, int32_t value = 0, const char* text = "");
 void set_connected(bool on);
 void set_card(bool in);  // the pretend SD card, which holds the store's apps (P51)
+// A wired sensor's reading (P59): `sensor <22|27> <temp> <hum> | missing | error | reading`.
+bool set_sensor(int pin, const std::vector<std::string>& args);
 // Firmware update state (P52): `ota offer <update|-> <back|->`, `ota failed_version <version|->`,
 // `ota <receiving|checking|writing|restarting|failed|idle> [pct] [version]`.
 void ota_offer(const std::string& update, const std::string& back);

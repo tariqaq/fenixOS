@@ -2,7 +2,7 @@
 // (/sd/fenixos/apps) when one is in, else to flash (LittleFS /apps, at most FLASH_PKG_MAX each).
 // Both hold the same files: <id>.fxp, <id>.sha (sha256, written last: the commit marker) and
 // <id>.tmp while an install runs. One app lives in one place.
-// An index in RAM (AppMeta, 120 B per app) lists every app. /apps/sd.idx keeps the card's apps
+// An index in RAM (AppMeta, 124 B per app) lists every app. /apps/sd.idx keeps the card's apps
 // on flash, so their tiles still show (faded, "Insert the SD card") while the card is out.
 #include <dirent.h>
 #include <stdio.h>
@@ -120,12 +120,16 @@ static bool read_meta(const char* p, AppMeta& m) {
   bool ok = fpkg::peek(head, got, &id, &ver, &name, &color);
   if (ok) {
     set_meta(m, id, ver, name, color);
+    ok = fpkg::read_sensor_nibbles(f, n, &m.sensors);  // the table at the end (P59)
   } else {
     fseek(f, 0, SEEK_SET);
     fpkg::Package pkg;
     fpkg::FileSource src(f, n);
     ok = !pkg.parse(src, n);
-    if (ok) set_meta(m, pkg.id, pkg.version, pkg.name, pkg.head.tile_color);
+    if (ok) {
+      set_meta(m, pkg.id, pkg.version, pkg.name, pkg.head.tile_color);
+      m.sensors = fpkg::sensor_nibbles(pkg.sensors);
+    }
   }
   fclose(f);
   return ok;
@@ -155,7 +159,8 @@ static void scan(uint8_t where, std::vector<AppMeta>& out) {
   closedir(d);
 }
 
-// /apps/sd.idx: one line per app on the card, "id <tab> version <tab> colour <tab> name".
+// /apps/sd.idx: one line per app on the card, "id <tab> version <tab> colour <tab> name". The
+// colour's top byte holds AppMeta::sensors (P59; 0 in files written before).
 static void save_sd_idx() {
   std::vector<AppMeta> sd;
   {
@@ -176,7 +181,8 @@ static void save_sd_idx() {
     strlcpy(name, m.name, sizeof name);
     for (char* c = name; *c; c++)
       if (*c == '\t' || *c == '\n' || *c == '\r') *c = ' ';
-    fprintf(f, "%s\t%s\t%08lx\t%s\n", m.id, m.version, (unsigned long)m.color, name);
+    fprintf(f, "%s\t%s\t%08lx\t%s\n", m.id, m.version, (unsigned long)((m.color & 0xFFFFFF) | (uint32_t)m.sensors << 24),
+            name);
   }
   bool ok = fclose(f) == 0;
   if (ok) {
@@ -202,7 +208,9 @@ static void load_sd_idx(std::vector<AppMeta>& out) {
     strlcpy(m.id, id, sizeof m.id);
     strlcpy(m.version, ver, sizeof m.version);
     strlcpy(m.name, name ? name : id, sizeof m.name);
-    m.color = strtoul(color, nullptr, 16);
+    uint32_t c = strtoul(color, nullptr, 16);
+    m.color = c & 0xFFFFFF;
+    m.sensors = (uint8_t)(c >> 24);
     m.where = fnx::app_where::SD;
     m.state = fnx::app_state::CARD_MISSING;
     out.push_back(m);
@@ -468,6 +476,21 @@ uint8_t store_end(char* why, size_t cap) {
   if (f) fclose(f);
   if (!err && (pkg.id != id || pkg.version != version)) err = "id or version differs from install request";
   if (!err && newer_than_me(pkg.head.min_fenixos)) err = "needs a newer fenixOS";
+  // A pin takes one kind of sensor (P59): another app with a different kind on it wins.
+  uint8_t nib = err ? 0 : fpkg::sensor_nibbles(pkg.sensors);
+  static char clash[96];
+  for (int i = 0; !err && nib; i++) {
+    AppMeta o;
+    if (!store_at(i, &o)) break;
+    if (strcmp(o.id, id) == 0) continue;
+    for (int k = 0; k < 2 && !err; k++) {
+      uint8_t a = (nib >> (4 * k)) & 15, b = (o.sensors >> (4 * k)) & 15;
+      if (a && b && a != b) {
+        snprintf(clash, sizeof clash, "IO%d has another kind of sensor for %s", k ? 27 : 22, o.id);
+        err = clash;
+      }
+    }
+  }
   if (err) {
     strlcpy(why, err, cap);
     unlink(tmp);
@@ -500,6 +523,7 @@ uint8_t store_end(char* why, size_t cap) {
   set_meta(m, pkg.id, pkg.version, pkg.name, pkg.head.tile_color);
   m.where = where;
   m.state = fnx::app_state::READY;
+  m.sensors = fpkg::sensor_nibbles(pkg.sensors);
   {
     Lock l;
     AppMeta* e = find_in(s_index, id);

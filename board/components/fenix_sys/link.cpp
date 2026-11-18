@@ -590,6 +590,18 @@ static void on_frame(const uint8_t* p, size_t n, void* ctx) {
       bind_image(b);
       return;
     }
+    case fnx::ty::SENSOR_WATCH: {
+      uint8_t pins = r.u8();
+      if (!r.done()) return send_error(fnx::err::BAD_BODY, "sensor watch");
+      sensors_watch(pins);
+      return;
+    }
+    case fnx::ty::SENSOR_FAKE: {
+      fnx::SensorFake f{};
+      if (!fnx::read_sensor_fake(r, f)) return send_error(fnx::err::BAD_BODY, "sensor fake");
+      sensors_fake(f);
+      return;
+    }
     case fnx::ty::HOST_STATE: {
       uint8_t state = r.u8();  // fnx::host (a bool before P51)
       char id[64];
@@ -609,6 +621,7 @@ static void end_session() {
   store_abort();
   ota_abort();
   files_abort();
+  sensors_watch(0);
   post(LinkEv::DISCONNECTED);
 }
 

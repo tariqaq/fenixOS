@@ -1,7 +1,9 @@
 // fx::sys for the simulator: settings in memory, a clock fixed at 2026-10-29 08:35 (plus the
 // virtual time) so screenshots repeat, the app store as a folder of .fxp files, and a link whose
 // events come from the script or the window (sim::post).
+#include <math.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -39,6 +41,27 @@ void set_card(bool in) {
   s_card_out = !in;
   post(sys::LinkEv::APPS_CHANGED, 0, "");
   post(sys::LinkEv::SD_CHANGED);
+}
+
+// Wired sensors (P59): the readings a script sets; the board's task does not run here.
+static sys::SensorReading s_sensor[sys::SENSOR_SLOTS] = {{1, sys::SENSOR_STARTING}, {1, sys::SENSOR_STARTING}};
+
+bool set_sensor(int pin, const std::vector<std::string>& a) {
+  if (pin != 22 && pin != 27) return false;
+  sys::SensorReading& r = s_sensor[pin == 22 ? 0 : 1];
+  if (a.size() == 2) {
+    r.state = fnx::sensor_state::OK;
+    r.temp_x10 = (int16_t)lround(atof(a[0].c_str()) * 10);
+    r.hum_x10 = (uint16_t)lround(atof(a[1].c_str()) * 10);
+  } else if (a.size() == 1 && (a[0] == "missing" || a[0] == "error" || a[0] == "reading")) {
+    r.state = a[0] == "missing" ? fnx::sensor_state::MISSING
+              : a[0] == "error" ? fnx::sensor_state::ERROR
+                                : sys::SENSOR_STARTING;
+  } else {
+    return false;
+  }
+  r.seq++;
+  return true;
 }
 
 void set_connected(bool on) {
@@ -196,6 +219,13 @@ static std::vector<AppMeta> index() {
       strlcpy(m.version, std::string(ver).c_str(), sizeof m.version);
       strlcpy(m.name, std::string(name).c_str(), sizeof m.name);
       m.color = color;
+      size_t ns = d.size() > 9 ? d[9] : 0;  // the sensor table at the end (P59)
+      std::vector<fpkg::Sensor> sv;
+      for (size_t k = 0; k < ns && d.size() >= 4 * ns; k++) {
+        const uint8_t* e = &d[d.size() - 4 * ns + 4 * k];
+        sv.push_back({e[0], e[1], (uint16_t)(e[2] | e[3] << 8)});
+      }
+      m.sensors = fpkg::sensor_nibbles(sv);
       m.where = fnx::app_where::SD;
       m.state = sim::s_card_out ? fnx::app_state::CARD_MISSING : fnx::app_state::READY;
       v.push_back(m);
@@ -223,6 +253,12 @@ bool store_sha(const char*, uint8_t out[32]) {
   return false;
 }
 void store_sd_changed(bool) {}
+
+void sensors_start() {}
+void sensors_want(uint8_t, uint8_t) {}
+SensorReading sensors_get(int slot) { return sim::s_sensor[slot]; }
+void sensors_watch(uint8_t) {}
+void sensors_fake(const fnx::SensorFake&) {}
 FILE* store_open(const char* id, size_t* n) {
   if (sim::s_card_out) return nullptr;
   std::error_code ec;

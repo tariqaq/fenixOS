@@ -49,13 +49,14 @@ bool clock_local(struct tm* out);  // false while invalid
 // partition "apps" at /apps, FLASH_PKG_MAX per package). An index in RAM lists them all.
 constexpr int MAX_APPS = 32;  // APP_INDEX pages them; Home pages its tiles
 constexpr uint32_t FLASH_PKG_MAX = 128 * 1024;
-struct AppMeta {  // 120 B
+struct AppMeta {  // 124 B
   char id[49];  // fpkg::MAX_ID + 1
   char version[32];
   char name[32];
   uint32_t color;  // tile colour
   uint8_t where;   // fnx::app_where
   uint8_t state;   // fnx::app_state: CARD_MISSING while its SD card is out
+  uint8_t sensors;  // P59: sensor kind on IO22 (low nibble) and IO27 (high nibble), 0 none
 };
 bool store_mount();  // boot: flash apps, plus the card's apps from /apps/sd.idx (card missing until scanned)
 void store_usage(uint32_t* used_kb, uint32_t* total_kb);  // the flash store
@@ -75,6 +76,26 @@ uint8_t store_end(char* why, size_t cap);  // checks size, sha256 and the packag
 void store_abort();
 bool store_installing(const char** id);
 uint8_t store_remove(const char* id);
+
+// ---- Wired sensors (P59, sensors.cpp; docs/packages.md "Sensors") ----
+// Slot 0 is IO22, slot 1 IO27; pin masks use bit 0 for IO22 and bit 1 for IO27.
+constexpr int SENSOR_SLOTS = 2;
+constexpr uint8_t SENSOR_KIND_DHT22 = 1;
+constexpr uint8_t SENSOR_STARTING = 0xFF;  // no result yet (a good read, or 3 failed ones)
+struct SensorReading {
+  uint8_t kind;   // SENSOR_KIND_DHT22
+  uint8_t state;  // fnx::sensor_state, or SENSOR_STARTING
+  int16_t temp_x10;  // the last good values
+  uint16_t hum_x10;
+  uint32_t uptime_ms;  // of the last read
+  uint32_t seq;        // moves whenever state or values change
+};
+void sensors_start();  // boot, after store_mount
+// UI task: the pins to read (open app, PC halves running) and those whose readings go to the PC.
+void sensors_want(uint8_t pins, uint8_t upstream);
+SensorReading sensors_get(int slot);  // any task
+void sensors_watch(uint8_t pins);     // link task: SENSOR_WATCH; 0 when the link drops
+void sensors_fake(const fnx::SensorFake& f);  // link task: SENSOR_FAKE
 
 // ---- Shared board state (written by the UI, read by the link task) ----
 struct BoardInfo {

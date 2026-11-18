@@ -351,6 +351,38 @@ void write_sd_state(Writer& w, const SdState& s) {
   w.u16(s.clock_khz);
 }
 
+bool read_sensor(Reader& r, SensorReading& s) {
+  s.pin = r.u8();
+  s.kind = r.u8();
+  s.state = r.u8();
+  s.temp_x10 = (int16_t)r.u16();
+  s.hum_x10 = r.u16();
+  s.uptime_ms = r.u32();
+  return r.done();
+}
+void write_sensor(Writer& w, const SensorReading& s) {
+  w.u8(s.pin);
+  w.u8(s.kind);
+  w.u8(s.state);
+  w.u16((uint16_t)s.temp_x10);
+  w.u16(s.hum_x10);
+  w.u32(s.uptime_ms);
+}
+
+bool read_sensor_fake(Reader& r, SensorFake& f) {
+  f.pin = r.u8();
+  f.mode = r.u8();
+  f.temp_x10 = (int16_t)r.u16();
+  f.hum_x10 = r.u16();
+  return r.done();
+}
+void write_sensor_fake(Writer& w, const SensorFake& f) {
+  w.u8(f.pin);
+  w.u8(f.mode);
+  w.u16((uint16_t)f.temp_x10);
+  w.u16(f.hum_x10);
+}
+
 bool read_wifi_ap(Reader& r, WifiAp& a) {
   r.str(a.ssid, sizeof a.ssid);
   a.rssi = (int8_t)r.u8();

@@ -32,6 +32,7 @@ constexpr uint8_t FW_BEGIN = 0x50, FW_CHUNK = 0x51, FW_ACK = 0x52, FW_END = 0x53
 constexpr uint8_t FILE_LIST_REQ = 0x60, FILE_LIST = 0x61, FILE_READ_REQ = 0x62, FILE_DATA = 0x63, FILE_DELETE = 0x64;
 constexpr uint8_t FILE_WRITE_BEGIN = 0x65, FILE_CHUNK = 0x66, FILE_END = 0x67, FILE_ACK = 0x68, FILE_RESULT = 0x69;
 constexpr uint8_t SHOT_SAVE = 0x6A;
+constexpr uint8_t SENSOR = 0x70, SENSOR_WATCH = 0x71, SENSOR_FAKE = 0x72;  // P59, optional
 }  // namespace ty
 
 namespace err {
@@ -223,6 +224,29 @@ struct SdState {
 };
 bool read_sd_state(Reader& r, SdState& s);
 void write_sd_state(Writer& w, const SdState& s);
+// Wired sensors (P59). SENSOR: board to PC, one per pin per read. SENSOR_WATCH: pins:u8 (bit 0
+// IO22, bit 1 IO27). SENSOR_FAKE: pin, mode (sensor_fake), temp_x10, hum_x10.
+namespace sensor_state {
+constexpr uint8_t OK = 0, MISSING = 1, ERROR = 2;
+}
+namespace sensor_fake {
+constexpr uint8_t OFF = 0, OK = 1, MISSING = 2, ERROR = 3;
+}
+struct SensorReading {
+  uint8_t pin, kind, state;
+  int16_t temp_x10;
+  uint16_t hum_x10;
+  uint32_t uptime_ms;
+};
+bool read_sensor(Reader& r, SensorReading& s);
+void write_sensor(Writer& w, const SensorReading& s);
+struct SensorFake {
+  uint8_t pin, mode;
+  int16_t temp_x10;
+  uint16_t hum_x10;
+};
+bool read_sensor_fake(Reader& r, SensorFake& f);
+void write_sensor_fake(Writer& w, const SensorFake& f);
 // WIFI_SCAN: status:u8, count:u8, then that many WifiAp.
 struct WifiAp {
   char ssid[SSID_LEN];

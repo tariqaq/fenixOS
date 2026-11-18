@@ -147,6 +147,16 @@ Files on the board's SD card under `/sd/fenixos` (P53, firmware 0.1.23 and later
 | 0x69 | FILE_RESULT | B→P | op:u8 ‖ code:u8 ‖ path:str ‖ text:bytes. Ops: 1 list, 2 read, 3 delete, 4 write, 5 shot. Codes: 0 ok, 1 not found, 2 not allowed, 3 no card, 4 no space, 5 bad hash, 6 storage error, 7 busy. A list or read that works answers with FILE_LIST or FILE_DATA instead |
 | 0x6A | SHOT_SAVE | P→B | (empty). Save the screen to `/sd/fenixos/shots/<time>.bmp` (P53). Answered with FILE_RESULT op shot; its path is the saved file. An older board answers ERROR unknown type |
 
+### Sensors (0x7_)
+
+Wired sensors (P59, firmware 0.1.29 and later): a DHT22 on CN1's IO22 or IO27, declared by an app's `[[sensor]]` (`docs/packages.md`). Optional: an older board answers ERROR unknown type. The board reads a pin while the declaring app is open on it, or while that app's PC half runs (`HOST_STATE` running) and the link is up, or while a SENSOR_WATCH asks for it.
+
+| Type | Name | Dir | Body |
+|---|---|---|---|
+| 0x70 | SENSOR | B→P | pin:u8 ‖ kind:u8 (1 DHT22) ‖ state:u8 (0 ok, 1 missing: no answer 3 reads in a row, 2 error: bad timing, checksum or range 3 reads in a row) ‖ temp_x10:i16 (tenths of °C) ‖ hum_x10:u16 (tenths of %) ‖ uptime_ms:u32 (board uptime at the read). One per pin per read (each pin every 2 s, the two pins 1 s apart), while the pin is read for a running PC half or a SENSOR_WATCH. Not sent until the pin's first result (a good read, or 3 failed ones). Values are the last good ones when the state is not ok. The PC routes it to every running PC half whose package declares the pin (pipe message `sensor`, `docs/sidecars.md`): one frame serves several apps |
+| 0x71 | SENSOR_WATCH | P→B | pins:u8 (bit 0 IO22, bit 1 IO27; 0 stops). Read these pins as DHT22, declared or not, and send every reading; ends when the link drops. `fenix sensors` uses it to test wiring |
+| 0x72 | SENSOR_FAKE | P→B | pin:u8 ‖ mode:u8 (0 off: the sensor's own readings again, 1 ok with these values, 2 missing, 3 error) ‖ temp_x10:i16 ‖ hum_x10:u16. The board uses these instead of reading the pin, for layouts tested without hardware (`fenix sensors fake`). Kept in RAM until mode 0 or a restart, so it outlives the CLI's session |
+
 ## Versioning
 
 `PROTO_VERSION = 1`. Any change to a body layout or a new required message bumps it.

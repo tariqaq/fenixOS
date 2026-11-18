@@ -63,6 +63,10 @@ pub mod ty {
     pub const FILE_ACK: u8 = 0x68;
     pub const FILE_RESULT: u8 = 0x69;
     pub const SHOT_SAVE: u8 = 0x6A;
+    /// Wired sensors (P59, firmware 0.1.29; optional, an older board answers ERROR unknown type).
+    pub const SENSOR: u8 = 0x70;
+    pub const SENSOR_WATCH: u8 = 0x71;
+    pub const SENSOR_FAKE: u8 = 0x72;
 }
 
 /// `ERROR` codes.
@@ -351,6 +355,39 @@ pub struct SdState {
 }
 
 /// `WIFI_SCAN` security of an access point.
+/// `SENSOR` states (P59).
+pub mod sensor_state {
+    pub const OK: u8 = 0;
+    /// No answer at all for 3 reads in a row (no sensor, or unplugged).
+    pub const MISSING: u8 = 1;
+    /// Answers with bad timing, checksum or range for 3 reads in a row.
+    pub const ERROR: u8 = 2;
+}
+
+/// `SENSOR_FAKE` modes (P59): readings the board uses instead of the sensor's, until `OFF`.
+pub mod sensor_fake {
+    pub const OFF: u8 = 0;
+    pub const OK: u8 = 1;
+    pub const MISSING: u8 = 2;
+    pub const ERROR: u8 = 3;
+}
+
+/// One reading of a wired sensor (P59): the board sends one per pin per read.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+pub struct SensorReading {
+    pub pin: u8,
+    /// 1 = DHT22 (`fenix_pkg::SENSOR_KINDS`).
+    pub kind: u8,
+    /// `sensor_state`.
+    pub state: u8,
+    /// Tenths of a degree C, and of a percent; the last good values when the state is not OK.
+    pub temp_x10: i16,
+    pub hum_x10: u16,
+    /// Board uptime at the read.
+    pub uptime_ms: u32,
+}
+
 pub mod wifi_auth {
     pub const OPEN: u8 = 0;
     pub const WEP: u8 = 1;
@@ -567,6 +604,19 @@ pub enum Msg {
     },
     /// Save the screen to `/sd/fenixos/shots/` (P53); answered with `FILE_RESULT` op shot.
     ShotSave,
+    /// A wired sensor's reading (P59), board to PC.
+    Sensor(SensorReading),
+    /// Read these pins (bit 0 IO22, bit 1 IO27) and send every reading, until 0 or the link drops.
+    SensorWatch {
+        pins: u8,
+    },
+    /// Use these readings for a pin instead of the sensor's (`sensor_fake`), until mode 0.
+    SensorFake {
+        pin: u8,
+        mode: u8,
+        temp_x10: i16,
+        hum_x10: u16,
+    },
     BindSet {
         bind: u16,
         id: String,
@@ -741,6 +791,9 @@ impl Msg {
             FileAck { .. } => ty::FILE_ACK,
             FileResult { .. } => ty::FILE_RESULT,
             ShotSave => ty::SHOT_SAVE,
+            Sensor(_) => ty::SENSOR,
+            SensorWatch { .. } => ty::SENSOR_WATCH,
+            SensorFake { .. } => ty::SENSOR_FAKE,
             BindSet { .. } => ty::BIND_SET,
             BindImage { .. } => ty::BIND_IMAGE,
             Event { .. } => ty::EVENT,
@@ -836,6 +889,25 @@ impl Msg {
                     .u8(s.rssi as u8)
                     .bytes(&s.ip)
                     .str(&s.name);
+            }
+            Sensor(s) => {
+                w.u8(s.pin)
+                    .u8(s.kind)
+                    .u8(s.state)
+                    .u16(s.temp_x10 as u16)
+                    .u16(s.hum_x10)
+                    .u32(s.uptime_ms);
+            }
+            SensorWatch { pins } => {
+                w.u8(*pins);
+            }
+            SensorFake {
+                pin,
+                mode,
+                temp_x10,
+                hum_x10,
+            } => {
+                w.u8(*pin).u8(*mode).u16(*temp_x10 as u16).u16(*hum_x10);
             }
             RadioSet(m) => {
                 w.u8(*m);
@@ -1303,6 +1375,21 @@ impl Msg {
                 text: r.text(),
             },
             ty::SHOT_SAVE => Msg::ShotSave,
+            ty::SENSOR => Msg::Sensor(SensorReading {
+                pin: r.u8()?,
+                kind: r.u8()?,
+                state: r.u8()?,
+                temp_x10: r.u16()? as i16,
+                hum_x10: r.u16()?,
+                uptime_ms: r.u32()?,
+            }),
+            ty::SENSOR_WATCH => Msg::SensorWatch { pins: r.u8()? },
+            ty::SENSOR_FAKE => Msg::SensorFake {
+                pin: r.u8()?,
+                mode: r.u8()?,
+                temp_x10: r.u16()? as i16,
+                hum_x10: r.u16()?,
+            },
             ty::BIND_SET => {
                 let bind = r.u16()?;
                 let kind = r.u8()?;

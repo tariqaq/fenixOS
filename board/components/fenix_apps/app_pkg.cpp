@@ -3,7 +3,8 @@
 // (P39): tiles read the two icons only, and only for the tiles Home shows (P51); an open app keeps
 // its strings, props and the images its elements show, from which its LVGL objects are rebuilt
 // (rotation, host state). Artboards 6a, 6b. The last bound values are kept on the SD card (P53):
-// with no PC the app opens on them, dimmed, under "PC not connected".
+// with no PC the app opens on them, dimmed, under "PC not connected". An app with wired sensors
+// (P59) gets their readings from the board itself, so it stays live without a PC.
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,6 +117,13 @@ struct Val {
   int32_t i = 0;
   std::string text;
 };
+// A sensor of the open app (P59): its slot and the ids of its six bindings (fpkg::SENSOR_BINDS
+// order: temp, temp_text, hum, hum_text, ok, state; fpkg::NONE if the package lacks one).
+struct Sens {
+  int slot;
+  uint16_t ids[fpkg::N_SENSOR_BINDS];
+  uint32_t seq;  // of the reading shown
+};
 struct Bound {
   uint16_t bind;
   uint8_t kind;  // element kind
@@ -145,6 +153,7 @@ static struct {
   bool turning_on;   // Turn on was pressed; waiting for the PC's HOST_STATE
   bool dirty;        // values changed since they were last saved to the card (P53)
   int64_t saved_at;
+  std::vector<Sens> sens;  // wired sensors (P59): the layout stays live without a PC
 } s_app;
 
 // A closed app's package, images and pixels, kept until its screen is deleted: labels show the
@@ -287,7 +296,10 @@ static void close_app() {
   s_app.missing = false;
   s_app.turning_on = false;
   s_app.dirty = false;
+  s_app.sens.clear();
 }
+
+static void sensor_values(Sens& se, bool show);
 
 static bool load_app(const char* id) {
   FILE* f = nullptr;
@@ -321,6 +333,21 @@ static bool load_app(const char* id) {
   snprintf(s_app.name, sizeof s_app.name, "%.*s", (int)p.name.size(), p.name.data());
   s_app.vals.assign(p.binds.size(), Val{});
   state_load();
+  // Sensors (P59): the current readings replace any saved ones before the screen is built.
+  s_app.sens.clear();
+  for (const fpkg::Sensor& ps : p.sensors) {
+    Sens se{};
+    se.slot = ps.pin == fpkg::SENSOR_PIN_A ? 0 : 1;
+    for (int k = 0; k < fpkg::N_SENSOR_BINDS; k++) {
+      char full[fpkg::MAX_SENSOR_BIND + 12];
+      snprintf(full, sizeof full, "%s_%s", p.strings[ps.bind].data(), fpkg::SENSOR_BINDS[k]);
+      se.ids[k] = fpkg::NONE;
+      for (size_t b = 0; b < p.binds.size(); b++)
+        if (p.strings[p.binds[b]] == full) se.ids[k] = (uint16_t)b;
+    }
+    sensor_values(se, false);
+    s_app.sens.push_back(se);
+  }
   s_app.dirty = false;
   s_app.saved_at = esp_timer_get_time();
   s_app.images.clear();
@@ -898,7 +925,8 @@ void app_screen(lv_obj_t* scr) {
   if (!s_app.open) return;
   if (s_app.missing) return host_state(body, MISSING);
   bool offline = !sys::link_connected();
-  if (offline && !has_vals()) return host_state(body, WAITING);
+  bool live = !s_app.sens.empty();  // sensors keep the layout live without a PC (P59)
+  if (offline && !has_vals() && !live) return host_state(body, WAITING);
   switch (offline ? fnx::host::RUNNING : app_host(s_app.id)) {
     case fnx::host::OFF:
       return host_state(body, OFF);
@@ -909,7 +937,7 @@ void app_screen(lv_obj_t* scr) {
     default:
       break;
   }
-  if (offline) {  // the last values, dimmed and not touchable, under one line (P53)
+  if (offline) {  // the last values, dimmed and not touchable, under one line (P53); live with sensors
     lv_obj_t* r = rowbox(body, 6);
     lv_obj_set_style_pad_hor(r, 16, 0);
     lv_obj_set_style_pad_ver(r, 6, 0);
@@ -924,7 +952,7 @@ void app_screen(lv_obj_t* scr) {
   lv_obj_set_scroll_dir(body, LV_DIR_VER);
   lv_obj_set_scrollbar_mode(body, LV_SCROLLBAR_MODE_ACTIVE);
   build_layout(body);
-  if (offline) {
+  if (offline && !live) {
     untouchable(body);
     lv_obj_t* veil = box(body);  // above the layout; stays put while it scrolls
     lv_obj_add_flag(veil, LV_OBJ_FLAG_FLOATING);
@@ -1028,7 +1056,77 @@ void app_on_link(const sys::LinkEvent& e) {
   }
 }
 
+// A value for binding `bind`: kept, and shown on every element bound to it. `save`: it goes to
+// the card with the others (PC values); sensor readings are not saved, the board has them live.
+static void set_value(uint16_t bind, uint8_t kind, int32_t i, const char* text, bool save, bool show) {
+  if (bind >= s_app.vals.size()) return;
+  Val& val = s_app.vals[bind];
+  if (!save && val.set && val.kind == kind && val.i == i && (kind != 2 || val.text == text)) return;  // unchanged
+  val.set = true;
+  val.kind = kind;
+  val.i = i;
+  if (kind == 2) val.text = text;
+  if (save) s_app.dirty = true;
+  if (!show) return;
+  bool shows = false;
+  std::vector<uint16_t> views;  // views bound to it (switching changes `bound`, so not in the loop)
+  for (const Bound& b : s_app.bound) {
+    if (b.bind != bind) continue;
+    if (b.kind == fpkg::kind::VIEW && !b.show) views.push_back(b.elem);
+    else if (b.show) shows = true;
+    else apply(b, val);
+  }
+  for (uint16_t view : views) switch_view(view, portrait());
+  if (shows) refresh_shown(true);
+}
+
+// A sensor's six bindings from its latest reading (docs/packages.md "Sensors"). Temperature and
+// humidity ints keep their last good values while the state is not ok (`_ok` hides them).
+static void sensor_values(Sens& se, bool show) {
+  sys::SensorReading r = sys::sensors_get(se.slot);
+  se.seq = r.seq;
+  bool ok = r.state == fnx::sensor_state::OK;
+  char t[24] = "--", h[16] = "--";
+  if (ok) {
+    int a = r.temp_x10 < 0 ? -r.temp_x10 : r.temp_x10;
+    snprintf(t, sizeof t, "%s%d.%d \xC2\xB0" "C", r.temp_x10 < 0 ? "-" : "", a / 10, a % 10);
+    snprintf(h, sizeof h, "%u.%u %%", (unsigned)(r.hum_x10 / 10), (unsigned)(r.hum_x10 % 10));
+  }
+  const char* st = r.state == fnx::sensor_state::OK        ? "Live"
+                   : r.state == fnx::sensor_state::MISSING ? "Not connected"
+                   : r.state == fnx::sensor_state::ERROR   ? "Read error"
+                                                           : "Reading";
+  const uint16_t* id = se.ids;
+  if (ok || r.seq == 0) {  // before any reading the bars rest at 0
+    set_value(id[0], 0, r.temp_x10, "", false, show);
+    set_value(id[2], 0, r.hum_x10, "", false, show);
+  }
+  set_value(id[1], 2, 0, t, false, show);
+  set_value(id[3], 2, 0, h, false, show);
+  set_value(id[4], 1, ok, "", false, show);
+  set_value(id[5], 2, 0, st, false, show);
+}
+
+// Which pins the sensor task reads (every 0.5 s): the open app's, and those of apps whose PC half
+// runs while the link is up (their readings also go to the PC as SENSOR frames).
+static void sensor_want_tick() {
+  static int64_t next;
+  int64_t now = esp_timer_get_time();
+  if (now < next) return;
+  next = now + 500000;
+  auto mask = [](uint8_t nib) { return (uint8_t)((nib & 0x0F ? 1 : 0) | (nib & 0xF0 ? 2 : 0)); };
+  uint8_t open = 0, up = 0;
+  for (const Sens& se : s_app.sens) open |= 1 << se.slot;
+  if (sys::link_connected()) {
+    sys::AppMeta m;
+    for (int i = 0; sys::store_at(i, &m); i++)
+      if (m.sensors && app_host(m.id) == fnx::host::RUNNING) up |= mask(m.sensors);
+  }
+  sys::sensors_want(open | up, up);
+}
+
 void app_tick() {
+  sensor_want_tick();
   sys::BindValue v;
   if (!s_app.open) {
     while (sys::bind_poll(&v)) {
@@ -1057,24 +1155,11 @@ void app_tick() {
     }
   }
   while (sys::bind_poll(&v)) {
-    if (v.app != sys::app_hash(s_app.id) || v.bind >= s_app.vals.size()) continue;
-    Val& val = s_app.vals[v.bind];
-    val.set = true;
-    val.kind = v.kind;
-    val.i = v.i;
-    if (v.kind == 2) val.text = v.text;
-    s_app.dirty = true;
-    bool shows = false;
-    std::vector<uint16_t> views;  // views bound to it (switching changes `bound`, so not in the loop)
-    for (const Bound& b : s_app.bound) {
-      if (b.bind != v.bind) continue;
-      if (b.kind == fpkg::kind::VIEW && !b.show) views.push_back(b.elem);
-      else if (b.show) shows = true;
-      else apply(b, val);
-    }
-    for (uint16_t view : views) switch_view(view, portrait());
-    if (shows) refresh_shown(true);
+    if (v.app != sys::app_hash(s_app.id)) continue;
+    set_value(v.bind, v.kind, v.i, v.text, true, true);
   }
+  for (Sens& se : s_app.sens)
+    if (sys::sensors_get(se.slot).seq != se.seq) sensor_values(se, true);
 }
 
 }  // namespace fx::apps

@@ -160,6 +160,8 @@ static int run_script(const std::string& path, const std::string& out) {
       font = (base / w[1]).string();
       ui::cjk_load(font.c_str());
       run_for(300);
+    } else if (v == "sensor" && w.size() >= 3 && sim::set_sensor(atoi(w[1].c_str()), {w.begin() + 2, w.end()})) {
+      run_for(600);
     } else if (v == "card" && w.size() == 2 && (w[1] == "in" || w[1] == "out")) {
       sim::set_card(w[1] == "in");
       run_for(600);

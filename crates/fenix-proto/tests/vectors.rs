@@ -442,6 +442,27 @@ fn samples() -> Vec<(&'static str, Msg)> {
         ),
         ("shot_save", Msg::ShotSave),
         (
+            "sensor",
+            Msg::Sensor(SensorReading {
+                pin: 27,
+                kind: 1,
+                state: sensor_state::OK,
+                temp_x10: -52,
+                hum_x10: 661,
+                uptime_ms: 123_456,
+            }),
+        ),
+        ("sensor_watch", Msg::SensorWatch { pins: 3 }),
+        (
+            "sensor_fake",
+            Msg::SensorFake {
+                pin: 22,
+                mode: sensor_fake::OK,
+                temp_x10: 234,
+                hum_x10: 452,
+            },
+        ),
+        (
             "bind_image",
             Msg::BindImage {
                 bind: 2,

@@ -23,6 +23,7 @@ extern "C" void app_main(void) {
   fx::sys::clock_init();
   fx::sys::ota_boot();
   fx::sys::store_mount();
+  fx::sys::sensors_start();
   fx::sys::link_start();
   fx::sys::radio_start();
   fx::sys::sd_start();

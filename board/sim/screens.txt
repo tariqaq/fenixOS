@@ -2,6 +2,7 @@
 # Run: python tools/sim_shots.py  (builds the simulator and build/sample.fxp, then compares).
 # Verbs: tap x y | swipe x1 y1 x2 y2 | wait ms | shot name | install file | remove id
 #        set id name=value... | host id on|off|gone|starting | card in|out | stream on fps | stream off
+#        sensor 22|27 <temp> <hum> | sensor 22|27 missing|error|reading
 #        image id name | font file | connect | disconnect | ota offer <update|-> <back|-> | ota failed_version <v|->
 #        ota idle|receiving|checking|writing|restarting|failed [pct] [version]
 # Taps wait 1 s and swipes 1.2 s of virtual time afterwards, so animations have finished.
@@ -122,6 +123,20 @@ set io.github.tariqaq.views mode=1 timer=12:48 muted=true mic=27 hint=true
 shot app_view_call                        # the second child; the muted row (microphone-slash) and the hint
 tap 30 16
 remove io.github.tariqaq.views
+# Wired sensors (P59, tools/sensor-app): the board sets the six bindings per sensor itself.
+install build/sensors.fxp
+tap 58 182
+shot app_sensors_reading                  # no reading yet: "--" hidden, state row says Reading
+sensor 22 23.4 45.2
+sensor 27 -5.2 66.1
+shot app_sensors                          # both live: values, bars, state row Live
+sensor 27 missing
+shot app_sensors_missing                  # sensor 2 unplugged: values hidden, "Not connected"
+disconnect
+shot app_sensors_offline                  # no PC: the layout stays live (no veil), one line on top
+connect
+tap 30 16
+remove io.github.tariqaq.sensortest
 # Settings backup (P53): an erased board finds a backup on its card.
 backup offer HomeWiFi
 shot backup_offer

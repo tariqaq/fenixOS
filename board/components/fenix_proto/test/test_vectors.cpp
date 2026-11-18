@@ -93,6 +93,24 @@ static bool reencode(const uint8_t* p, size_t n, std::vector<uint8_t>& out) {
       write_radio_state(w, s);
       break;
     }
+    case ty::SENSOR: {
+      SensorReading s;
+      if (!read_sensor(r, s)) return false;
+      write_sensor(w, s);
+      break;
+    }
+    case ty::SENSOR_FAKE: {
+      SensorFake f;
+      if (!read_sensor_fake(r, f)) return false;
+      write_sensor_fake(w, f);
+      break;
+    }
+    case ty::SENSOR_WATCH: {
+      uint8_t v = r.u8();
+      if (!r.done()) return false;
+      w.u8(v);
+      break;
+    }
     case ty::SD_STATE: {
       SdState s;
       if (!read_sd_state(r, s)) return false;
