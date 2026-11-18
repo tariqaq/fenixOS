@@ -58,6 +58,40 @@ static void views(const char* path) {
   printf("fenix_pkg: views ok\n");
 }
 
+// tools/sensor-app (P59): two DHT22 read from the table after the assets; a bad table refused.
+static void sensors(const char* path) {
+  std::vector<uint8_t> b = slurp(path);
+  fpkg::Package p;
+  const char* err = p.parse(b.data(), b.size());
+  expect(!err, err ? err : "");
+  if (err) return;
+  expect(p.head.n_sensors == 2 && p.sensors.size() == 2, "sensor count");
+  expect(p.sensors[0].pin == 22 && p.sensors[1].pin == 27 && p.sensors[0].kind == fpkg::sensor_kind::DHT22,
+         "sensor pins");
+  expect(p.strings[p.sensors[1].bind] == "s2", "sensor bind");
+  expect(fpkg::sensor_nibbles(p.sensors) == 0x11, "sensor nibbles");
+  FILE* f = fopen(path, "rb");
+  uint8_t nib = 0;
+  expect(f && fpkg::read_sensor_nibbles(f, b.size(), &nib) && nib == 0x11, "nibbles from the file");
+  if (f) fclose(f);
+  struct Bad {
+    size_t at;  // from the end
+    uint8_t v;
+    const char* what;
+  } bad[] = {{3, 35, "pin 35"}, {3, 21, "pin 21"}, {4, 2, "kind 2"}, {7, 27, "two on one pin"}};
+  for (const Bad& x : bad) {
+    std::vector<uint8_t> t = b;
+    t[t.size() - x.at] = x.v;
+    expect(p.parse(t.data(), t.size()) != nullptr, x.what);
+  }
+  std::vector<uint8_t> t(b.begin(), b.end() - 4);  // a table shorter than the header says
+  expect(p.parse(t.data(), t.size()) != nullptr, "short sensor table");
+  t = b;
+  t[9] = 0;  // an older reader: the table is trailing bytes
+  expect(p.parse(t.data(), t.size()) != nullptr, "table as trailing bytes");
+  printf("fenix_pkg: sensors ok\n");
+}
+
 int main(int argc, char** argv) {
   if (argc < 2) return 2;
   std::vector<uint8_t> b = slurp(argv[1]);
@@ -118,6 +152,7 @@ int main(int argc, char** argv) {
   }
   printf("fenix_pkg: sample ok, %zu flips, %d still parse (prop values, pixels)\n", b.size(), accepted);
   if (argc > 2) views(argv[2]);
+  if (argc > 3) sensors(argv[3]);
   printf(fails ? "%d FAILED\n" : "all passed\n", fails);
   return fails ? 1 : 0;
 }

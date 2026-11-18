@@ -5,6 +5,7 @@
 namespace fpkg {
 
 static const uint8_t MAGIC[4] = {'F', 'X', 'P', '1'};
+const char* const SENSOR_BINDS[N_SENSOR_BINDS] = {"temp", "temp_text", "hum", "hum_text", "ok", "state"};
 
 bool MemSource::read(void* dst, size_t n) {
   if (n > n_ - pos) return false;
@@ -74,7 +75,7 @@ bool read_header(Rd& r, Header& h, Counts& c) {
   h.min_fenixos[0] = r.u8();
   h.min_fenixos[1] = r.u8();
   h.min_fenixos[2] = r.u8();
-  r.u8();
+  h.n_sensors = r.u8();
   c.ns = r.u16();
   c.nb = r.u16();
   c.ne = r.u16();
@@ -112,6 +113,32 @@ bool valid_id(std::string_view id) {
               c == '-' || c == '_';
     if (!ok) return false;
   }
+  return true;
+}
+
+bool valid_sensor_bind(std::string_view b) {
+  if (b.empty() || b.size() > MAX_SENSOR_BIND) return false;
+  for (char c : b) {
+    bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
+    if (!ok) return false;
+  }
+  return true;
+}
+
+bool read_sensor_nibbles(FILE* f, size_t n, uint8_t* nibbles) {
+  *nibbles = 0;
+  uint8_t h[HEADER_LEN];
+  if (n < HEADER_LEN || fseek(f, 0, SEEK_SET) != 0 || fread(h, 1, HEADER_LEN, f) != HEADER_LEN) return false;
+  size_t count = h[9], len = count * 4;
+  if (!count) return true;
+  if (len > n - HEADER_LEN || fseek(f, (long)(n - len), SEEK_SET) != 0) return false;
+  std::vector<Sensor> v;
+  for (size_t i = 0; i < count; i++) {
+    uint8_t e[4];
+    if (fread(e, 1, 4, f) != 4) return false;
+    v.push_back({e[0], e[1], (uint16_t)(e[2] | e[3] << 8)});
+  }
+  *nibbles = sensor_nibbles(v);
   return true;
 }
 
@@ -153,6 +180,7 @@ const char* Package::read(Source& src, size_t n) {
   binds.clear();
   elems.clear();
   assets.clear();
+  sensors.clear();
   arena.clear();
   id = name = version = {};
   Rd r{src};
@@ -200,6 +228,14 @@ const char* Package::read(Source& src, size_t n) {
     a.offset = (uint32_t)src.pos;
     if (!r.ok || !src.skip(a.len)) return "truncated package";
     assets.push_back(a);
+  }
+  sensors.reserve(head.n_sensors);
+  for (uint8_t i = 0; i < head.n_sensors; i++) {
+    Sensor s;
+    s.kind = r.u8();
+    s.pin = r.u8();
+    s.bind = r.u16();
+    sensors.push_back(s);
   }
   if (!r.ok) return "truncated package";
   if (src.pos != n) return "trailing bytes";
@@ -297,6 +333,25 @@ const char* Package::check() {
   if (built * RAM_PER_ELEM + elems.size() * RAM_PER_PKG_ELEM + string_bytes + image_bytes + art_bytes > MAX_RAM)
     return "too much RAM";
   this->built = built;
+  // Sensors (P59): a known kind on a free pin, one per pin, a valid unique prefix, and its six
+  // bindings in the table.
+  for (size_t i = 0; i < sensors.size(); i++) {
+    const Sensor& s = sensors[i];
+    if (s.kind != sensor_kind::DHT22) return "unknown sensor kind";
+    if (s.pin != SENSOR_PIN_A && s.pin != SENSOR_PIN_B) return "sensor pin not allowed";
+    if (s.bind >= strings.size() || !valid_sensor_bind(strings[s.bind])) return "bad sensor bind";
+    for (size_t j = 0; j < i; j++) {
+      if (sensors[j].pin == s.pin) return "two sensors on one pin";
+      if (strings[sensors[j].bind] == strings[s.bind]) return "two sensors with one bind";
+    }
+    for (const char* suf : SENSOR_BINDS) {
+      char full[MAX_SENSOR_BIND + 12];
+      snprintf(full, sizeof full, "%s_%s", strings[s.bind].data(), suf);
+      bool found = false;
+      for (uint16_t b : binds) found |= strings[b] == full;
+      if (!found) return "sensor binding missing";
+    }
+  }
   return nullptr;
 }
 

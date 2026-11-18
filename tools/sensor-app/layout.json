@@ -1,0 +1,176 @@
+{
+ "type": "box",
+ "w": "100%",
+ "grow": 1,
+ "pad": 12,
+ "gap": 10,
+ "children": [
+  {
+   "type": "box",
+   "flow": "row",
+   "w": "100%",
+   "gap": 10,
+   "portrait": {
+    "flow": "column"
+   },
+   "children": [
+    {
+     "type": "box",
+     "bg": "surface_1",
+     "radius": 12,
+     "pad": 10,
+     "gap": 4,
+     "grow": 1,
+     "portrait": {
+      "w": "100%"
+     },
+     "children": [
+      {
+       "type": "label",
+       "text": "Sensor 1",
+       "font": "label",
+       "color": "label_2"
+      },
+      {
+       "type": "box",
+       "w": "100%",
+       "gap": 4,
+       "show": "s1_ok",
+       "children": [
+        {
+         "type": "label",
+         "text": "--",
+         "font": "title_l",
+         "bind": "s1_temp_text"
+        },
+        {
+         "type": "bar",
+         "min": -100,
+         "max": 500,
+         "bind": "s1_temp",
+         "w": "100%",
+         "h": 6,
+         "color": "warning"
+        },
+        {
+         "type": "label",
+         "text": "--",
+         "font": "body_semibold",
+         "bind": "s1_hum_text"
+        },
+        {
+         "type": "bar",
+         "min": 0,
+         "max": 1000,
+         "bind": "s1_hum",
+         "w": "100%",
+         "h": 6,
+         "color": "accent"
+        }
+       ]
+      },
+      {
+       "type": "box",
+       "flow": "row",
+       "gap": 6,
+       "cross": "center",
+       "children": [
+        {
+         "type": "icon",
+         "icon": "plugs-connected",
+         "size": 16,
+         "color": "label_2"
+        },
+        {
+         "type": "label",
+         "text": "Reading",
+         "font": "label",
+         "color": "label_2",
+         "bind": "s1_state"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "type": "box",
+     "bg": "surface_1",
+     "radius": 12,
+     "pad": 10,
+     "gap": 4,
+     "grow": 1,
+     "portrait": {
+      "w": "100%"
+     },
+     "children": [
+      {
+       "type": "label",
+       "text": "Sensor 2",
+       "font": "label",
+       "color": "label_2"
+      },
+      {
+       "type": "box",
+       "w": "100%",
+       "gap": 4,
+       "show": "s2_ok",
+       "children": [
+        {
+         "type": "label",
+         "text": "--",
+         "font": "title_l",
+         "bind": "s2_temp_text"
+        },
+        {
+         "type": "bar",
+         "min": -100,
+         "max": 500,
+         "bind": "s2_temp",
+         "w": "100%",
+         "h": 6,
+         "color": "warning"
+        },
+        {
+         "type": "label",
+         "text": "--",
+         "font": "body_semibold",
+         "bind": "s2_hum_text"
+        },
+        {
+         "type": "bar",
+         "min": 0,
+         "max": 1000,
+         "bind": "s2_hum",
+         "w": "100%",
+         "h": 6,
+         "color": "accent"
+        }
+       ]
+      },
+      {
+       "type": "box",
+       "flow": "row",
+       "gap": 6,
+       "cross": "center",
+       "children": [
+        {
+         "type": "icon",
+         "icon": "plugs-connected",
+         "size": 16,
+         "color": "label_2"
+        },
+        {
+         "type": "label",
+         "text": "Reading",
+         "font": "label",
+         "color": "label_2",
+         "bind": "s2_state"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

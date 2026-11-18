@@ -43,12 +43,25 @@ fn build(args: &[String]) -> i32 {
                 p.binds.len(),
                 out.display()
             );
+            print_sensors(&p);
             0
         }
         Err(e) => {
             eprintln!("error: {e}");
             1
         }
+    }
+}
+
+/// Each sensor and the bindings the board sets for it (P59).
+fn print_sensors(p: &fenix_pkg::Package) {
+    for (s, name) in p.sensors.iter().zip(p.sensor_names()) {
+        let b = p.sensor_bind(s);
+        let gen: Vec<String> = fenix_pkg::SENSOR_BINDS
+            .iter()
+            .map(|x| format!("{b}_{x}"))
+            .collect();
+        println!("sensor {name}, set by the board: {}", gen.join(", "));
     }
 }
 
@@ -77,6 +90,7 @@ fn inspect(file: &Path) -> i32 {
                 p.tile_color, p.icon_small, p.icon_large
             );
             println!("bindings: {:?}", p.bind_names());
+            print_sensors(&p);
             for (i, e) in p.elems.iter().enumerate() {
                 let ev = p
                     .event_name(i as u16)

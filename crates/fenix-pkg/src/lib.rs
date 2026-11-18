@@ -64,6 +64,35 @@ pub mod kind {
 /// (older boards would refuse kind 9 and ignore `show`).
 pub const VIEW_SINCE: (u8, u8, u8) = (0, 1, 25);
 
+/// Wired sensors (P59, fenixOS 0.1.29): `[[sensor]]` in `app.toml`. A package with sensors must
+/// say so in `min_fenixos`; older boards refuse it (newer `min_fenixos`, and the sensor table
+/// reads as trailing bytes).
+pub const SENSOR_SINCE: (u8, u8, u8) = (0, 1, 29);
+/// The only pins free for a sensor on the CYD (CN1): every other pin is taken or input only.
+pub const SENSOR_PINS: [u8; 2] = [22, 27];
+/// Sensor kinds by id - 1 (kind 1 is `dht22`).
+pub const SENSOR_KINDS: [&str; 1] = ["dht22"];
+/// Bindings the board sets for each sensor, as `<bind>_<suffix>`; they count toward `MAX_BINDS`.
+pub const SENSOR_BINDS: [&str; 6] = ["temp", "temp_text", "hum", "hum_text", "ok", "state"];
+pub const MAX_SENSOR_BIND: usize = 16;
+
+/// A sensor prefix: 1 to 16 ASCII letters, digits or `_`.
+pub fn valid_sensor_bind(b: &str) -> bool {
+    !b.is_empty()
+        && b.len() <= MAX_SENSOR_BIND
+        && b.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_')
+}
+
+/// One `[[sensor]]`: the board reads it and sets its bindings (`SENSOR_BINDS`).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Sensor {
+    /// 1 = dht22 (`SENSOR_KINDS`).
+    pub kind: u8,
+    pub pin: u8,
+    /// String index of the binding prefix.
+    pub bind: u16,
+}
+
 /// Prop keys; `| PORTRAIT` marks a portrait-only value.
 pub mod key {
     pub const TEXT: u8 = 1;
@@ -214,6 +243,8 @@ pub struct Package {
     pub tile_color: u32,
     pub icon_small: u16,
     pub icon_large: u16,
+    /// Wired sensors (P59); empty for most apps. Stored after the assets, counted in header byte 9.
+    pub sensors: Vec<Sensor>,
 }
 
 impl Package {
@@ -253,6 +284,25 @@ impl Package {
         })
     }
 
+    /// Binding prefix of a sensor.
+    pub fn sensor_bind(&self, s: &Sensor) -> &str {
+        &self.strings[s.bind as usize]
+    }
+
+    /// "DHT22 on IO22" per sensor, for the PC app and `inspect`.
+    pub fn sensor_names(&self) -> Vec<String> {
+        self.sensors
+            .iter()
+            .map(|s| {
+                let k = SENSOR_KINDS
+                    .get(s.kind as usize - 1)
+                    .copied()
+                    .unwrap_or("?");
+                format!("{} on IO{}", k.to_uppercase(), s.pin)
+            })
+            .collect()
+    }
+
     /// Event name of element `elem` (what the PC half sees for an `EVENT`).
     pub fn event_name(&self, elem: u16) -> Option<&str> {
         let e = self.elems.get(elem as usize)?;
@@ -269,7 +319,7 @@ impl Package {
             self.min_fenixos.0,
             self.min_fenixos.1,
             self.min_fenixos.2,
-            0,
+            self.sensors.len() as u8,
         ]);
         for v in [
             self.strings.len() as u16,
@@ -308,6 +358,11 @@ impl Package {
             b.extend_from_slice(&a.h.to_le_bytes());
             b.extend_from_slice(&(a.data.len() as u32).to_le_bytes());
             b.extend_from_slice(&a.data);
+        }
+        for s in &self.sensors {
+            b.push(s.kind);
+            b.push(s.pin);
+            b.extend_from_slice(&s.bind.to_le_bytes());
         }
         b
     }
@@ -354,6 +409,41 @@ impl Package {
                 };
                 if v < 0 || v as usize >= limit {
                     return Err(format!("element {i}: prop {k} value {v} out of range"));
+                }
+            }
+        }
+        self.check_sensors()
+    }
+
+    /// Sensors (P59): a known kind on a free pin, one per pin, a valid unique prefix, and all
+    /// six generated bindings in the binding table (the compiler adds them).
+    fn check_sensors(&self) -> Result<(), String> {
+        for (i, s) in self.sensors.iter().enumerate() {
+            if s.kind == 0 || s.kind as usize > SENSOR_KINDS.len() {
+                return Err(format!("sensor {i}: unknown kind {}", s.kind));
+            }
+            if !SENSOR_PINS.contains(&s.pin) {
+                return Err(format!("sensor {i}: pin {} cannot take a sensor", s.pin));
+            }
+            if self.sensors[..i].iter().any(|o| o.pin == s.pin) {
+                return Err(format!("pin {} has two sensors", s.pin));
+            }
+            let b = self
+                .strings
+                .get(s.bind as usize)
+                .ok_or("sensor bind out of range")?;
+            if !valid_sensor_bind(b) {
+                return Err(format!("sensor {i}: bad bind {b:?}"));
+            }
+            if self.sensors[..i]
+                .iter()
+                .any(|o| self.strings[o.bind as usize] == *b)
+            {
+                return Err(format!("two sensors use bind {b:?}"));
+            }
+            for suf in SENSOR_BINDS {
+                if self.bind_id(&format!("{b}_{suf}")).is_none() {
+                    return Err(format!("sensor {i}: binding {b}_{suf} missing"));
                 }
             }
         }
@@ -488,7 +578,7 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
     }
     r.u8()?;
     let min = (r.u8()?, r.u8()?, r.u8()?);
-    r.u8()?;
+    let n_sensors = r.u8()?;
     let (ns, nb, ne, na) = (r.u16()?, r.u16()?, r.u16()?, r.u16()?);
     let (id, name, version) = (r.u16()?, r.u16()?, r.u16()?);
     let tile_color = r.u32()?;
@@ -528,6 +618,15 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
             data: r.take(n)?.to_vec(),
         });
     }
+    let sensors = (0..n_sensors)
+        .map(|_| {
+            Ok(Sensor {
+                kind: r.u8()?,
+                pin: r.u8()?,
+                bind: r.u16()?,
+            })
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     if r.i != bytes.len() {
         return Err("trailing bytes".into());
     }
@@ -543,6 +642,7 @@ pub fn parse(bytes: &[u8]) -> Result<Package, String> {
         tile_color,
         icon_small,
         icon_large,
+        sensors,
     };
     for s in [p.id, p.name, p.version]
         .into_iter()
@@ -572,6 +672,17 @@ struct Manifest {
     #[serde(default = "default_color")]
     color: String,
     icon: Option<String>,
+    #[serde(default)]
+    sensor: Vec<SensorDecl>,
+}
+
+/// `[[sensor]]` in `app.toml` (P59).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SensorDecl {
+    kind: String,
+    pin: i64,
+    bind: String,
 }
 
 fn default_min() -> String {
@@ -646,6 +757,74 @@ impl<'a> Compiler<'a> {
             .or_else(|| self.tokens.get(&s.replace('-', "_")).copied())
             .or_else(|| self.tokens.get(&format!("tile_{s}")).copied())
             .ok_or_else(|| format!("unknown colour {s}"))
+    }
+
+    /// Check the `[[sensor]]` tables and add each sensor's bindings after the layout's (P59).
+    fn sensors(&mut self, decls: &[SensorDecl]) -> Result<Vec<Sensor>, String> {
+        let mut out: Vec<Sensor> = Vec::new();
+        let mut prefixes: Vec<&str> = Vec::new();
+        for (i, s) in decls.iter().enumerate() {
+            let n = i + 1;
+            let kind = SENSOR_KINDS
+                .iter()
+                .position(|k| *k == s.kind)
+                .ok_or_else(|| {
+                    format!(
+                        "sensor {n}: unknown kind {:?} (known: {})",
+                        s.kind,
+                        SENSOR_KINDS.join(", ")
+                    )
+                })? as u8
+                + 1;
+            let pin = u8::try_from(s.pin)
+                .ok()
+                .filter(|p| SENSOR_PINS.contains(p))
+                .ok_or_else(|| {
+                    format!(
+                        "sensor {n}: pin {} cannot take a sensor (free pins: 22 and 27, on CN1)",
+                        s.pin
+                    )
+                })?;
+            if out.iter().any(|o| o.pin == pin) {
+                return Err(format!("pin {pin} has two sensors (one per pin)"));
+            }
+            if !valid_sensor_bind(&s.bind) {
+                return Err(format!(
+                    "sensor {n}: bind {:?} must be 1 to {MAX_SENSOR_BIND} letters, digits or _",
+                    s.bind
+                ));
+            }
+            if prefixes.contains(&s.bind.as_str()) {
+                return Err(format!("two sensors use bind {:?}", s.bind));
+            }
+            prefixes.push(&s.bind);
+            out.push(Sensor {
+                kind,
+                pin,
+                bind: self.string(&s.bind),
+            });
+        }
+        // A layout binding under a sensor's prefix must be one the board sets (catches typos
+        // such as s1_temperature, which nothing would ever set).
+        for &b in &self.binds {
+            let name = &self.strings[b as usize];
+            for p in &prefixes {
+                if let Some(suf) = name.strip_prefix(&format!("{p}_")) {
+                    if !SENSOR_BINDS.contains(&suf) {
+                        return Err(format!(
+                            "binding {name}: {p} is a sensor, whose bindings are {}",
+                            SENSOR_BINDS.map(|x| format!("{p}_{x}")).join(", ")
+                        ));
+                    }
+                }
+            }
+        }
+        for p in prefixes {
+            for suf in SENSOR_BINDS {
+                self.bind(&format!("{p}_{suf}"));
+            }
+        }
+        Ok(out)
     }
 
     fn bind(&mut self, name: &str) -> i32 {
@@ -991,6 +1170,13 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
             "view, show, a bound image and the newer icons need min_fenixos {a}.{b}.{d} or newer"
         ));
     }
+    let sensors = c.sensors(&m.sensor)?;
+    if !sensors.is_empty() && min_fenixos < SENSOR_SINCE {
+        let (a, b, d) = SENSOR_SINCE;
+        return Err(format!(
+            "[[sensor]] needs min_fenixos {a}.{b}.{d} or newer"
+        ));
+    }
     let p = Package {
         min_fenixos,
         strings: c.strings,
@@ -1003,8 +1189,10 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
         tile_color,
         icon_small,
         icon_large,
+        sensors,
     };
     let bytes = p.to_bytes();
+    p.check_refs()?;
     p.check_limits()?;
     Ok(bytes)
 }
@@ -1032,10 +1220,15 @@ mod tests {
 
     /// Build a package folder in the temp dir with this layout and `min_fenixos`, then parse it.
     fn build_layout(name: &str, layout: &str, min: &str) -> Result<Package, String> {
+        build_with(name, "", layout, min)
+    }
+
+    /// Like `build_layout`, with more `app.toml` lines (`[[sensor]]` tables).
+    fn build_with(name: &str, extra: &str, layout: &str, min: &str) -> Result<Package, String> {
         let dir = std::env::temp_dir().join(format!("fenix-pkg-test-{name}"));
         std::fs::create_dir_all(&dir).unwrap();
         let toml = format!(
-            "id = \"t.{name}\"\nname = \"T\"\nversion = \"1.0.0\"\nmin_fenixos = \"{min}\"\ncolor = \"teal\"\n"
+            "id = \"t.{name}\"\nname = \"T\"\nversion = \"1.0.0\"\nmin_fenixos = \"{min}\"\ncolor = \"teal\"\n{extra}"
         );
         std::fs::write(dir.join("app.toml"), toml).unwrap();
         std::fs::write(dir.join("layout.json"), layout).unwrap();
@@ -1155,6 +1348,59 @@ mod tests {
         assert!(parse(&p.to_bytes()).is_err());
         p.elems[1].props.pop();
         p.elems[1].kind = kind::VIEW + 1;
+        assert!(parse(&p.to_bytes()).is_err());
+    }
+
+    fn sensor(kind: &str, pin: i64, bind: &str) -> String {
+        format!("[[sensor]]\nkind = \"{kind}\"\npin = {pin}\nbind = \"{bind}\"\n")
+    }
+
+    #[test]
+    fn sensors_build_and_round_trip() {
+        let layout = r#"{ "type": "box", "children": [
+            { "type": "label", "bind": "s1_temp_text" }, { "type": "bar", "bind": "s2_hum" },
+            { "type": "label", "bind": "title" } ] }"#;
+        let two = sensor("dht22", 22, "s1") + &sensor("dht22", 27, "s2");
+        let p = build_with("sens", &two, layout, "0.1.29").unwrap();
+        assert_eq!(p.sensors.len(), 2);
+        assert_eq!((p.sensors[0].kind, p.sensors[0].pin), (1, 22));
+        assert_eq!(p.sensor_bind(&p.sensors[1]), "s2");
+        assert_eq!(p.sensor_names(), ["DHT22 on IO22", "DHT22 on IO27"]);
+        // Layout bindings keep their ids; the generated ones follow (6 per sensor).
+        assert_eq!(p.bind_id("s1_temp_text"), Some(0));
+        assert_eq!(p.bind_id("title"), Some(2));
+        assert_eq!(p.binds.len(), 3 + 12 - 2);
+        for suf in SENSOR_BINDS {
+            assert!(p.bind_id(&format!("s2_{suf}")).is_some());
+        }
+        let b = p.to_bytes();
+        assert_eq!(b[9], 2, "header byte 9 counts the sensors");
+        // An older reader stops after the assets: the sensor table is trailing bytes.
+        assert_eq!(&b[b.len() - 4..], &[1, 27, p.sensors[1].bind as u8, 0]);
+    }
+
+    #[test]
+    fn sensors_refused() {
+        let l = r#"{ "type": "label", "text": "x" }"#;
+        let err = |name: &str, extra: &str, min: &str| build_with(name, extra, l, min).unwrap_err();
+        assert!(err("s-pin35", &sensor("dht22", 35, "a"), "0.1.29").contains("pin 35"));
+        assert!(err("s-pin21", &sensor("dht22", 21, "a"), "0.1.29").contains("pin 21"));
+        assert!(err("s-kind", &sensor("dht11", 22, "a"), "0.1.29").contains("unknown kind"));
+        let dup = sensor("dht22", 22, "a") + &sensor("dht22", 22, "b");
+        assert!(err("s-dup", &dup, "0.1.29").contains("two sensors"));
+        let same = sensor("dht22", 22, "a") + &sensor("dht22", 27, "a");
+        assert!(err("s-same", &same, "0.1.29").contains("bind"));
+        assert!(err("s-bad", &sensor("dht22", 22, "a-b"), "0.1.29").contains("bind"));
+        assert!(err("s-min", &sensor("dht22", 22, "a"), "0.1.28").contains("min_fenixos 0.1.29"));
+        let typo = r#"{ "type": "label", "bind": "a_temperature" }"#;
+        let e = build_with("s-typo", &sensor("dht22", 22, "a"), typo, "0.1.29").unwrap_err();
+        assert!(e.contains("a_temp_text"), "{e}");
+        // The readers check the table too.
+        let mut p = build_with("s-ok", &sensor("dht22", 22, "a"), l, "0.1.29").unwrap();
+        p.sensors[0].pin = 35;
+        assert!(parse(&p.to_bytes()).is_err());
+        p.sensors[0].pin = 22;
+        p.sensors[0].kind = 2;
         assert!(parse(&p.to_bytes()).is_err());
     }
 

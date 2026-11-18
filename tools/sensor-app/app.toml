@@ -1,0 +1,18 @@
+# Test fixture (P59): two DHT22 on CN1, as docs/requests/fenixos-sensor-support.md section 9 lays
+# them out. Used by the simulator's screens (board/sim/screens.txt), the C++ reader's host test
+# and the wiring check on the board (`fenix install`). The real app is io.github.tariqaq.sensors.
+id = "io.github.tariqaq.sensortest"
+name = "Sensor test"
+version = "0.1.0"
+min_fenixos = "0.1.29"
+color = "teal"
+
+[[sensor]]
+kind = "dht22"
+pin = 22
+bind = "s1"
+
+[[sensor]]
+kind = "dht22"
+pin = 27
+bind = "s2"

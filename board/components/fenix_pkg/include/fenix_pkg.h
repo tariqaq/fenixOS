@@ -30,6 +30,14 @@ constexpr int32_t MAX_ART = 96;  // largest side of the bound image (P50-M; 120 
 constexpr size_t MAX_ID = 48;
 constexpr int N_FONTS = 11;
 constexpr int N_ICONS = 34;  // 20 before v0.1.25 (P50-M added 14)
+// Wired sensors (P59, fenixOS 0.1.29): one per pin, on CN1's free pins only.
+constexpr int SENSOR_PIN_A = 22, SENSOR_PIN_B = 27;
+constexpr size_t MAX_SENSOR_BIND = 16;
+constexpr int N_SENSOR_BINDS = 6;
+extern const char* const SENSOR_BINDS[N_SENSOR_BINDS];  // <bind>_temp, _temp_text, _hum, _hum_text, _ok, _state
+namespace sensor_kind {
+constexpr uint8_t DHT22 = 1;
+}
 
 namespace kind {
 constexpr uint8_t BOX = 1, LABEL = 2, BUTTON = 3, SWITCH = 4, SLIDER = 5, BAR = 6, IMAGE = 7, ICON = 8,
@@ -66,8 +74,21 @@ struct Asset {
   uint32_t offset;  // of the pixels, from the start of the package
 };
 
+struct Sensor {
+  uint8_t kind, pin;
+  uint16_t bind;  // string index of the binding prefix
+};
+
+// Per-pin sensor kinds in one byte (AppMeta::sensors): low nibble pin 22, high nibble pin 27.
+inline uint8_t sensor_nibbles(const std::vector<Sensor>& v) {
+  uint8_t n = 0;
+  for (const Sensor& s : v) n |= s.pin == SENSOR_PIN_A ? s.kind & 15 : (s.kind & 15) << 4;
+  return n;
+}
+
 struct Header {
   uint8_t min_fenixos[3];
+  uint8_t n_sensors;  // header byte 9 (P59); the table follows the assets
   uint32_t tile_color;
   uint16_t icon_small, icon_large;
 };
@@ -122,6 +143,7 @@ class Package {
   std::vector<uint16_t> binds;  // string index of each binding name
   std::vector<Elem> elems;
   std::vector<Asset> assets;
+  std::vector<Sensor> sensors;
   std::string_view id, name, version;
   size_t built = 0;  // elements built at once (a view counts its largest child), set by parse
 
@@ -132,6 +154,11 @@ class Package {
 };
 
 bool valid_id(std::string_view id);
+bool valid_sensor_bind(std::string_view b);
+
+// The sensor table at the end of a package file: header byte 9 gives the count, the last
+// 4 x count bytes are the entries. Fills `nibbles` (sensor_nibbles); false on a read error.
+bool read_sensor_nibbles(FILE* f, size_t n, uint8_t* nibbles);
 
 // Read only the header and the first strings (id, version and, if asked, name) from the start of
 // a file, plus the tile colour. `n` may be shorter than the package; false if the strings asked for
