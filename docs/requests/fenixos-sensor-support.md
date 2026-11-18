@@ -4,6 +4,18 @@ Written for the fenixOS repo (`tariqaq/fenixOS`) and the agent working in it. It
 
 The design below is a proposal. Where it conflicts with how fenixOS is built, keep the goals in section 1 and adapt the mechanism. Write down any changes in the docs so the app side can follow them.
 
+> **Status: implemented in fenixOS v0.1.29 (P59), state rule fixed in v0.1.30 (P60), 2026-11-18.** Pin `fenix-sdk` and `fenix-pkg` to `v0.1.30` and set `min_fenixos = "0.1.29"`. The authoritative reference is now `docs/packages.md` "Sensors", `docs/sidecars.md` (`sensor` message), `proto/spec.md` "Sensors (0x7_)" and the template's `docs/fenixos/dev-guide.md` section 6 (re-copy the template docs). Tested on the real board with two DHT22s on IO22 and IO27. Where it differs from this request:
+>
+> - `app.toml` `[[sensor]]` (`kind`, `pin`, `bind`), the six bindings, the `sensors` permission (required; the PC app refuses the package without it) and `Message::Sensor` / `SensorState` / `app.sensors()` are as asked in sections 3.5, 4, 5 and 6.
+> - `<bind>_state` also has `"Reading"` before the first result (a good read, or 3 failed ones).
+> - `°` is written as UTF-8 (`\xC2\xB0`): the fonts hold U+00B0, and LVGL takes UTF-8.
+> - Missing means the last 3 reads got no answer at all; any other 3 failures in a row are error (v0.1.30).
+> - The board sends one `SENSOR` frame per pin, not per app: the PC app knows each app's pins from its package and gives every switched-on app with the permission its own `sensor` message.
+> - PC away: the layout stays live, touchable and undimmed under "PC not connected" (PC-set values show their last value). "Turned off on host PC", "Starting" and "Not on this PC" keep their screens and show no readings (decision for 3.6).
+> - `fenix sensors fake` lasts until `fenix sensors fake <pin> off` or a board restart (it has to outlive the CLI's session).
+> - Cost: 3.8 KB of board heap with both pins declared, 0.1% CPU.
+> - fenixOS's own test fixture `tools/sensor-app` (`io.github.tariqaq.sensortest`) is not the app; build the real one in `tariqaq/sensors`.
+
 ## 1. Goal
 
 The user wires two DHT22 temperature and humidity sensors to the board. The app should then:
