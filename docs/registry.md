@@ -61,6 +61,7 @@ The PC app lists apps from the registry in this repo. Each app lives in its own 
 | `files` | Read and write files |
 | `programs` | Start other programs |
 | `screen` | See your screen and the window in front (since 0.1.25, P50-M: screenshots of the display or the foreground window; `min_fenixos` must be 0.1.25 or newer, `tools/registry.py` checks) |
+| `sensors` | Reads sensors wired to the board (since 0.1.29, P59: the package declares `[[sensor]]`; `min_fenixos` 0.1.29 or newer. Required: the PC app refuses a package with sensors and no `sensors` permission, and routes `sensor` messages only to apps that have it) |
 
 Two rows are added from the manifest itself: "Runs its own helper program while switched on" when there is a `pc` part, and "Asks for administrator rights each time it starts" when `pc.elevated` is true.
 

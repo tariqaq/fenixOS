@@ -90,7 +90,7 @@ header (32 bytes)
   4  format       u8 = 1
   5  reserved     u8 = 0
   6  min_fenixos  u8 major, u8 minor, u8 patch
-  9  reserved     u8 = 0
+  9  n_sensors    u8 (P59; 0 before, "reserved")
   10 n_strings    u16
   12 n_binds      u16
   14 n_elems      u16
@@ -105,7 +105,10 @@ strings   n_strings × (len:u16 ‖ utf8)
 binds     n_binds × name:u16 (string index); the bind id is the position
 elements  n_elems × (kind:u8 ‖ parent:u16 (0xFFFF = root) ‖ nprops:u8 ‖ nprops × (key:u8 ‖ value:i32))
 assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's native order) ‖ w:u16 ‖ h:u16 ‖ len:u32 ‖ data)
+sensors   n_sensors × (kind:u8 (1 = dht22) ‖ pin:u8 (22 or 27) ‖ bind:u16 (string index of the prefix))
 ```
+
+- The sensor table (P59) is the last thing in the file, so a reader that wants only the pins reads header byte 9 and the last 4 × n bytes (`fpkg::read_sensor_nibbles`). A reader before P59 skips byte 9 and stops after the assets: it refuses the package as "trailing bytes" (and its `min_fenixos` 0.1.29 first), so no older board installs a package whose sensors it cannot read. The format number stays 1.
 
 - Elements are in tree order: a parent always comes before its children. The element index (position) is the `elem` in `EVENT`.
 - **Kinds:** 1 box, 2 label, 3 button, 4 switch, 5 slider, 6 bar, 7 image, 8 icon, 9 view (v0.1.25).
@@ -158,13 +161,31 @@ assets    n_assets × (format:u8 (1 = A8, 2 = RGB565 little-endian, LVGL's nativ
 - **Defaults:** buttons 40 px tall (icon buttons 40 × 40, DESIGN.md's touch target), button background `accent`, label colour `label`, bar colour `accent`, switch on colour `success`, slider and bar track `surface_3`. Built-in widgets match the system screens (slider, capsule button).
 - Not testable over the link: 6a (connecting the CLI ends it). The PC simulator shows it (`board/sim/golden/app_waiting.png`, the `disconnect` step in `board/sim/screens.txt`).
 
+## Sensors (P59)
+
+Wired DHT22 sensors on CN1 (`docs/board-info.md` "DHT22 sensors on CN1"; request: `docs/requests/fenixos-sensor-support.md`). Source, in `app.toml`:
+
+```toml
+[[sensor]]
+kind = "dht22"   # the only kind; the field leaves room for more
+pin  = 22        # 22 or 27: CN1's two GPIOs, the only free ones that can drive a pin (35 is input only)
+bind = "s1"      # prefix of the bindings below: 1 to 16 letters, digits or _
+```
+
+- **`fenix-pkg build` checks:** a known kind, pin 22 or 27, one sensor per pin, unique prefixes, `min_fenixos` 0.1.29 or newer, and no layout binding under a prefix other than the six below (a typo such as `s1_temperature` would never be set). It adds the six after the layout's own bindings (layout ids do not move); they count toward `MAX_BINDS`. Both readers (Rust `check_sensors`, C++ `Package::check`) check the table again, the board before it installs. `fenix-pkg build` and `inspect` list them as set by the board.
+- **Bindings** (per sensor, the board sets them; `<b>` is the prefix): `<b>_temp` int, tenths of °C; `<b>_temp_text` text, `23.4 °C` (UTF-8 °), `--` unless ok; `<b>_hum` int, tenths of %; `<b>_hum_text` text, `45.2 %`, `--` unless ok; `<b>_ok` bool; `<b>_state` text: `Reading` (no result yet), `Live`, `Not connected` (missing), `Read error` (error). The ints keep their last good values while not ok. A value is set only when it changes; sensor values are not saved to the card (P53 last values), the board has them live.
+- **Driver** (`board/components/fenix_sys/sensors.cpp`): one task (core 0, priority 3, 3 KB stack), one slot per second, so each pin is read every 2 s and the two are 1 s apart. A pin is set up (RMT receiver, open drain, internal pull-up) only while an installed app declares it (or a `SENSOR_WATCH` asks); otherwise it stays a plain input with no pull. A slot is read while its app is open, or while that app's PC half runs (`HOST_STATE` running, or no state yet) with the link up; the UI works this out every 0.5 s (`sensor_want_tick`). States: ok on a good read; missing (no answer) or error (bad timing, checksum, or out of -40 to 80 °C, 0 to 100 %) only after 3 failed reads in a row, the last state held until then. A pin takes one kind of sensor: an install that declares another kind on a pin an installed app uses is refused (`store_end`; only dht22 exists today, so this cannot happen yet). Cost (v0.1.29, measured 2026-11-18, both pins declared): 3.8 KB of heap (49.2 KB free on Home 39 s after boot, 53.0 KB with the task left out), 0.1% CPU, ~1.4 KB of its stack free; firmware +8.5 KB (RMT driver).
+- **Runtime:** an app with sensors keeps its layout live without a PC link: no veil, touchable, under the "PC not connected" line, with PC-set values at their last value; it never shows "Waiting for host PC". "Turned off on host PC", "Starting on host PC" and "Not on this PC" keep their screens (decision: the user turned the app off or it is not added here, so it shows no readings; the pins are still read while the app is open, which costs nothing visible).
+- **To the PC:** a `SENSOR` frame per pin per read while a running PC half wants it (`proto/spec.md` "Sensors"); the PC app turns it into a `sensor` pipe message for every switched-on app with the `sensors` permission that declares the pin (`docs/sidecars.md`). Deviation from the request (one frame per app): one frame per pin, since the PC knows each app's pins from its package.
+- **Tests:** `fenix sensors [s]` reads both pins (declared or not) and prints every reading; `fenix sensors fake <pin> <temp> <hum> | missing | error | off` replaces a pin's readings until `off` or a restart. Fixture: `tools/sensor-app` (two cards, simulator screens `app_sensors*`).
+
 ## Store on the board
 
 ### Where apps live (P51)
 
 - **SD card first:** with a FAT32 card in, packages go to `/sd/fenixos/apps/<id>.fxp` and `.sha`. No size cap: the card's free space (64 KB kept spare) and FAT32's 4 GB per file. **No card:** LittleFS at `/apps`, 128 KB per package (`sys::FLASH_PKG_MAX`), else `APP_RESULT` 7 "too big for flash". One app is in one place: an install drops the copy in the other store.
-- **Index:** `sys::store_*` keep one list in RAM (`AppMeta`, 120 B: id, version, name, tile colour, where, state), sorted by id, up to 32 apps (`MAX_APPS`). The sha is read from the `.sha` file when asked. Home, Settings › Storage and the link read it; nobody keeps a copy.
-- **Card out:** `/apps/sd.idx` on flash lists the card's apps (`id\tversion\tcolour\tname` per line), so their tiles stay (faded, card glyph) with the card out; they are "card missing" until the card is back and scanned. A flash copy wins over a card copy of the same app at a scan (the card's is deleted). An app whose card is out cannot be removed.
+- **Index:** `sys::store_*` keep one list in RAM (`AppMeta`, 124 B: id, version, name, tile colour, where, state, sensors: the kind on IO22 in the low nibble and IO27 in the high one, P59; corrected: 120 B before), sorted by id, up to 32 apps (`MAX_APPS`). The sha is read from the `.sha` file when asked. Home, Settings › Storage and the link read it; nobody keeps a copy.
+- **Card out:** `/apps/sd.idx` on flash lists the card's apps (`id\tversion\tcolour\tname` per line; the colour's top byte holds the sensors nibbles since P59), so their tiles stay (faded, card glyph) with the card out; they are "card missing" until the card is back and scanned. A flash copy wins over a card copy of the same app at a scan (the card's is deleted). An app whose card is out cannot be removed.
 - **Link:** `APP_INDEX_REQ` / `APP_INDEX` page the index (8 apps a page, where and state per app, sha zero while the card is out). `APP_LIST` still answers with the first 10 apps for older PC apps.
 
 ### Install and remove

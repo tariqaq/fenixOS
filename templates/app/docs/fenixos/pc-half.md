@@ -15,7 +15,7 @@ Copied from fenixOS `docs/sidecars.md`, cut for app authors. Skip this file if t
 `app/pc/Cargo.toml` takes it from the fenixOS repo at a release tag:
 
 ```toml
-fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.28" }
+fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.29" }
 ```
 
 | API | What it does |
@@ -31,9 +31,10 @@ fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.28" }
 | `fenix_sdk::text::fit(s, cjk_font)` | Text from outside (song, window title) in characters the board draws: Latin-1 stays (fenixOS 0.1.26; older boards draw only ASCII), CJK stays when `cjk_font` (the user has the CJK font on the card), the rest is transliterated (`Привет` to `Privet`) or `?` |
 | `app.log(Level::Warn, text)`, `app.log_info(text)` | A line in the fenixOS log; `Warn` and `Error` show under Problems |
 | `app.put_file(name, &bytes)`, `app.get_file(name)`, `app.delete_file(name)` | A file in the app's folder on the board's SD card (`/sd/fenixos/data/<id>/`), at most 32 KB; `name` may hold `/`. They block until the board answers (seconds) and fail without a board, a card or fenixOS 0.1.23. The folder goes when the app is removed from the board |
+| `app.sensors()` | fenixOS 0.1.29: the last reading of each wired sensor, by `bind` (empty until the first) |
 | `app.id`, `app.version`, `app.fenixos` | From `hello` |
 
-`Message`: `Settings(map)`, `Board { connected }`, `Opened`, `Closed`, `Event { name, kind, value }` (`kind`: `Tap`, `Long`, `Change`; `value`: slider value or switch 0/1), `Button { key }` (a `button` setting was pressed), `Stop`.
+`Message`: `Settings(map)`, `Board { connected }`, `Opened`, `Closed`, `Event { name, kind, value }` (`kind`: `Tap`, `Long`, `Change`; `value`: slider value or switch 0/1), `Button { key }` (a `button` setting was pressed), `Sensor { bind, kind, temp, hum, state, at }` (fenixOS 0.1.29: a wired sensor's reading, every 2 s per sensor while the app is on and the board connected, whatever the board shows; `temp` in °C and `hum` in % are `None` unless `state` is `SensorState::Ok` (`Missing`, `Error`); `at` is Unix ms on the PC), `Stop`.
 
 ## Pattern
 
@@ -67,8 +68,8 @@ Send only what changed when values are large or frequent: every `set` crosses th
 
 ## Other languages
 
-Any Windows program can speak the protocol: each message is a little-endian `u32` length, then UTF-8 JSON with a `type`, at most 64 KB. Down: `hello {app, version, fenixos, protocol: 1}`, `settings {values}`, `board {connected}`, `opened`, `closed`, `event {name, kind, value}`, `button {key}`, `stop`. Up: `set {bind, value}`, `set_image {bind, w, h, data}` (base64 RGB888, ≤ 120 × 120), `log {level, text}`, `file_put {req, name, data}` (base64), `file_get {req, name}`, `file_delete {req, name}`, each answered by down `file {req, ok, data, error}`. Open `.down` first, then `.up`; fenixOS waits 10 s for both. Unknown types and fields are ignored.
+Any Windows program can speak the protocol: each message is a little-endian `u32` length, then UTF-8 JSON with a `type`, at most 64 KB. Down: `hello {app, version, fenixos, protocol: 1}`, `settings {values}`, `board {connected}`, `opened`, `closed`, `event {name, kind, value}`, `button {key}`, `sensor {bind, kind, temp, hum, state, at}` (0.1.29; `temp` and `hum` null unless `state` is `"ok"`; else `"missing"` or `"error"`), `stop`. Up: `set {bind, value}`, `set_image {bind, w, h, data}` (base64 RGB888, ≤ 120 × 120), `log {level, text}`, `file_put {req, name, data}` (base64), `file_get {req, name}`, `file_delete {req, name}`, each answered by down `file {req, ok, data, error}`. Open `.down` first, then `.up`; fenixOS waits 10 s for both. Unknown types and fields are ignored.
 
 ## Permissions
 
-Declare in `manifest.json` what the helper does: `keys` (press keys and shortcuts), `media` (volume and media), `system-stats` (CPU, memory and other stats), `network`, `files`, `programs` (start other programs), `screen` (screenshots of the display or the window in front; fenixOS 0.1.25, needs `min_fenixos` 0.1.25). The PC app shows them before Add. Do no more than declared, and nothing that looks like cheating software: no global hooks, DLL injection, other processes' memory or raw input capture.
+Declare in `manifest.json` what the helper does: `keys` (press keys and shortcuts), `media` (volume and media), `system-stats` (CPU, memory and other stats), `network`, `files`, `programs` (start other programs), `screen` (screenshots of the display or the window in front; fenixOS 0.1.25, needs `min_fenixos` 0.1.25), `sensors` (the board half declares `[[sensor]]`; fenixOS 0.1.29, needs `min_fenixos` 0.1.29; required, the PC app refuses the package without it). The PC app shows them before Add. Do no more than declared, and nothing that looks like cheating software: no global hooks, DLL injection, other processes' memory or raw input capture.

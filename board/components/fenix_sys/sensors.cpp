@@ -106,7 +106,8 @@ static Got read_dht22(int i, int16_t* t, uint16_t* h) {
     rmt_enable(s.ch);
     return Got::NONE;
   }
-  int highs[90], nh = 0;
+  uint16_t highs[90];
+  int nh = 0;
   for (size_t k = 0; k < ev.num_symbols; k++) {
     const rmt_symbol_word_t& w = ev.received_symbols[k];
     if (w.level0 && w.duration0 && nh < 90) highs[nh++] = w.duration0;

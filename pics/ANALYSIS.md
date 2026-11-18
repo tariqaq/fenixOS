@@ -32,7 +32,7 @@ Revision 2 (2026-10-28): adds 9 store screenshots and cross-checks against the v
 | P3 (JST 1.25 4P) | GND, IO35, IO22, IO21 |
 | CN1 (JST 1.25 4P) | GND, IO22, IO27, 3.3V (listing: "temperature and humidity interface", i.e. a DHT11 port) |
 
-Free GPIO for projects: **IO22, IO27, IO35 (input only)**. Do not use IO21 on P3: it drives the backlight.
+Free GPIO for projects: **IO22, IO27, IO35 (input only)**. Do not use IO21 on P3: it drives the backlight. Since P59 (fenixOS 0.1.29) fenixOS reads a DHT22 on IO22 or IO27 for apps that declare one (`docs/packages.md` "Sensors").
 
 ## Corrections vs revision 1
 

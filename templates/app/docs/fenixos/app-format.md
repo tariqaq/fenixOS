@@ -2,7 +2,7 @@
 
 Copied from fenixOS `docs/packages.md` (package format 1), cut to what an app author needs. Compiler: `fenix-pkg build app/board -o dist/app.fxp`; `fenix-pkg inspect dist/app.fxp` lists a package.
 
-No code runs on the board. The package is a declarative screen: elements, bindings (values the PC half sets) and events (touches the PC half gets).
+No code runs on the board. The package is a declarative screen: elements, bindings (values the PC half sets, or the board itself for wired sensors) and events (touches the PC half gets).
 
 ## Source folder (`app/board/`)
 
@@ -15,6 +15,11 @@ version = "0.1.0"                # equals manifest.json version
 min_fenixos = "0.1.0"            # lowest fenixOS that may install it
 color = "teal"                   # tile token (gray indigo blue teal green orange red purple pink) or "#RRGGBB"
 icon = "icon.png"                # any size; alpha channel used, drawn white; scaled to 20 px (Tiles) and 26 px (Dock)
+
+[[sensor]]                       # optional, fenixOS 0.1.29: a DHT22 the board reads itself
+kind = "dht22"                   # the only kind so far
+pin = 22                         # 22 or 27 (CN1); one sensor per pin
+bind = "s1"                      # prefix of the six bindings the board sets (letters, digits, _; <= 16)
 ```
 
 `layout.json`: one root element. `image` elements name PNG files in the same folder.
@@ -80,9 +85,28 @@ The built-in glyphs (the last 14, from `play`, need fenixOS v0.1.25): `gear-six`
 - The board keeps no live values while the app is closed (fenixOS v0.1.23 and later keep the last ones on the SD card and show them dimmed while the PC is away). When the app opens, the PC half gets `opened` and must send its current values.
 - A label's `text` is what shows until the first value arrives: use a placeholder such as `"--"`.
 
+## Wired sensors (`[[sensor]]`, fenixOS 0.1.29)
+
+A DHT22 temperature and humidity sensor on CN1 (the 4-pin JST 1.25 mm socket: `GND`, `IO22`, `IO27`, `3.3V`), one per pin. Declare it in `app.toml` (above) with `min_fenixos = "0.1.29"`, and add `"permissions": ["sensors"]` to `manifest.json` (the PC app refuses the package otherwise). The board reads it every 2 s while the app is open, or while its PC half runs with the board connected, and sets six bindings itself:
+
+| Binding | Kind | Value |
+|---|---|---|
+| `<bind>_temp` | int | Tenths of °C (-400 to 800), for a `bar` |
+| `<bind>_temp_text` | text | `23.4 °C`; `--` unless live |
+| `<bind>_hum` | int | Tenths of % (0 to 1000), for a `bar` |
+| `<bind>_hum_text` | text | `45.2 %`; `--` unless live |
+| `<bind>_ok` | bool | True while live: use it as `show` on the values |
+| `<bind>_state` | text | `Reading` (no result yet), `Live`, `Not connected` (no answer 3 reads in a row, ~6 s), `Read error` (bad answers 3 reads in a row) |
+
+- They count toward the 64 bindings. A layout binding under the prefix that is not one of the six is refused (`s1_temperature`), and `fenix-pkg inspect` lists them as set by the board. Do not `set` them from the PC half.
+- Without a PC link the layout stays live (no dimming), under a "PC not connected" line; PC-set values show their last value. "Turned off on host PC", "Starting" and "Not on this PC" show as for any app (no readings there).
+- The PC half gets every reading as `Message::Sensor` (`pc-half.md`), whatever the board shows.
+- Test without hardware: `fenix sensors fake 22 23.4 45.2` (or `missing`, `error`, `off`); test the wiring: `fenix sensors`.
+- Example: `tools/sensor-app` in the fenixOS repo.
+
 ## States the board shows for you
 
-- No PC link: "Waiting for host PC", or with an SD card in (fenixOS v0.1.23) the last values, dimmed, under "PC not connected".
+- No PC link: "Waiting for host PC", or with an SD card in (fenixOS v0.1.23) the last values, dimmed, under "PC not connected". An app with wired sensors (0.1.29) shows its layout live instead.
 - The app is on an SD card that is out: "Insert the SD card".
 - The app switched off in the PC app: "Turned off on host PC", with a Turn on button. Starting: "Starting on host PC". Added on another PC only: "Not on this PC".
 - Otherwise the layout. An update reloads it in place; a removed app returns to Home.
@@ -96,7 +120,7 @@ Checked by `fenix-pkg build` and again by the board before it installs.
 | Package size | none (on the board's flash without an SD card: 128 KB) |
 | Elements | 200 |
 | Strings (all, bytes) | 8 KB |
-| Bindings | 64 |
+| Bindings (a wired sensor adds 6) | 64 |
 | Image data (all images except the two tile icons) | 24 KB |
 | RAM estimate (`elements built at once × 160 B + elements × 32 B + strings + images + the bound image's w × h × 2`; a `view` counts its largest child) | 32 KB (40 KB before fenixOS v0.1.25) |
 | Tree depth | 8 |

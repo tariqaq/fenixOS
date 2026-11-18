@@ -1,6 +1,6 @@
 # fenixOS app developer guide
 
-One file with what you need to build an app for fenixOS: the board, the PC app, the `fenix` CLI, the app format, the PC half and the release steps. It ships in `fenixos-app-template.zip` as `docs/fenixos/dev-guide.md` (source in the fenixOS repo: `templates/app/`). Written for fenixOS **v0.1.28** (2026-11-03).
+One file with what you need to build an app for fenixOS: the board, the PC app, the `fenix` CLI, the app format, the PC half and the release steps. It ships in `fenixos-app-template.zip` as `docs/fenixos/dev-guide.md` (source in the fenixOS repo: `templates/app/`). Written for fenixOS **v0.1.29** (2026-11-18).
 
 The other `docs/fenixos/*.md` files beside this one are the full reference for the app format, design, PC half and registry. This guide sums them up and adds the board, the PC app and the CLI. Where they differ, the fenixOS repo (`tariqaq/fenixOS`) wins: `docs/packages.md`, `docs/sidecars.md`, `docs/registry.md`, `DESIGN.md`.
 
@@ -33,9 +33,10 @@ Data flow: PC half `set("cpu", 42)` → named pipe → PC app → USB (921,600 b
 | SD card | microSD on SPI3 at 40 MHz, FAT32, ~2.7 MB/s reads. No card-detect pin |
 | Wireless | Wi-Fi 2.4 GHz (Bluetooth is removed from fenixOS) |
 | Other | RGB LED (status light), light sensor, speaker amp, BOOT button: fenixOS uses them; apps cannot |
+| CN1 | 4-pin JST 1.25 mm socket on the underside: `GND`, `IO22`, `IO27`, `3.3V`. Takes up to two DHT22 sensors (fenixOS 0.1.29, section 6) |
 | Power | 5 V USB, ~115 mA |
 
-Pin map (for reference only; apps never touch pins):
+Pin map (for reference only; apps never drive pins, fenixOS reads wired sensors for them):
 
 | Function | Pins |
 |---|---|
@@ -46,7 +47,8 @@ Pin map (for reference only; apps never touch pins):
 | RGB LED (active low) | 4, 16, 17 |
 | Light sensor | 34 (ADC) |
 | Speaker | 26 (DAC) |
-| Free | 22, 27, 35 (input only) |
+| Sensors (CN1) | 22, 27: one DHT22 each, read by fenixOS for an app's `[[sensor]]` (IO27 has a 10 kΩ pull-up on the board) |
+| Free | 35 (input only, on P3 next to 21 and 22) |
 
 Sources (fenixOS repo): `docs/board-info.md`, `pics/ANALYSIS.md`.
 
@@ -56,7 +58,7 @@ Sources (fenixOS repo): `docs/board-info.md`, `pics/ANALYSIS.md`.
 |---|---|---|
 | nvs | 24 KB | Settings, Wi-Fi network, touch calibration |
 | otadata, phy_init, coredump | 8 + 4 + 56 KB | Boot slot choice, radio calibration, last crash |
-| ota_0, ota_1 | 1,856 KB each | Firmware (two slots; v0.1.28 uses 1,290,576 B, 32% free) |
+| ota_0, ota_1 | 1,856 KB each | Firmware (two slots; v0.1.29 uses 1,299,088 B, 32% free) |
 | apps | 256 KB | Flash app store (LittleFS), used when no SD card is in |
 
 ### What fenixOS runs
@@ -105,7 +107,7 @@ Not shipped in the installer. Build it from the fenixOS repo (the repo patches `
 ```powershell
 git clone --recursive https://github.com/tariqaq/fenixOS
 cd fenixOS
-git checkout v0.1.28
+git checkout v0.1.29
 cargo build --release -p fenix-cli     # target\release\fenix.exe
 ```
 
@@ -129,6 +131,8 @@ It finds the board's COM port itself. `--port COM9` picks a port; `--port tcp:fe
 | `fenix bench [s] [nostream\|fps]` | Animation fps and stream speed |
 | `fenix files ls [path]`, `get <path> [out]`, `put <local> <path>`, `rm <path>` | Files under `/sd/fenixos` (write only in `fonts/ data/ web/`) |
 | `fenix sd` | SD card state |
+| `fenix sensors [s]` | Read IO22 and IO27 as DHT22 for `s` seconds (default 20) and print each reading: tests the wiring, no app needed (0.1.29) |
+| `fenix sensors fake <22\|27> <temp> <hum>\|missing\|error\|off` | The board uses these readings for that pin until `off` or a restart: test a layout without hardware |
 | `fenix time`, `fenix reboot` | Set the board clock, restart it |
 | `fenix radio [off\|wifi]` | Show or switch the radio (restarts the board) |
 | `fenix wifi scan\|join <ssid> [pass]\|forget` | Wi-Fi network |
@@ -155,7 +159,7 @@ Unzip `fenixos-app-template.zip` into a new repo under `github.com/tariqaq/` (th
 Tools: Rust (stable), Python 3.11+, and `fenix-pkg`:
 
 ```powershell
-cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.28 fenix-pkg
+cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.29 fenix-pkg
 ```
 
 ## 6. Board half
@@ -166,10 +170,34 @@ cargo install --git https://github.com/tariqaq/fenixOS --tag v0.1.28 fenix-pkg
 id = "io.github.tariqaq.myapp"   # letters, digits, . - _; <= 48 bytes; equals manifest.json id
 name = "My app"                  # tile label, <= 24 bytes
 version = "0.1.0"                # equals manifest.json version
-min_fenixos = "0.1.0"            # lowest fenixOS that may install it (0.1.25 for view/show, 0.1.26 for overflow and Latin-1)
+min_fenixos = "0.1.0"            # lowest fenixOS that may install it (0.1.25 for view/show, 0.1.26 for overflow and Latin-1, 0.1.29 for [[sensor]])
 color = "teal"                   # gray indigo blue teal green orange red purple pink
 icon = "icon.png"                # white glyph on transparent; scaled to 20 px and 26 px
+
+[[sensor]]                       # optional, fenixOS 0.1.29: a DHT22 the board reads itself
+kind = "dht22"                   # the only kind so far
+pin = 22                         # 22 or 27 (CN1); one sensor per pin
+bind = "s1"                      # prefix of the six bindings the board sets (letters, digits, _; <= 16)
 ```
+
+### Wired sensors (`[[sensor]]`, fenixOS 0.1.29)
+
+A DHT22 temperature and humidity sensor on CN1 (the 4-pin JST 1.25 mm socket: `GND`, `IO22`, `IO27`, `3.3V`), one per pin. Declare it in `app.toml` (above) with `min_fenixos = "0.1.29"`, and add `"permissions": ["sensors"]` to `manifest.json` (the PC app refuses the package otherwise). The board reads it every 2 s while the app is open, or while its PC half runs with the board connected, and sets six bindings itself:
+
+| Binding | Kind | Value |
+|---|---|---|
+| `<bind>_temp` | int | Tenths of °C (-400 to 800), for a `bar` |
+| `<bind>_temp_text` | text | `23.4 °C`; `--` unless live |
+| `<bind>_hum` | int | Tenths of % (0 to 1000), for a `bar` |
+| `<bind>_hum_text` | text | `45.2 %`; `--` unless live |
+| `<bind>_ok` | bool | True while live: use it as `show` on the values |
+| `<bind>_state` | text | `Reading` (no result yet), `Live`, `Not connected` (no answer 3 reads in a row, ~6 s), `Read error` (bad answers 3 reads in a row) |
+
+- They count toward the 64 bindings. A layout binding under the prefix that is not one of the six is refused (`s1_temperature`), and `fenix-pkg inspect` lists them as set by the board. Do not `set` them from the PC half.
+- Without a PC link the layout stays live (no dimming), under a "PC not connected" line; PC-set values show their last value. "Turned off on host PC", "Starting" and "Not on this PC" show as for any app (no readings there).
+- The PC half gets every reading as `Message::Sensor` (section 7), whatever the board shows.
+- Test without hardware: `fenix sensors fake 22 23.4 45.2` (or `missing`, `error`, `off`); test the wiring: `fenix sensors`.
+- Example: `tools/sensor-app` in the fenixOS repo.
 
 ### Screen area
 
@@ -217,7 +245,7 @@ Props on every element: `w`, `h` (px, `"50%"`, `"content"`), `grow`, `bind`, `ev
 |---|---|
 | Elements | 200 |
 | Strings | 8 KB |
-| Bindings | 64 |
+| Bindings | 64 (a sensor adds 6) |
 | Image data | 24 KB (A8 = 1 B/px, RGB565 = 2 B/px) |
 | RAM estimate | 32 KB (elements built at once × 160 B + elements × 32 B + strings + images + bound image w × h × 2) |
 | Tree depth | 8 |
@@ -227,7 +255,7 @@ The app slides open like Settings when the heap allows; a big layout fades in fr
 
 ### States the board draws for you
 
-"Waiting for host PC" (or the last values dimmed under "PC not connected" with a card), "Insert the SD card", "Turned off on host PC" with Turn on, "Starting on host PC", "Not on this PC". Do not build these yourself.
+"Waiting for host PC" (or the last values dimmed under "PC not connected" with a card; an app with sensors stays live), "Insert the SD card", "Turned off on host PC" with Turn on, "Starting on host PC", "Not on this PC". Do not build these yourself.
 
 ### Design rules (locked)
 
@@ -238,7 +266,7 @@ Dark only. Cards: `surface_1`, radius 12, pad 10, never nested. Buttons: primary
 `app/pc/Cargo.toml`:
 
 ```toml
-fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.28" }
+fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.29" }
 ```
 
 | API | What it does |
@@ -254,11 +282,11 @@ fenix-sdk = { git = "https://github.com/tariqaq/fenixOS", tag = "v0.1.28" }
 | `app.log(Level::Warn, text)`, `app.log_info(text)` | Line in the PC app log |
 | `app.put_file`, `get_file`, `delete_file` | Files in `/sd/fenixos/data/<id>/`, ≤ 32 KB, block until the board answers |
 
-`Message`: `Settings`, `Board { connected }`, `Opened`, `Closed`, `Event { name, kind, value }` (`Tap`, `Long`, `Change`), `Button { key }`, `Stop`.
+`Message`: `Settings`, `Board { connected }`, `Opened`, `Closed`, `Event { name, kind, value }` (`Tap`, `Long`, `Change`), `Button { key }`, `Sensor { bind, kind, temp, hum, state, at }` (0.1.29: every 2 s per sensor; `temp` °C and `hum` % are `None` unless `state` is `SensorState::Ok`; `at` Unix ms on the PC; `app.sensors()` keeps the last per `bind`), `Stop`.
 
 Lifecycle: started as `<exe> --fenix-pipe <base>` while the app is on; exit on `Stop` or a closed pipe. Crashes restart after 1, 5, 15 s, then it stops. Build as a GUI exe (`#![windows_subsystem = "windows"]`). Pattern and the wire protocol for other languages: `docs/fenixos/pc-half.md`.
 
-Permissions (`manifest.json`): `keys`, `media`, `system-stats`, `network`, `files`, `programs`, `screen`. Declare only what it uses. No hooks, injection, other processes' memory or input capture (users run anti-cheat games).
+Permissions (`manifest.json`): `keys`, `media`, `system-stats`, `network`, `files`, `programs`, `screen`, `sensors` (0.1.29: required with `[[sensor]]`). Declare only what it uses. No hooks, injection, other processes' memory or input capture (users run anti-cheat games).
 
 ## 8. Manifest and settings
 

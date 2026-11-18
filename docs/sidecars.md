@@ -32,6 +32,7 @@ fenixOS → app (`.down`):
 | `event` | `name` (the element's `event` name in `layout.json`), `kind` (`tap`, `long`, `change`), `value` (int: slider value, switch 0/1, else 0) | The user touched an element on the board |
 | `button` | `key` | A `button` setting was pressed on the App settings page |
 | `file` | `req`, `ok` (bool), `data` (base64, a get that worked), `error` (text, when not `ok`) | The answer to a `file_put`, `file_get` or `file_delete` with that `req` |
+| `sensor` | `bind` (the `[[sensor]]` prefix), `kind` (`dht22`), `temp` (°C, float), `hum` (%, float), `state` (`ok`, `missing`, `error`), `at` (Unix ms, the PC's receive time: the board has no reliable clock offline) | fenixOS 0.1.29 (P59): every reading of a sensor the package declares, every 2 s per sensor while the app is switched on, has the `sensors` permission and the board is connected, whatever the board shows. `temp` and `hum` are `null` unless `state` is `ok`. The board sends one `SENSOR` frame per pin (`proto/spec.md` "Sensors"); fenixOS gives it to every such app that declares the pin, each with its own `bind` |
 | `stop` | | Exit now |
 
 App → fenixOS (`.up`):
@@ -48,6 +49,8 @@ App → fenixOS (`.up`):
 App files (P53): `name` is relative to the app's folder and may hold `/` for subfolders (no `..`, the board's path rules in `docs/sd-card.md`). fenixOS sends them over its board link as file writes (`proto/spec.md` "Files (0x6_)") and answers `file` once the board has, so a request takes a few seconds at most. It answers `ok: false` with the reason when the board is not connected, has no card, or refuses. The board deletes the folder when the app is removed from it (from the board's card; a card that is out then keeps it). fenixOS before 0.1.23 ignores these types, so the SDK gives up after 30 s.
 
 ## fenix-sdk (Rust)
+
+`Message::Sensor { bind, kind, temp: Option<f32>, hum: Option<f32>, state: SensorState, at: u64 }` (P59; `SensorState::{Ok, Missing, Error}`) carries the `sensor` message, and `app.sensors()` returns the last reading per `bind`, so a PC half that starts late has values before the next read.
 
 ```rust
 use fenix_sdk::{App, Message};

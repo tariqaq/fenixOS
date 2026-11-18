@@ -14,7 +14,7 @@ These files are copies from fenixOS (version in `README.md`). Where they disagre
 
 ## What an app is
 
-- **Board half** (required): a declarative screen compiled into a `.fxp` package. No code runs on the board; values come from bindings and touches go out as events.
+- **Board half** (required): a declarative screen compiled into a `.fxp` package. No code runs on the board; values come from bindings and touches go out as events. Wired DHT22 sensors (fenixOS 0.1.29) are declared with `[[sensor]]` in `app.toml`; the board reads them and sets their bindings itself (`app-format.md`).
 - **PC half** (optional): a Windows `.exe` that fenixOS starts while the app is switched on. It sets bound values and gets events and settings.
 - **Settings** (optional): declared in `manifest.json`; fenixOS renders them on the app's page in the PC app. Never build a settings UI yourself.
 
