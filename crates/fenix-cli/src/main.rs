@@ -51,8 +51,8 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use fenix_link::{Event, Link, LinkOptions, StreamCanvas};
 use fenix_proto::{
-    app, app_state, app_where, err, fw, host, radio, scan_status, sensor_fake, sensor_state, BindValue, Msg,
-    RadioState, SensorReading, Stats, Sysinfo,
+    app, app_state, app_where, err, fw, host, radio, scan_status, sensor_fake, sensor_state,
+    BindValue, Msg, RadioState, SensorReading, Stats, Sysinfo,
 };
 use sha2::{Digest, Sha256};
 
@@ -138,7 +138,9 @@ fn main() {
             _ => usage(),
         },
         "sd" => sd_show(opts),
-        "sensors" if args.get(1).map(String::as_str) == Some("fake") => sensors_fake(opts, &args[2..]),
+        "sensors" if args.get(1).map(String::as_str) == Some("fake") => {
+            sensors_fake(opts, &args[2..])
+        }
         "sensors" => sensors_watch(opts, arg_u64(&args, 1, 20)),
         "weather" => match (args.get(1).map(|s| s.as_str()), args.get(2), args.get(3)) {
             (Some("off"), _, _) => one_shot(
@@ -571,7 +573,11 @@ fn sensor_line(r: &SensorReading) -> String {
             r.uptime_ms / 1000
         )
     } else {
-        format!("IO{} DHT22 {state} (board up {} s)", r.pin, r.uptime_ms / 1000)
+        format!(
+            "IO{} DHT22 {state} (board up {} s)",
+            r.pin,
+            r.uptime_ms / 1000
+        )
     }
 }
 
@@ -584,7 +590,9 @@ fn sensors_watch(opts: LinkOptions, secs: u64) -> i32 {
         return 1;
     }
     link.send(Msg::SensorWatch { pins: 3 });
-    println!("reading IO22 and IO27 for {secs} s (each every 2 s; a missing sensor shows after ~6 s)");
+    println!(
+        "reading IO22 and IO27 for {secs} s (each every 2 s; a missing sensor shows after ~6 s)"
+    );
     let end = Instant::now() + Duration::from_secs(secs.max(1));
     let mut got = 0;
     while Instant::now() < end {

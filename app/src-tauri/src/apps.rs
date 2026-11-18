@@ -116,6 +116,8 @@ pub struct AppView {
     /// Where the board half lives: `sd`, `flash`, `card_missing` (its SD card is out), or empty
     /// (not on the board, or no board).
     pub place: String,
+    /// Wired sensors the package declares (P59), as "DHT22 on IO22".
+    pub sensors: Vec<String>,
 }
 
 /// The board half as the board's APP_INDEX lists it.
@@ -339,6 +341,12 @@ pub fn fetch_app(src: &registry::Source, m: &Manifest) -> Result<(), String> {
     }
     let fxp = registry::download(src, &m.board)?;
     let pkg = fenix_pkg::parse(&fxp)?;
+    // A package that reads wired sensors must say so in its manifest (P59).
+    if !pkg.sensors.is_empty() && !m.permissions.iter().any(|p| p == "sensors") {
+        return Err(
+            "the package reads wired sensors, but the manifest lacks the sensors permission".into(),
+        );
+    }
     if pkg.id() != m.id || pkg.version() != m.version {
         return Err(format!(
             "package is {} v{}, manifest says {} v{}",
@@ -512,6 +520,7 @@ impl Apps {
                         .map(|(k, _)| k.clone())
                         .collect(),
                     place: place.into(),
+                    sensors: i.pkg.sensor_names(),
                 })
             })
             .collect()
@@ -852,6 +861,10 @@ impl Apps {
                 self.to_sidecar(id, Down::Closed);
                 false
             }
+            Msg::Sensor(r) => {
+                self.route_sensor(r);
+                false
+            }
             Msg::Event {
                 elem,
                 kind,
@@ -881,6 +894,44 @@ impl Apps {
                 false
             }
             _ => false,
+        }
+    }
+
+    /// A SENSOR frame (P59) to every switched-on app whose package declares that pin and whose
+    /// manifest has the `sensors` permission, as its own `bind`. Stamped with the PC's clock.
+    fn route_sensor(&self, r: &fenix_proto::SensorReading) {
+        let at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |d| d.as_millis() as u64);
+        let ok = r.state == fenix_proto::sensor_state::OK;
+        let state = match r.state {
+            fenix_proto::sensor_state::OK => "ok",
+            fenix_proto::sensor_state::MISSING => "missing",
+            _ => "error",
+        };
+        for (id, i) in &self.installed {
+            if !self.cfg.apps.get(id).is_some_and(|c| c.enabled)
+                || !i.manifest.permissions.iter().any(|p| p == "sensors")
+            {
+                continue;
+            }
+            for s in i.pkg.sensors.iter().filter(|s| s.pin == r.pin) {
+                let kind = fenix_pkg::SENSOR_KINDS
+                    .get(s.kind as usize - 1)
+                    .copied()
+                    .unwrap_or("?");
+                self.to_sidecar(
+                    id,
+                    Down::Sensor {
+                        bind: i.pkg.sensor_bind(s).into(),
+                        kind: kind.into(),
+                        temp: ok.then_some(r.temp_x10 as f32 / 10.0),
+                        hum: ok.then_some(r.hum_x10 as f32 / 10.0),
+                        state: state.into(),
+                        at,
+                    },
+                );
+            }
         }
     }
 

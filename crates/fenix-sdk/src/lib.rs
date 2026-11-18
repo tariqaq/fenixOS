@@ -73,6 +73,17 @@ pub mod wire {
             #[serde(default, skip_serializing_if = "String::is_empty")]
             error: String,
         },
+        /// A wired sensor's reading (P59, fenixOS 0.1.29): `bind` is the `[[sensor]]` prefix,
+        /// `temp` in °C and `hum` in % (null unless `state` is "ok"), `at` the PC's receive
+        /// time in Unix ms. `state`: "ok", "missing" or "error".
+        Sensor {
+            bind: String,
+            kind: String,
+            temp: Option<f32>,
+            hum: Option<f32>,
+            state: String,
+            at: u64,
+        },
         Stop,
         /// A type this version does not know (the protocol only grows).
         #[serde(other)]
@@ -207,8 +218,39 @@ pub enum Message {
     Button {
         key: String,
     },
+    /// A reading of one of the app's wired sensors (P59): every 2 s per sensor while the app is
+    /// switched on and the board is connected, whatever the board shows. `temp` (°C) and `hum`
+    /// (%) are `None` unless the state is [`SensorState::Ok`]; `at` is Unix ms on the PC.
+    Sensor {
+        bind: String,
+        kind: String,
+        temp: Option<f32>,
+        hum: Option<f32>,
+        state: SensorState,
+        at: u64,
+    },
     /// fenixOS asked the app to exit, or the pipe closed. Exit soon: fenixOS ends the process after 3 s.
     Stop,
+}
+
+/// A wired sensor's state (P59).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SensorState {
+    Ok,
+    /// No answer for 3 reads in a row: not wired, or unplugged.
+    Missing,
+    /// Answers, but bad (timing, checksum or range) for 3 reads in a row.
+    Error,
+}
+
+/// The last reading of a sensor, as [`App::sensors`] keeps it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SensorReading {
+    pub kind: String,
+    pub temp: Option<f32>,
+    pub hum: Option<f32>,
+    pub state: SensorState,
+    pub at: u64,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -227,6 +269,8 @@ struct Shared {
     settings: Mutex<Map<String, Json>>,
     /// File requests waiting for fenixOS's answer, by `req`.
     files: Mutex<HashMap<u32, Sender<Answer>>>,
+    /// The last reading per sensor `bind` (P59).
+    sensors: Mutex<HashMap<String, SensorReading>>,
 }
 
 /// How long a file request waits: a 32 KB write over Wi-Fi takes a few seconds.
@@ -283,6 +327,7 @@ impl App {
             stopped: AtomicBool::new(false),
             settings: Mutex::new(Map::new()),
             files: Mutex::new(HashMap::new()),
+            sensors: Mutex::new(HashMap::new()),
         });
         let (tx, rx) = mpsc::channel();
         let sh = shared.clone();
@@ -325,6 +370,36 @@ impl App {
                             value,
                         },
                         wire::Down::Button { key } => Message::Button { key },
+                        wire::Down::Sensor {
+                            bind,
+                            kind,
+                            temp,
+                            hum,
+                            state,
+                            at,
+                        } => {
+                            let state = match state.as_str() {
+                                "ok" => SensorState::Ok,
+                                "missing" => SensorState::Missing,
+                                _ => SensorState::Error,
+                            };
+                            let r = SensorReading {
+                                kind: kind.clone(),
+                                temp,
+                                hum,
+                                state,
+                                at,
+                            };
+                            sh.sensors.lock().unwrap().insert(bind.clone(), r);
+                            Message::Sensor {
+                                bind,
+                                kind,
+                                temp,
+                                hum,
+                                state,
+                                at,
+                            }
+                        }
                         wire::Down::File {
                             req,
                             ok,
@@ -371,6 +446,12 @@ impl App {
             Err(RecvTimeoutError::Timeout) => None,
             Err(RecvTimeoutError::Disconnected) => Some(Message::Stop),
         }
+    }
+
+    /// The last reading of each of the app's sensors, by `bind` (P59): empty until the first
+    /// reading arrives (within ~2 s of the board connecting).
+    pub fn sensors(&self) -> HashMap<String, SensorReading> {
+        self.shared.sensors.lock().unwrap().clone()
     }
 
     /// True while the app's screen is open on the board (values sent now are shown).

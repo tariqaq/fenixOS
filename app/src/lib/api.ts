@@ -122,6 +122,8 @@ export interface AppView {
   values: Record<string, unknown>;
   /** Keys of `secret` settings that hold a value (their values never reach the UI, P51-M). */
   secrets_set: string[];
+  /** Wired sensors the package declares (P59), as "DHT22 on IO22". */
+  sensors: string[];
   /** Where the board half lives (P51); empty when it is not on the board. */
   place: "" | "sd" | "flash" | "card_missing";
 }
@@ -334,6 +336,7 @@ const permissionText: Record<string, { text: string; icon: string }> = {
   files: { text: "Read and write files", icon: "folder" },
   programs: { text: "Start other programs", icon: "app-window" },
   screen: { text: "See your screen and the window in front", icon: "monitor" },
+  sensors: { text: "Reads sensors wired to the board", icon: "thermometer" },
   helper: { text: "Runs its own helper program while switched on", icon: "puzzle-piece" },
   elevated: { text: "Asks for administrator rights each time it starts", icon: "shield-warning" },
 };

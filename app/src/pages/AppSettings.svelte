@@ -181,6 +181,9 @@
       <div class="row"><dt>Source</dt><dd><a href={app.repo}>{source}</a></dd></div>
       <div class="row"><dt>Version</dt><dd>{app.version}</dd></div>
       <div class="row"><dt>On the board</dt><dd>{placeText(app.place)}</dd></div>
+      {#if app.sensors.length}
+        <div class="row"><dt>Sensors</dt><dd>{app.sensors.join(", ")}</dd></div>
+      {/if}
     </dl>
   </section>
 

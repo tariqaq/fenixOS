@@ -1173,9 +1173,7 @@ pub fn build(dir: &Path) -> Result<Vec<u8>, String> {
     let sensors = c.sensors(&m.sensor)?;
     if !sensors.is_empty() && min_fenixos < SENSOR_SINCE {
         let (a, b, d) = SENSOR_SINCE;
-        return Err(format!(
-            "[[sensor]] needs min_fenixos {a}.{b}.{d} or newer"
-        ));
+        return Err(format!("[[sensor]] needs min_fenixos {a}.{b}.{d} or newer"));
     }
     let p = Package {
         min_fenixos,
