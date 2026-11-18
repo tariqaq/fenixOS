@@ -1,0 +1,106 @@
+{
+  "id": "io.github.tariqaq.sensors",
+  "name": "Sensors",
+  "description": "Two DHT22 sensors on the board: live readings, a web page on your network, logs on your PC",
+  "version": "0.2.0",
+  "min_fenixos": "0.1.31",
+  "color": "teal",
+  "icon": "thermometer",
+  "repo": "https://github.com/tariqaq/sensors",
+  "board": {
+    "url": "https://github.com/tariqaq/sensors/releases/download/v0.2.0/app.fxp",
+    "sha256": "a7c89e98e1777d038dca83f9e62679999f2b065d0d4e3d3fd8fb32b184e3f48b",
+    "size": 2350
+  },
+  "pc": {
+    "url": "https://github.com/tariqaq/sensors/releases/download/v0.2.0/app.exe",
+    "sha256": "8752d35bb7dfcf6c72b2694f095c52d2d3f7805b4bea2a7b7a963dd2afbaecaf",
+    "size": 1024512,
+    "elevated": false
+  },
+  "permissions": [
+    "sensors",
+    "files",
+    "programs"
+  ],
+  "settings": [
+    {
+      "key": "name1",
+      "type": "text",
+      "label": "Sensor 1 name (IO22)",
+      "default": "Sensor 1",
+      "max_len": 16
+    },
+    {
+      "key": "name2",
+      "type": "text",
+      "label": "Sensor 2 name (IO27)",
+      "default": "Sensor 2",
+      "max_len": 16
+    },
+    {
+      "key": "log_every",
+      "type": "choice",
+      "label": "Log a reading every",
+      "default": "2",
+      "options": [
+        {
+          "value": "2",
+          "label": "2 s (every reading)"
+        },
+        {
+          "value": "10",
+          "label": "10 s"
+        },
+        {
+          "value": "60",
+          "label": "1 min"
+        },
+        {
+          "value": "300",
+          "label": "5 min"
+        }
+      ]
+    },
+    {
+      "key": "keep",
+      "type": "choice",
+      "label": "Keep logs for",
+      "default": "0",
+      "options": [
+        {
+          "value": "30",
+          "label": "30 days"
+        },
+        {
+          "value": "90",
+          "label": "90 days"
+        },
+        {
+          "value": "365",
+          "label": "1 year"
+        },
+        {
+          "value": "0",
+          "label": "Forever"
+        }
+      ]
+    },
+    {
+      "key": "web",
+      "type": "toggle",
+      "label": "Web page on the board (Wi-Fi)",
+      "default": true
+    },
+    {
+      "key": "report",
+      "type": "button",
+      "label": "Open report"
+    },
+    {
+      "key": "open_logs",
+      "type": "button",
+      "label": "Open logs folder"
+    }
+  ]
+}
