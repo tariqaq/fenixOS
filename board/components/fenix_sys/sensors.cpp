@@ -8,8 +8,10 @@
 // with the link up: sensors_want) or a watch asks for it. A read drives the pin low for 1.2 ms by
 // GPIO, releases it, and lets the RMT receiver time the answer (1 MHz ticks), so interrupts from
 // the display, touch or Wi-Fi cannot corrupt the bits (measured in the spike: 24 of 24 good).
-// Per slot: ok on a good read; missing or error only after 3 failed reads in a row, holding the
-// last state meanwhile. Readings reach the UI through sensors_get (a sequence number that moves
+// Per slot: ok on a good read; after 3 failed reads in a row, missing when the last 3 got no
+// answer at all, else error (a mix of bad and missing answers is a bad signal, not an absent
+// sensor), holding the last state until then. Corrected (v0.1.30): v0.1.29 took the label from
+// the last failure only, so bad, bad, none read "missing" and the label could flip per read. Readings reach the UI through sensors_get (a sequence number that moves
 // on every change) and the PC through SENSOR frames, sent from this task.
 #include <string.h>
 
@@ -33,8 +35,8 @@ struct Slot {
   rmt_channel_handle_t ch;  // null while the pin is not set up
   QueueHandle_t done;
   rmt_symbol_word_t buf[64];  // one answer is 42 symbols
-  int fails;
-  bool last_none;  // the last failure was no answer at all
+  int fails;     // failed reads in a row (any kind), capped at FAILS_TO_STATE
+  int none_run;  // of those, the latest ones in a row that got no answer at all
   fnx::SensorFake fake;
 };
 static Slot s_slot[SENSOR_SLOTS];
@@ -149,7 +151,7 @@ static void publish(int i, uint8_t state, int16_t t, uint16_t h, bool values) {
 }
 
 static void stop(int i) {
-  s_slot[i].fails = 0;
+  s_slot[i].fails = s_slot[i].none_run = 0;
   publish(i, SENSOR_STARTING, 0, 0, false);
 }
 
@@ -181,7 +183,7 @@ static void sensor_task(void*) {
     }
     fnx::SensorFake f = s.fake;
     if (f.mode == fnx::sensor_fake::OK) {
-      s.fails = 0;
+      s.fails = s.none_run = 0;
       publish(i, fnx::sensor_state::OK, f.temp_x10, f.hum_x10, true);
     } else if (f.mode == fnx::sensor_fake::MISSING || f.mode == fnx::sensor_fake::ERROR) {
       s.fails = FAILS_TO_STATE;
@@ -192,13 +194,14 @@ static void sensor_task(void*) {
       uint16_t h = 0;
       Got g = read_dht22(i, &t, &h);
       if (g == Got::OK) {
-        s.fails = 0;
+        s.fails = s.none_run = 0;
         publish(i, fnx::sensor_state::OK, t, h, true);
       } else {
-        s.last_none = g == Got::NONE;
+        s.none_run = g == Got::NONE ? (s.none_run < FAILS_TO_STATE ? s.none_run + 1 : FAILS_TO_STATE) : 0;
         if (++s.fails >= FAILS_TO_STATE) {
           s.fails = FAILS_TO_STATE;
-          publish(i, s.last_none ? fnx::sensor_state::MISSING : fnx::sensor_state::ERROR, 0, 0, false);
+          bool missing = s.none_run >= FAILS_TO_STATE;
+          publish(i, missing ? fnx::sensor_state::MISSING : fnx::sensor_state::ERROR, 0, 0, false);
         }
       }
     } else {
@@ -233,7 +236,7 @@ void sensors_fake(const fnx::SensorFake& f) {
   int i = f.pin == 22 ? 0 : f.pin == 27 ? 1 : -1;
   if (i < 0 || f.mode > fnx::sensor_fake::ERROR) return;
   s_slot[i].fake = f;
-  s_slot[i].fails = 0;
+  s_slot[i].fails = s_slot[i].none_run = 0;
   link_log(3, "sensors: IO%d %s", f.pin, f.mode ? "faked" : "real readings again");
 }
 

@@ -71,7 +71,7 @@ Phase 0-2 (2026-10-29): repo setup, finding checks, v0.1 discovery and design (`
 - P57 Apps slide open when RAM allows, SD card noticed when pulled or put back; release v0.1.28
 - P58 One-file guide for app authors (board specs and pins, PC app, `fenix` CLI, app format, PC half, manifest, dev loop), user request 2026-11-03. Corrected (2026-11-18, user: "bundle it inside the zip"): moved from `docs/app-dev-guide.md` into the template as `docs/fenixos/dev-guide.md`
 
-Releases: v0.1.0 (P10) to v0.1.29 (P59); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
+Releases: v0.1.0 (P10) to v0.1.30 (P60); tags on GitHub (v0.1.22 has a tag but no release). Detail of P45 to P55: the history file.
 
 ## Open (needs the user)
 
@@ -127,6 +127,9 @@ Tests and checks the overnight run could not do (2026-11-02); none blocks use:
     - Done: `fenix sensors [s]` (SENSOR_WATCH both pins) and `fenix sensors fake <pin> <temp> <hum> | missing | error | off`; sysinfo lists the `sensors` task by itself. Board test (dev 0.1.29, COM12): 12 of 12 reads ok (IO22 21.3 °C 70.8 %, IO27 21.2 °C 73.6 %); sensortest app open shows both live; fake missing on IO27 shows "Not connected"; task 0.1% CPU, 1396 B stack free of 3072. Heap at hello 47,752 B (v0.1.28: 55,328 B, both 5 s after a flash; not a like-for-like measure)
   - [~] 8. Docs (board-info CN1, packages, sidecars, registry, spec, dev-guide and template copies), sim screens, tests, build, flash, user check with both sensors, release v0.1.29
     - Docs done: board-info (CN1 pins, firmware results, cost), pics/ANALYSIS note, packages (Sensors section, format byte 9 and table, AppMeta 124 B, sd.idx), spec (0x7_), sidecars, registry, toolchain, README/PLAN status, template copies (dev-guide, app-format, pc-half, registry, AGENTS; pins to v0.1.29), zip regenerated. Cost A/B on the board: 3.8 KB heap (49.2 vs 53.0 KB on Home). Checks: version, tokens, registry, template, licenses ok; cargo test 0 failed; svelte-check 0/0; sim 46/46; pkg and proto host tests pass. Release (2026-11-18): firmware 0x13d290, signed `fenixOS_0.1.29.fwp` (1268 KB), installer built and installed (/S), board flashed (`fenix sensors`: both ok), tagged v0.1.29. Left: user check (unplug a sensor: "Not connected" within ~6 s and back; readings stay live with the PC app quit)
+
+- [x] P60 Sensor state for mixed failures (user, 2026-11-18, from a ChatGPT code review: "fix it"): v0.1.29 labelled 3 failures in a row by the last one alone (bad, bad, none = missing; the label could flip per read). Now missing only when the last 3 reads got no answer, else error (`sensors.cpp` `none_run`); spec and packages.md corrected. Release v0.1.30, built locally, board flashed, app installed; GitHub builds at its own pace
+  - Not tested on hardware: needs a flaky sensor; both sensors read ok after the flash
 
 - [ ] P36 Later
   - [ ] On-board Wi-Fi password entry (the scan list comes in P34; needs LVGL keyboard and textarea, which P31 turns off: more flash)
